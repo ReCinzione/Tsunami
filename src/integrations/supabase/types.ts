@@ -14,16 +14,448 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      archetype_levels: {
+        Row: {
+          archetype: Database["public"]["Enums"]["archetype_type"]
+          created_at: string
+          description: string
+          emerging_quality: string
+          id: string
+          imaginal_object_name: string
+          level_name: string
+          level_number: number
+          shadow_aspect: string
+          xp_required: number
+        }
+        Insert: {
+          archetype: Database["public"]["Enums"]["archetype_type"]
+          created_at?: string
+          description: string
+          emerging_quality: string
+          id?: string
+          imaginal_object_name: string
+          level_name: string
+          level_number: number
+          shadow_aspect: string
+          xp_required: number
+        }
+        Update: {
+          archetype?: Database["public"]["Enums"]["archetype_type"]
+          created_at?: string
+          description?: string
+          emerging_quality?: string
+          id?: string
+          imaginal_object_name?: string
+          level_name?: string
+          level_number?: number
+          shadow_aspect?: string
+          xp_required?: number
+        }
+        Relationships: []
+      }
+      daily_moods: {
+        Row: {
+          created_at: string
+          date: string
+          id: string
+          mood: Database["public"]["Enums"]["daily_mood"]
+          suggested_ritual: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          date?: string
+          id?: string
+          mood: Database["public"]["Enums"]["daily_mood"]
+          suggested_ritual?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          id?: string
+          mood?: Database["public"]["Enums"]["daily_mood"]
+          suggested_ritual?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      imaginal_objects: {
+        Row: {
+          archetype_level_id: string
+          id: string
+          last_used_at: string | null
+          times_used: number | null
+          unlocked_at: string
+          user_id: string
+        }
+        Insert: {
+          archetype_level_id: string
+          id?: string
+          last_used_at?: string | null
+          times_used?: number | null
+          unlocked_at?: string
+          user_id: string
+        }
+        Update: {
+          archetype_level_id?: string
+          id?: string
+          last_used_at?: string | null
+          times_used?: number | null
+          unlocked_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "imaginal_objects_archetype_level_id_fkey"
+            columns: ["archetype_level_id"]
+            isOneToOne: false
+            referencedRelation: "archetype_levels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mental_inbox: {
+        Row: {
+          content: string
+          content_type: string | null
+          converted_to_task: boolean | null
+          created_at: string
+          id: string
+          is_processed: boolean | null
+          processed_at: string | null
+          task_id: string | null
+          user_id: string
+        }
+        Insert: {
+          content: string
+          content_type?: string | null
+          converted_to_task?: boolean | null
+          created_at?: string
+          id?: string
+          is_processed?: boolean | null
+          processed_at?: string | null
+          task_id?: string | null
+          user_id: string
+        }
+        Update: {
+          content?: string
+          content_type?: string | null
+          converted_to_task?: boolean | null
+          created_at?: string
+          id?: string
+          is_processed?: boolean | null
+          processed_at?: string | null
+          task_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          combattente_percentage: number | null
+          costruttore_percentage: number | null
+          created_at: string
+          current_level: number | null
+          display_name: string | null
+          dominant_archetype:
+            | Database["public"]["Enums"]["archetype_type"]
+            | null
+          id: string
+          silenzioso_percentage: number | null
+          sognatore_percentage: number | null
+          test_completed: boolean | null
+          total_xp: number | null
+          updated_at: string
+          user_id: string
+          visionario_percentage: number | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          combattente_percentage?: number | null
+          costruttore_percentage?: number | null
+          created_at?: string
+          current_level?: number | null
+          display_name?: string | null
+          dominant_archetype?:
+            | Database["public"]["Enums"]["archetype_type"]
+            | null
+          id?: string
+          silenzioso_percentage?: number | null
+          sognatore_percentage?: number | null
+          test_completed?: boolean | null
+          total_xp?: number | null
+          updated_at?: string
+          user_id: string
+          visionario_percentage?: number | null
+        }
+        Update: {
+          avatar_url?: string | null
+          combattente_percentage?: number | null
+          costruttore_percentage?: number | null
+          created_at?: string
+          current_level?: number | null
+          display_name?: string | null
+          dominant_archetype?:
+            | Database["public"]["Enums"]["archetype_type"]
+            | null
+          id?: string
+          silenzioso_percentage?: number | null
+          sognatore_percentage?: number | null
+          test_completed?: boolean | null
+          total_xp?: number | null
+          updated_at?: string
+          user_id?: string
+          visionario_percentage?: number | null
+        }
+        Relationships: []
+      }
+      tasks: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          description: string | null
+          due_date: string | null
+          energy_required: Database["public"]["Enums"]["energy_level"] | null
+          google_calendar_event_id: string | null
+          id: string
+          is_recurring: boolean | null
+          postponed_count: number | null
+          recurrence_pattern: string | null
+          status: string | null
+          task_type: Database["public"]["Enums"]["task_type"] | null
+          title: string
+          updated_at: string
+          user_id: string
+          xp_reward: number | null
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          energy_required?: Database["public"]["Enums"]["energy_level"] | null
+          google_calendar_event_id?: string | null
+          id?: string
+          is_recurring?: boolean | null
+          postponed_count?: number | null
+          recurrence_pattern?: string | null
+          status?: string | null
+          task_type?: Database["public"]["Enums"]["task_type"] | null
+          title: string
+          updated_at?: string
+          user_id: string
+          xp_reward?: number | null
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          energy_required?: Database["public"]["Enums"]["energy_level"] | null
+          google_calendar_event_id?: string | null
+          id?: string
+          is_recurring?: boolean | null
+          postponed_count?: number | null
+          recurrence_pattern?: string | null
+          status?: string | null
+          task_type?: Database["public"]["Enums"]["task_type"] | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+          xp_reward?: number | null
+        }
+        Relationships: []
+      }
+      test_answers: {
+        Row: {
+          answer_letter: string
+          answer_text: string
+          archetype: Database["public"]["Enums"]["archetype_type"]
+          created_at: string
+          id: string
+          question_id: string
+        }
+        Insert: {
+          answer_letter: string
+          answer_text: string
+          archetype: Database["public"]["Enums"]["archetype_type"]
+          created_at?: string
+          id?: string
+          question_id: string
+        }
+        Update: {
+          answer_letter?: string
+          answer_text?: string
+          archetype?: Database["public"]["Enums"]["archetype_type"]
+          created_at?: string
+          id?: string
+          question_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "test_answers_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "test_questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      test_questions: {
+        Row: {
+          created_at: string
+          id: string
+          question_number: number
+          question_text: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          question_number: number
+          question_text: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          question_number?: number
+          question_text?: string
+        }
+        Relationships: []
+      }
+      traces: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          task_id: string | null
+          trace_type: string
+          user_id: string
+          xp_gained: number | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          task_id?: string | null
+          trace_type: string
+          user_id: string
+          xp_gained?: number | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          task_id?: string | null
+          trace_type?: string
+          user_id?: string
+          xp_gained?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "traces_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_test_responses: {
+        Row: {
+          created_at: string
+          id: string
+          question_id: string
+          selected_answer_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          question_id: string
+          selected_answer_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          question_id?: string
+          selected_answer_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_test_responses_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "test_questions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_test_responses_selected_answer_id_fkey"
+            columns: ["selected_answer_id"]
+            isOneToOne: false
+            referencedRelation: "test_answers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      xp_transactions: {
+        Row: {
+          amount: number
+          created_at: string
+          description: string | null
+          id: string
+          source: string
+          source_id: string | null
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          source: string
+          source_id?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          source?: string
+          source_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      calculate_xp_for_level: {
+        Args: { level_num: number }
+        Returns: number
+      }
     }
     Enums: {
-      [_ in never]: never
+      archetype_type:
+        | "visionario"
+        | "costruttore"
+        | "sognatore"
+        | "silenzioso"
+        | "combattente"
+      daily_mood: "congelato" | "disorientato" | "in_flusso" | "ispirato"
+      energy_level: "bassa" | "media" | "alta"
+      task_type:
+        | "azione"
+        | "riflessione"
+        | "comunicazione"
+        | "creativita"
+        | "organizzazione"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +582,23 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      archetype_type: [
+        "visionario",
+        "costruttore",
+        "sognatore",
+        "silenzioso",
+        "combattente",
+      ],
+      daily_mood: ["congelato", "disorientato", "in_flusso", "ispirato"],
+      energy_level: ["bassa", "media", "alta"],
+      task_type: [
+        "azione",
+        "riflessione",
+        "comunicazione",
+        "creativita",
+        "organizzazione",
+      ],
+    },
   },
 } as const
