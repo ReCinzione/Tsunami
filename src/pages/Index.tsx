@@ -132,31 +132,77 @@ const AppContent = () => {
     return <DailyMoodSelector onMoodSelect={handleMoodSelect} />;
   }
 
-  console.log('Dashboard render - Profile:', profile);
-  console.log('Dashboard render - Today mood:', todayMood);
-  console.log('Dashboard render - User:', user);
-
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto p-6">
-        <h1 className="text-3xl font-bold mb-6">
-          Dashboard - {profile?.dominant_archetype || 'Caricamento...'}
-        </h1>
-        <div className="bg-muted/50 rounded-lg p-6">
-          <h2 className="text-xl font-semibold mb-4">
-            Stato di oggi: {todayMood?.mood || 'Non trovato'}
-          </h2>
-          <p className="text-muted-foreground">
-            Rituale: {todayMood?.suggested_ritual || 'Nessun rituale'}
+      <div className="container mx-auto p-6 space-y-6">
+        {/* Header */}
+        <div className="text-center space-y-2">
+          <h1 className="text-4xl font-bold gradient-text">
+            Il tuo universo personale
+          </h1>
+          <p className="text-xl text-muted-foreground">
+            Archetipo dominante: <span className="text-primary font-semibold">{profile?.dominant_archetype}</span>
           </p>
         </div>
-        
-        {/* Debug info */}
-        <div className="mt-6 p-4 bg-red-100 text-red-800 rounded">
-          <h3 className="font-bold">Debug Info:</h3>
-          <p>Profile: {JSON.stringify(profile)}</p>
-          <p>Today Mood: {JSON.stringify(todayMood)}</p>
-          <p>User ID: {user?.id}</p>
+
+        {/* Today's Mood Card */}
+        <div className="bg-card border rounded-xl p-6 shadow-lg">
+          <div className="flex items-center gap-4 mb-4">
+            <div className="text-4xl">
+              {todayMood?.mood === 'disorientato' ? '🌀' : 
+               todayMood?.mood === 'congelato' ? '❄️' :
+               todayMood?.mood === 'in_flusso' ? '🌊' :
+               todayMood?.mood === 'ispirato' ? '✨' : '🎭'}
+            </div>
+            <div>
+              <h2 className="text-2xl font-semibold capitalize">
+                {todayMood?.mood?.replace('_', ' ')}
+              </h2>
+              <p className="text-muted-foreground">Il tuo stato di oggi</p>
+            </div>
+          </div>
+          <div className="bg-primary/10 rounded-lg p-4">
+            <h3 className="font-semibold mb-2">🎯 Rituale suggerito:</h3>
+            <p className="text-foreground">{todayMood?.suggested_ritual}</p>
+          </div>
+        </div>
+
+        {/* Archetype Breakdown */}
+        <div className="bg-card border rounded-xl p-6 shadow-lg">
+          <h3 className="text-xl font-semibold mb-4">La tua composizione archetipica</h3>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            {[
+              { name: 'Visionario', value: profile?.visionario_percentage, emoji: '🔮' },
+              { name: 'Costruttore', value: profile?.costruttore_percentage, emoji: '🔨' },
+              { name: 'Sognatore', value: profile?.sognatore_percentage, emoji: '💭' },
+              { name: 'Silenzioso', value: profile?.silenzioso_percentage, emoji: '🤫' },
+              { name: 'Combattente', value: profile?.combattente_percentage, emoji: '⚔️' }
+            ].map((archetype) => (
+              <div key={archetype.name} className="text-center p-3 bg-muted/50 rounded-lg">
+                <div className="text-2xl mb-1">{archetype.emoji}</div>
+                <div className="font-semibold">{archetype.name}</div>
+                <div className="text-xl text-primary">{archetype.value}%</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Level Progress */}
+        <div className="bg-card border rounded-xl p-6 shadow-lg">
+          <h3 className="text-xl font-semibold mb-4">Progressione</h3>
+          <div className="flex items-center justify-between mb-2">
+            <span>Livello {profile?.current_level}</span>
+            <span>{profile?.total_xp} XP</span>
+          </div>
+          <div className="w-full bg-muted rounded-full h-3">
+            <div 
+              className="bg-gradient-to-r from-primary to-primary/80 h-3 rounded-full transition-all duration-300"
+              style={{ width: `${Math.min((profile?.total_xp || 0) / 100 * 100, 100)}%` }}
+            ></div>
+          </div>
+          <p className="text-sm text-muted-foreground mt-2">
+            Continua il tuo viaggio per sbloccare nuovi livelli
+          </p>
         </div>
       </div>
     </div>
