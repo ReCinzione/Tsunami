@@ -132,17 +132,31 @@ const AppContent = () => {
     return <DailyMoodSelector onMoodSelect={handleMoodSelect} />;
   }
 
+  console.log('Dashboard render - Profile:', profile);
+  console.log('Dashboard render - Today mood:', todayMood);
+  console.log('Dashboard render - User:', user);
+
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto p-6">
         <h1 className="text-3xl font-bold mb-6">
-          Dashboard - {profile?.dominant_archetype}
+          Dashboard - {profile?.dominant_archetype || 'Caricamento...'}
         </h1>
         <div className="bg-muted/50 rounded-lg p-6">
-          <h2 className="text-xl font-semibold mb-4">Stato di oggi: {todayMood.mood}</h2>
+          <h2 className="text-xl font-semibold mb-4">
+            Stato di oggi: {todayMood?.mood || 'Non trovato'}
+          </h2>
           <p className="text-muted-foreground">
-            Rituale: {todayMood.suggested_ritual}
+            Rituale: {todayMood?.suggested_ritual || 'Nessun rituale'}
           </p>
+        </div>
+        
+        {/* Debug info */}
+        <div className="mt-6 p-4 bg-red-100 text-red-800 rounded">
+          <h3 className="font-bold">Debug Info:</h3>
+          <p>Profile: {JSON.stringify(profile)}</p>
+          <p>Today Mood: {JSON.stringify(todayMood)}</p>
+          <p>User ID: {user?.id}</p>
         </div>
       </div>
     </div>
