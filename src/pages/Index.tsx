@@ -8,9 +8,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Toaster } from '@/components/ui/toaster';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
+import { LogOut, User } from 'lucide-react';
 
 const AppContent = () => {
-  const { user, loading } = useAuth();
+  const { user, loading, signOut } = useAuth();
   const [profile, setProfile] = useState<any>(null);
   const [profileLoading, setProfileLoading] = useState(false);
   const [todayMood, setTodayMood] = useState<any>(null);
@@ -111,6 +113,22 @@ const AppContent = () => {
     }
   };
 
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      toast({
+        title: "Logout effettuato",
+        description: "Ci vediamo presto!"
+      });
+    } catch (error: any) {
+      toast({
+        title: "Errore",
+        description: "Errore durante il logout",
+        variant: "destructive"
+      });
+    }
+  };
+
   if (loading || profileLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -138,19 +156,27 @@ const AppContent = () => {
     <div className="min-h-screen bg-background">
       <div className="container mx-auto p-6 space-y-6">
         {/* Header */}
-        <div className="text-center space-y-2">
-          <h1 className="text-4xl font-bold gradient-text">
-            Il tuo universo personale
-          </h1>
-          <p className="text-xl text-muted-foreground">
-            Archetipo dominante: <span className="text-primary font-semibold">{profile?.dominant_archetype}</span>
-          </p>
+        <div className="flex items-center justify-between">
+          <div className="text-center flex-1">
+            <h1 className="text-4xl font-bold gradient-text">
+              Il tuo universo personale
+            </h1>
+            <p className="text-xl text-muted-foreground">
+              Archetipo dominante: <span className="text-primary font-semibold">{profile?.dominant_archetype}</span>
+            </p>
+          </div>
+          <Button variant="outline" onClick={handleLogout} className="gap-2">
+            <LogOut className="w-4 h-4" />
+            Logout
+          </Button>
         </div>
 
         <Tabs defaultValue="dashboard" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="dashboard">🏠 Dashboard</TabsTrigger>
-            <TabsTrigger value="tasks">📋 Task</TabsTrigger>
+            <TabsTrigger value="character">👤 Personaggio</TabsTrigger>
+            <TabsTrigger value="tasks">📋 Task Attivi</TabsTrigger>
+            <TabsTrigger value="completed">✅ Task Completati</TabsTrigger>
             <TabsTrigger value="mental-inbox">🧠 Mental Inbox</TabsTrigger>
           </TabsList>
 
@@ -177,6 +203,24 @@ const AppContent = () => {
               </div>
             </div>
 
+            {/* Quick Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-card border rounded-xl p-4 text-center">
+                <div className="text-2xl font-bold text-primary">{profile?.current_level}</div>
+                <div className="text-sm text-muted-foreground">Livello Attuale</div>
+              </div>
+              <div className="bg-card border rounded-xl p-4 text-center">
+                <div className="text-2xl font-bold text-primary">{profile?.total_xp}</div>
+                <div className="text-sm text-muted-foreground">XP Totali</div>
+              </div>
+              <div className="bg-card border rounded-xl p-4 text-center">
+                <div className="text-2xl font-bold text-primary capitalize">{profile?.dominant_archetype}</div>
+                <div className="text-sm text-muted-foreground">Archetipo Dominante</div>
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="character" className="space-y-6 mt-6">
             {/* Archetype Breakdown */}
             <div className="bg-card border rounded-xl p-6 shadow-lg">
               <h3 className="text-xl font-semibold mb-4">La tua composizione archetipica</h3>
@@ -214,10 +258,35 @@ const AppContent = () => {
                 Continua il tuo viaggio per sbloccare nuovi livelli
               </p>
             </div>
+
+            {/* Character Info */}
+            <div className="bg-card border rounded-xl p-6 shadow-lg">
+              <h3 className="text-xl font-semibold mb-4">Informazioni Personaggio</h3>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Nome utente:</span>
+                  <span className="font-medium">{profile?.display_name}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Test completato:</span>
+                  <span className="font-medium">{profile?.test_completed ? '✅ Sì' : '❌ No'}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Data registrazione:</span>
+                  <span className="font-medium">
+                    {profile?.created_at ? new Date(profile.created_at).toLocaleDateString('it-IT') : 'N/A'}
+                  </span>
+                </div>
+              </div>
+            </div>
           </TabsContent>
 
           <TabsContent value="tasks" className="mt-6">
-            <TaskManager userId={user.id} />
+            <TaskManager userId={user.id} showCompleted={false} />
+          </TabsContent>
+
+          <TabsContent value="completed" className="mt-6">
+            <TaskManager userId={user.id} showCompleted={true} />
           </TabsContent>
 
           <TabsContent value="mental-inbox" className="mt-6">

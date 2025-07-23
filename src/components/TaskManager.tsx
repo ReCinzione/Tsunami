@@ -20,7 +20,7 @@ interface Task {
   due_date?: string;
   is_recurring: boolean;
   recurrence_pattern?: string;
-  task_type: 'azione' | 'riflessione' | 'rituale' | 'comunicazione' | 'creativita' | 'organizzazione';
+  task_type: 'azione' | 'riflessione' | 'comunicazione' | 'creativita' | 'organizzazione';
   energy_required: 'bassa' | 'media' | 'alta';
   xp_reward: number;
   created_at: string;
@@ -30,12 +30,15 @@ interface Task {
 
 interface TaskManagerProps {
   userId: string;
+  showCompleted?: boolean;
 }
 
-export const TaskManager = ({ userId }: TaskManagerProps) => {
+export const TaskManager = ({ userId, showCompleted = false }: TaskManagerProps) => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(false);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const { toast } = useToast();
 
   // Form state
@@ -45,15 +48,15 @@ export const TaskManager = ({ userId }: TaskManagerProps) => {
     due_date: '',
     is_recurring: false,
     recurrence_pattern: '',
-    task_type: 'azione' as const,
-    energy_required: 'media' as const,
+    task_type: 'azione' as 'azione' | 'riflessione' | 'comunicazione' | 'creativita' | 'organizzazione',
+    energy_required: 'media' as 'bassa' | 'media' | 'alta',
     xp_reward: 10,
     sync_to_calendar: false
   });
 
   useEffect(() => {
     loadTasks();
-  }, [userId]);
+  }, [userId, showCompleted]);
 
   const loadTasks = async () => {
     setLoading(true);
@@ -62,6 +65,7 @@ export const TaskManager = ({ userId }: TaskManagerProps) => {
         .from('tasks')
         .select('*')
         .eq('user_id', userId)
+        .eq('status', showCompleted ? 'completed' : 'pending')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -241,18 +245,90 @@ export const TaskManager = ({ userId }: TaskManagerProps) => {
       due_date: '',
       is_recurring: false,
       recurrence_pattern: '',
-      task_type: 'azione',
-      energy_required: 'media',
+      task_type: 'azione' as 'azione' | 'riflessione' | 'comunicazione' | 'creativita' | 'organizzazione',
+      energy_required: 'media' as 'bassa' | 'media' | 'alta',
       xp_reward: 10,
       sync_to_calendar: false
     });
+  };
+
+  const openEditDialog = (task: Task) => {
+    setEditingTask(task);
+    setFormData({
+      title: task.title,
+      description: task.description || '',
+      due_date: task.due_date ? new Date(task.due_date).toISOString().slice(0, 16) : '',
+      is_recurring: task.is_recurring,
+      recurrence_pattern: task.recurrence_pattern || '',
+      task_type: task.task_type,
+      energy_required: task.energy_required,
+      xp_reward: task.xp_reward,
+      sync_to_calendar: !!task.google_calendar_event_id
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const updateTask = async () => {
+    if (!editingTask || !formData.title.trim()) {
+      toast({
+        title: "Errore",
+        description: "Il titolo è obbligatorio",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const taskData = {
+        title: formData.title,
+        description: formData.description || null,
+        due_date: formData.due_date ? new Date(formData.due_date).toISOString() : null,
+        is_recurring: formData.is_recurring,
+        recurrence_pattern: formData.is_recurring ? formData.recurrence_pattern : null,
+        task_type: formData.task_type,
+        energy_required: formData.energy_required,
+        xp_reward: formData.xp_reward,
+        updated_at: new Date().toISOString()
+      };
+
+      const { error } = await supabase
+        .from('tasks')
+        .update(taskData)
+        .eq('id', editingTask.id);
+
+      if (error) throw error;
+
+      setTasks(prev => prev.map(t => 
+        t.id === editingTask.id 
+          ? { ...t, ...taskData }
+          : t
+      ));
+
+      resetForm();
+      setIsEditDialogOpen(false);
+      setEditingTask(null);
+
+      toast({
+        title: "Task aggiornato",
+        description: `Task "${formData.title}" aggiornato con successo`
+      });
+
+    } catch (error: any) {
+      toast({
+        title: "Errore",
+        description: error.message || "Errore nell'aggiornamento del task",
+        variant: "destructive"
+      });
+    }
   };
 
   const getTaskTypeColor = (type: string) => {
     switch (type) {
       case 'azione': return 'bg-blue-500/10 text-blue-600';
       case 'riflessione': return 'bg-purple-500/10 text-purple-600';
-      case 'rituale': return 'bg-amber-500/10 text-amber-600';
+      case 'comunicazione': return 'bg-green-500/10 text-green-600';
+      case 'creativita': return 'bg-pink-500/10 text-pink-600';
+      case 'organizzazione': return 'bg-amber-500/10 text-amber-600';
       default: return 'bg-gray-500/10 text-gray-600';
     }
   };
@@ -289,17 +365,22 @@ export const TaskManager = ({ userId }: TaskManagerProps) => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold">Task Manager</h2>
-          <p className="text-muted-foreground">Gestisci i tuoi compiti e rituali</p>
+          <h2 className="text-2xl font-bold">
+            {showCompleted ? 'Task Completati' : 'Task Attivi'}
+          </h2>
+          <p className="text-muted-foreground">
+            {showCompleted ? 'Storico dei task completati' : 'Gestisci i tuoi compiti e rituali'}
+          </p>
         </div>
         
-        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="gap-2">
-              <Plus className="w-4 h-4" />
-              Nuovo Task
-            </Button>
-          </DialogTrigger>
+        {!showCompleted && (
+          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="gap-2">
+                <Plus className="w-4 h-4" />
+                Nuovo Task
+              </Button>
+            </DialogTrigger>
           
           <DialogContent className="max-w-md">
             <DialogHeader>
@@ -341,7 +422,9 @@ export const TaskManager = ({ userId }: TaskManagerProps) => {
                     <SelectContent>
                       <SelectItem value="azione">🎯 Azione</SelectItem>
                       <SelectItem value="riflessione">🤔 Riflessione</SelectItem>
-                      <SelectItem value="rituale">✨ Rituale</SelectItem>
+                      <SelectItem value="comunicazione">💬 Comunicazione</SelectItem>
+                      <SelectItem value="creativita">🎨 Creatività</SelectItem>
+                      <SelectItem value="organizzazione">📋 Organizzazione</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -435,6 +518,114 @@ export const TaskManager = ({ userId }: TaskManagerProps) => {
             </div>
           </DialogContent>
         </Dialog>
+        )}
+
+        {/* Edit Task Dialog */}
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Modifica Task</DialogTitle>
+            </DialogHeader>
+            
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="edit-title">Titolo *</Label>
+                <Input
+                  id="edit-title"
+                  value={formData.title}
+                  onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                  placeholder="Inserisci il titolo del task..."
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="edit-description">Descrizione</Label>
+                <Textarea
+                  id="edit-description"
+                  value={formData.description}
+                  onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                  placeholder="Descrizione opzionale..."
+                  rows={3}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label htmlFor="edit-task_type">Tipo</Label>
+                  <Select 
+                    value={formData.task_type} 
+                    onValueChange={(value: any) => setFormData(prev => ({ ...prev, task_type: value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="azione">🎯 Azione</SelectItem>
+                      <SelectItem value="riflessione">🤔 Riflessione</SelectItem>
+                      <SelectItem value="comunicazione">💬 Comunicazione</SelectItem>
+                      <SelectItem value="creativita">🎨 Creatività</SelectItem>
+                      <SelectItem value="organizzazione">📋 Organizzazione</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="edit-energy_required">Energia</Label>
+                  <Select 
+                    value={formData.energy_required} 
+                    onValueChange={(value: any) => setFormData(prev => ({ ...prev, energy_required: value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="bassa">🟢 Bassa</SelectItem>
+                      <SelectItem value="media">🟡 Media</SelectItem>
+                      <SelectItem value="alta">🔴 Alta</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label htmlFor="edit-due_date">Scadenza</Label>
+                  <Input
+                    id="edit-due_date"
+                    type="datetime-local"
+                    value={formData.due_date}
+                    onChange={(e) => setFormData(prev => ({ ...prev, due_date: e.target.value }))}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="edit-xp_reward">XP Reward</Label>
+                  <Input
+                    id="edit-xp_reward"
+                    type="number"
+                    min="1"
+                    max="100"
+                    value={formData.xp_reward}
+                    onChange={(e) => setFormData(prev => ({ ...prev, xp_reward: parseInt(e.target.value) || 10 }))}
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <Button onClick={updateTask} className="flex-1">
+                  Aggiorna Task
+                </Button>
+                <Button variant="outline" onClick={() => {
+                  setIsEditDialogOpen(false);
+                  setEditingTask(null);
+                  resetForm();
+                }}>
+                  Annulla
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Tasks List */}
@@ -512,9 +703,16 @@ export const TaskManager = ({ userId }: TaskManagerProps) => {
                   </div>
                   
                   <div className="flex gap-1">
-                    <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
-                      <Edit className="w-4 h-4" />
-                    </Button>
+                    {!showCompleted && (
+                      <Button 
+                        size="sm" 
+                        variant="ghost" 
+                        className="h-8 w-8 p-0"
+                        onClick={() => openEditDialog(task)}
+                      >
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                    )}
                     <Button 
                       size="sm" 
                       variant="ghost" 
