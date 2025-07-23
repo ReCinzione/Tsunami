@@ -12,6 +12,13 @@ import { Calendar, CalendarDays, Clock, Plus, Trash2, Edit, CheckCircle2, Circle
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 
+interface TaskIntervention {
+  id: string;
+  task_id: string;
+  content: string;
+  created_at: string;
+}
+
 interface Task {
   id: string;
   title: string;
@@ -39,6 +46,8 @@ export const TaskManager = ({ userId, showCompleted = false }: TaskManagerProps)
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [interventions, setInterventions] = useState<TaskIntervention[]>([]);
+  const [newIntervention, setNewIntervention] = useState('');
   const { toast } = useToast();
 
   // Form state
@@ -252,6 +261,88 @@ export const TaskManager = ({ userId, showCompleted = false }: TaskManagerProps)
     });
   };
 
+  const loadInterventions = async (taskId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('task_interventions')
+        .select('*')
+        .eq('task_id', taskId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setInterventions(data || []);
+    } catch (error: any) {
+      toast({
+        title: "Errore",
+        description: "Impossibile caricare gli interventi",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const addIntervention = async () => {
+    if (!editingTask || !newIntervention.trim()) {
+      toast({
+        title: "Errore",
+        description: "L'intervento non può essere vuoto",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('task_interventions')
+        .insert({
+          task_id: editingTask.id,
+          user_id: userId,
+          content: newIntervention.trim()
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setInterventions(prev => [data, ...prev]);
+      setNewIntervention('');
+      
+      toast({
+        title: "Intervento aggiunto",
+        description: "Intervento registrato con successo"
+      });
+    } catch (error: any) {
+      toast({
+        title: "Errore",
+        description: "Impossibile salvare l'intervento",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const deleteIntervention = async (interventionId: string) => {
+    try {
+      const { error } = await supabase
+        .from('task_interventions')
+        .delete()
+        .eq('id', interventionId);
+
+      if (error) throw error;
+
+      setInterventions(prev => prev.filter(i => i.id !== interventionId));
+      
+      toast({
+        title: "Intervento eliminato",
+        description: "Intervento eliminato con successo"
+      });
+    } catch (error: any) {
+      toast({
+        title: "Errore",
+        description: "Impossibile eliminare l'intervento",
+        variant: "destructive"
+      });
+    }
+  };
+
   const openEditDialog = (task: Task) => {
     setEditingTask(task);
     setFormData({
@@ -265,6 +356,7 @@ export const TaskManager = ({ userId, showCompleted = false }: TaskManagerProps)
       xp_reward: task.xp_reward,
       sync_to_calendar: !!task.google_calendar_event_id
     });
+    loadInterventions(task.id);
     setIsEditDialogOpen(true);
   };
 
@@ -522,92 +614,145 @@ export const TaskManager = ({ userId, showCompleted = false }: TaskManagerProps)
 
         {/* Edit Task Dialog */}
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-          <DialogContent className="max-w-md">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Modifica Task</DialogTitle>
             </DialogHeader>
             
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="edit-title">Titolo *</Label>
-                <Input
-                  id="edit-title"
-                  value={formData.title}
-                  onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                  placeholder="Inserisci il titolo del task..."
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="edit-description">Descrizione</Label>
-                <Textarea
-                  id="edit-description"
-                  value={formData.description}
-                  onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                  placeholder="Descrizione opzionale..."
-                  rows={3}
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-6">
+              {/* Informazioni Task */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Informazioni Task</h3>
                 <div>
-                  <Label htmlFor="edit-task_type">Tipo</Label>
-                  <Select 
-                    value={formData.task_type} 
-                    onValueChange={(value: any) => setFormData(prev => ({ ...prev, task_type: value }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="azione">🎯 Azione</SelectItem>
-                      <SelectItem value="riflessione">🤔 Riflessione</SelectItem>
-                      <SelectItem value="comunicazione">💬 Comunicazione</SelectItem>
-                      <SelectItem value="creativita">🎨 Creatività</SelectItem>
-                      <SelectItem value="organizzazione">📋 Organizzazione</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label htmlFor="edit-energy_required">Energia</Label>
-                  <Select 
-                    value={formData.energy_required} 
-                    onValueChange={(value: any) => setFormData(prev => ({ ...prev, energy_required: value }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="bassa">🟢 Bassa</SelectItem>
-                      <SelectItem value="media">🟡 Media</SelectItem>
-                      <SelectItem value="alta">🔴 Alta</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label htmlFor="edit-due_date">Scadenza</Label>
+                  <Label htmlFor="edit-title">Titolo *</Label>
                   <Input
-                    id="edit-due_date"
-                    type="datetime-local"
-                    value={formData.due_date}
-                    onChange={(e) => setFormData(prev => ({ ...prev, due_date: e.target.value }))}
+                    id="edit-title"
+                    value={formData.title}
+                    onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                    placeholder="Inserisci il titolo del task..."
                   />
                 </div>
 
                 <div>
-                  <Label htmlFor="edit-xp_reward">XP Reward</Label>
-                  <Input
-                    id="edit-xp_reward"
-                    type="number"
-                    min="1"
-                    max="100"
-                    value={formData.xp_reward}
-                    onChange={(e) => setFormData(prev => ({ ...prev, xp_reward: parseInt(e.target.value) || 10 }))}
+                  <Label htmlFor="edit-description">Descrizione</Label>
+                  <Textarea
+                    id="edit-description"
+                    value={formData.description}
+                    onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                    placeholder="Descrizione opzionale..."
+                    rows={3}
                   />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="edit-task_type">Tipo</Label>
+                    <Select 
+                      value={formData.task_type} 
+                      onValueChange={(value: any) => setFormData(prev => ({ ...prev, task_type: value }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="azione">🎯 Azione</SelectItem>
+                        <SelectItem value="riflessione">🤔 Riflessione</SelectItem>
+                        <SelectItem value="comunicazione">💬 Comunicazione</SelectItem>
+                        <SelectItem value="creativita">🎨 Creatività</SelectItem>
+                        <SelectItem value="organizzazione">📋 Organizzazione</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="edit-energy_required">Energia</Label>
+                    <Select 
+                      value={formData.energy_required} 
+                      onValueChange={(value: any) => setFormData(prev => ({ ...prev, energy_required: value }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="bassa">🟢 Bassa</SelectItem>
+                        <SelectItem value="media">🟡 Media</SelectItem>
+                        <SelectItem value="alta">🔴 Alta</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="edit-due_date">Scadenza</Label>
+                    <Input
+                      id="edit-due_date"
+                      type="datetime-local"
+                      value={formData.due_date}
+                      onChange={(e) => setFormData(prev => ({ ...prev, due_date: e.target.value }))}
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="edit-xp_reward">XP Reward</Label>
+                    <Input
+                      id="edit-xp_reward"
+                      type="number"
+                      min="1"
+                      max="100"
+                      value={formData.xp_reward}
+                      onChange={(e) => setFormData(prev => ({ ...prev, xp_reward: parseInt(e.target.value) || 10 }))}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Sezione Interventi */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Interventi</h3>
+                
+                {/* Aggiungi nuovo intervento */}
+                <div className="flex gap-2">
+                  <Textarea
+                    placeholder="Scrivi un nuovo intervento..."
+                    value={newIntervention}
+                    onChange={(e) => setNewIntervention(e.target.value)}
+                    rows={2}
+                    className="flex-1"
+                  />
+                  <Button 
+                    onClick={addIntervention}
+                    disabled={!newIntervention.trim()}
+                    className="shrink-0"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </div>
+
+                {/* Lista interventi */}
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {interventions.length === 0 ? (
+                    <p className="text-sm text-muted-foreground italic">Nessun intervento ancora registrato</p>
+                  ) : (
+                    interventions.map((intervention) => (
+                      <div key={intervention.id} className="bg-muted/50 rounded-lg p-3 flex justify-between items-start gap-2">
+                        <div className="flex-1">
+                          <p className="text-sm">{intervention.content}</p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {new Date(intervention.created_at).toLocaleString('it-IT')}
+                          </p>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                          onClick={() => deleteIntervention(intervention.id)}
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
 
@@ -618,6 +763,8 @@ export const TaskManager = ({ userId, showCompleted = false }: TaskManagerProps)
                 <Button variant="outline" onClick={() => {
                   setIsEditDialogOpen(false);
                   setEditingTask(null);
+                  setInterventions([]);
+                  setNewIntervention('');
                   resetForm();
                 }}>
                   Annulla
