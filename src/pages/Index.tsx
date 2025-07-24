@@ -9,19 +9,24 @@ import { useToast } from '@/hooks/use-toast';
 import { Toaster } from '@/components/ui/toaster';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { LogOut, User } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { LogOut, User, ChevronRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const AppContent = () => {
   const { user, loading, signOut } = useAuth();
+  const navigate = useNavigate();
   const [profile, setProfile] = useState<any>(null);
   const [profileLoading, setProfileLoading] = useState(false);
   const [todayMood, setTodayMood] = useState<any>(null);
+  const [archetypeLevels, setArchetypeLevels] = useState<any[]>([]);
   const { toast } = useToast();
 
   useEffect(() => {
     if (user) {
       loadUserProfile();
       checkTodayMood();
+      loadArchetypeLevels();
     }
   }, [user]);
 
@@ -72,6 +77,32 @@ const AppContent = () => {
     } catch (error: any) {
       console.error('Error checking today mood:', error);
     }
+  };
+
+  const loadArchetypeLevels = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('archetype_levels')
+        .select('*')
+        .eq('archetype', profile?.dominant_archetype)
+        .order('level_number');
+
+      if (error) throw error;
+      setArchetypeLevels(data || []);
+    } catch (error) {
+      console.error('Error loading archetype levels:', error);
+    }
+  };
+
+  const getArchetypeDescription = (archetype: string) => {
+    const descriptions: { [key: string]: string } = {
+      visionario: "Traccia mappe simboliche e guarda oltre l'orizzonte. Vive di visioni e di traiettorie non ancora disegnate.",
+      costruttore: "Plasma il reale attraverso azione e volontà. Trasforma le idee in forma concreta step by step.",
+      sognatore: "Nutre il mondo interiore di immagini e possibilità. Crea spazi di bellezza e immaginazione.",
+      silenzioso: "Osserva, ascolta, comprende. Si muove con attenzione sottile e presenza silenziosa.",
+      combattente: "Affronta le sfide con energia e determinazione. Lotta per ciò che considera giusto e importante."
+    };
+    return descriptions[archetype] || "";
   };
 
   const handleTestComplete = (results: any) => {
@@ -172,12 +203,13 @@ const AppContent = () => {
         </div>
 
         <Tabs defaultValue="dashboard" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 lg:grid-cols-5">
+          <TabsList className="grid w-full grid-cols-2 lg:grid-cols-6">
             <TabsTrigger value="dashboard" className="text-xs lg:text-sm">🏠 Dashboard</TabsTrigger>
             <TabsTrigger value="character" className="text-xs lg:text-sm">👤 Personaggio</TabsTrigger>
             <TabsTrigger value="tasks" className="text-xs lg:text-sm">📋 Task Attivi</TabsTrigger>
             <TabsTrigger value="completed" className="text-xs lg:text-sm">✅ Task Completati</TabsTrigger>
-            <TabsTrigger value="mental-inbox" className="text-xs lg:text-sm col-span-2 lg:col-span-1">🧠 Mental Inbox</TabsTrigger>
+            <TabsTrigger value="mental-inbox" className="text-xs lg:text-sm">🧠 Mental Inbox</TabsTrigger>
+            <TabsTrigger value="archetypes" className="text-xs lg:text-sm">🔮 Archetipi</TabsTrigger>
           </TabsList>
 
           <TabsContent value="dashboard" className="space-y-6 mt-6">
@@ -221,6 +253,35 @@ const AppContent = () => {
           </TabsContent>
 
           <TabsContent value="character" className="space-y-6 mt-6">
+            {/* Dominant Archetype Description */}
+            <div className="bg-card border rounded-xl p-6 shadow-lg">
+              <h3 className="text-xl font-semibold mb-4">Il tuo Archetipo Dominante</h3>
+              <div className="flex items-start gap-4 mb-4">
+                <div className="text-4xl">
+                  {profile?.dominant_archetype === 'visionario' ? '🔮' :
+                   profile?.dominant_archetype === 'costruttore' ? '🔨' :
+                   profile?.dominant_archetype === 'sognatore' ? '💭' :
+                   profile?.dominant_archetype === 'silenzioso' ? '🤫' :
+                   profile?.dominant_archetype === 'combattente' ? '⚔️' : '✨'}
+                </div>
+                <div className="flex-1">
+                  <h4 className="text-lg font-semibold capitalize mb-2">
+                    {profile?.dominant_archetype}
+                  </h4>
+                  <p className="text-muted-foreground">
+                    {getArchetypeDescription(profile?.dominant_archetype)}
+                  </p>
+                </div>
+              </div>
+              <Button 
+                variant="outline" 
+                onClick={() => navigate('/archetipi')}
+                className="w-full gap-2"
+              >
+                Esplora tutti gli Archetipi <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
+
             {/* Archetype Breakdown */}
             <div className="bg-card border rounded-xl p-6 shadow-lg">
               <h3 className="text-xl font-semibold mb-4">La tua composizione archetipica</h3>
@@ -236,6 +297,54 @@ const AppContent = () => {
                     <div className="text-2xl mb-1">{archetype.emoji}</div>
                     <div className="font-semibold">{archetype.name}</div>
                     <div className="text-xl text-primary">{archetype.value}%</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Archetype Levels */}
+            <div className="bg-card border rounded-xl p-6 shadow-lg">
+              <h3 className="text-xl font-semibold mb-4">Livelli del tuo Archetipo</h3>
+              <div className="space-y-3">
+                {archetypeLevels.map((level) => (
+                  <div 
+                    key={level.id} 
+                    className={`border rounded-lg p-4 ${
+                      level.level_number <= (profile?.current_level || 1) 
+                        ? 'bg-primary/10 border-primary/30' 
+                        : 'bg-muted/30 border-muted'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex items-center gap-3">
+                        <Badge 
+                          variant={level.level_number <= (profile?.current_level || 1) ? "default" : "secondary"}
+                        >
+                          Livello {level.level_number}
+                        </Badge>
+                        <h5 className="font-semibold">{level.level_name}</h5>
+                      </div>
+                      <span className="text-sm text-muted-foreground">
+                        {level.xp_required} XP
+                      </span>
+                    </div>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      {level.description}
+                    </p>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                      <div className="text-xs">
+                        <span className="font-medium text-green-600">Qualità: </span>
+                        <span className="text-muted-foreground">{level.emerging_quality}</span>
+                      </div>
+                      <div className="text-xs">
+                        <span className="font-medium text-red-600">Ombra: </span>
+                        <span className="text-muted-foreground">{level.shadow_aspect}</span>
+                      </div>
+                      <div className="text-xs">
+                        <span className="font-medium text-purple-600">Oggetto: </span>
+                        <span className="text-muted-foreground">{level.imaginal_object_name}</span>
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -295,6 +404,18 @@ const AppContent = () => {
               <p className="text-muted-foreground">
                 Il Mental Inbox sarà disponibile presto - uno spazio per catturare pensieri e idee rapide.
               </p>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="archetypes" className="mt-6">
+            <div className="bg-card border rounded-xl p-6 shadow-lg text-center">
+              <h3 className="text-xl font-semibold mb-4">Esplora il Mondo degli Archetipi</h3>
+              <p className="text-muted-foreground mb-6">
+                Scopri tutti gli archetipi, i loro livelli e le trasformazioni che accompagnano il viaggio interiore.
+              </p>
+              <Button onClick={() => navigate('/archetipi')} size="lg" className="gap-2">
+                🔮 Vai alla Pagina Archetipi <ChevronRight className="w-5 h-5" />
+              </Button>
             </div>
           </TabsContent>
         </Tabs>
