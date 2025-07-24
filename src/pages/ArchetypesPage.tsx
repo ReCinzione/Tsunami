@@ -68,10 +68,10 @@ const ArchetypesPage = () => {
   const getArchetypeFullName = (archetype: string) => {
     const fullNames: { [key: string]: string } = {
       visionario: "Errante Visionario",
-      costruttore: "Artigiano Costruttore", 
-      sognatore: "Tessitore di Sogni",
-      silenzioso: "Guardiano Silenzioso",
-      combattente: "Guerriero Combattente"
+      costruttore: "Errante Costruttore", 
+      sognatore: "Errante Sognatore",
+      silenzioso: "Errante Silenzioso",
+      combattente: "Errante Combattente"
     };
     return fullNames[archetype] || archetype.charAt(0).toUpperCase() + archetype.slice(1);
   };
@@ -130,13 +130,32 @@ const ArchetypesPage = () => {
             <div>
               <h2 className="text-2xl font-semibold mb-3 flex items-center gap-2">
                 <Eye className="w-6 h-6" />
-                Cosa sono gli archetipi?
+                Chi è l'Errante?
               </h2>
               <p className="text-muted-foreground leading-relaxed">
+                L'Errante è una figura simbolica che cerca il proprio modo di camminare nel mondo. 
+                Invece di rappresentare un'identità fissa, l'Errante esprime un movimento, una tensione, 
+                una domanda. Tutti noi siamo Erranti: ciò che cambia è la direzione che stiamo seguendo.
+              </p>
+            </div>
+
+            <div>
+              <h2 className="text-2xl font-semibold mb-3">Perché solo l'Errante?</h2>
+              <p className="text-muted-foreground leading-relaxed">
+                Abbiamo scelto di lavorare su un unico archetipo metamorfico, l'Errante, perché riteniamo 
+                che il senso profondo dell'esperienza neurodivergente non sia da incasellare in tipologie 
+                fisse, ma da accompagnare attraverso forme diverse di esplorazione. L'Errante è un 
+                contenitore aperto, una mappa incompleta che si disegna camminando.
+              </p>
+            </div>
+
+            <div>
+              <h2 className="text-2xl font-semibold mb-3">Cosa sono gli archetipi?</h2>
+              <p className="text-muted-foreground leading-relaxed">
                 Gli archetipi sono immagini interiori universali, modelli narrativi che esprimono i modi 
-                in cui ci relazioniamo al mondo, al tempo e al cambiamento. In questa app, ogni archetipo 
-                rappresenta un modo possibile di camminare nella complessità della vita: sognando, costruendo, 
-                osservando, combattendo, o tracciando visioni future.
+                in cui ci relazioniamo al mondo, al tempo e al cambiamento. In questa app, ogni variante 
+                dell'Errante rappresenta un modo possibile di stare nella complessità della vita: sognando, 
+                costruendo, osservando, combattendo, o tracciando visioni future.
               </p>
             </div>
 
@@ -153,10 +172,10 @@ const ArchetypesPage = () => {
             <div>
               <h2 className="text-2xl font-semibold mb-3">Come si evolvono nel tempo?</h2>
               <p className="text-muted-foreground leading-relaxed">
-                Ogni archetipo si manifesta attraverso un percorso di 10 livelli. Questi non sono 
+                Ogni archetipo dell'Errante si manifesta attraverso un percorso di 10 livelli. Questi non sono 
                 premi da conquistare, ma stati di coscienza da attraversare. L'evoluzione non è 
                 lineare, ma ciclica: si può tornare indietro, saltare, restare. Ogni livello sblocca 
-                un oggetto immaginale che accompagna simbolicamente l'utente nella sua trasformazione.
+                un oggetto immaginale, un simbolo da evocare nei momenti di difficoltà e trasformazione.
               </p>
             </div>
           </div>
