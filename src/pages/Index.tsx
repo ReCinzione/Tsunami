@@ -4,6 +4,7 @@ import { AuthPage } from '@/components/AuthPage';
 import { ArchetypeTest } from '@/components/ArchetypeTest';
 import { DailyMoodSelector } from '@/components/DailyMoodSelector';
 import { TaskManager } from '@/components/TaskManager';
+import MentalInbox from '@/components/MentalInbox';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Toaster } from '@/components/ui/toaster';
@@ -20,7 +21,12 @@ const AppContent = () => {
   const [profileLoading, setProfileLoading] = useState(false);
   const [todayMood, setTodayMood] = useState<any>(null);
   const [archetypeLevels, setArchetypeLevels] = useState<any[]>([]);
+  const [refreshTasks, setRefreshTasks] = useState(0);
   const { toast } = useToast();
+
+  const handleTaskCreated = () => {
+    setRefreshTasks(prev => prev + 1);
+  };
 
   useEffect(() => {
     if (user) {
@@ -251,6 +257,7 @@ const AppContent = () => {
               </div>
             </div>
           </TabsContent>
+          
 
           <TabsContent value="character" className="space-y-6 mt-6">
             {/* Dominant Archetype Description */}
@@ -391,20 +398,15 @@ const AppContent = () => {
           </TabsContent>
 
           <TabsContent value="tasks" className="mt-6">
-            <TaskManager userId={user.id} showCompleted={false} />
+            <TaskManager userId={user.id} showCompleted={false} key={`tasks-${refreshTasks}`} />
           </TabsContent>
 
           <TabsContent value="completed" className="mt-6">
-            <TaskManager userId={user.id} showCompleted={true} />
+            <TaskManager userId={user.id} showCompleted={true} key={`completed-${refreshTasks}`} />
           </TabsContent>
 
           <TabsContent value="mental-inbox" className="mt-6">
-            <div className="bg-card border rounded-xl p-6 shadow-lg">
-              <h3 className="text-xl font-semibold mb-4">Mental Inbox</h3>
-              <p className="text-muted-foreground">
-                Il Mental Inbox sarà disponibile presto - uno spazio per catturare pensieri e idee rapide.
-              </p>
-            </div>
+            <MentalInbox onTaskCreated={handleTaskCreated} />
           </TabsContent>
 
           <TabsContent value="archetypes" className="mt-6">
