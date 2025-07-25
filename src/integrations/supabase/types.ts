@@ -211,6 +211,39 @@ export type Database = {
         }
         Relationships: []
       }
+      projects: {
+        Row: {
+          created_at: string
+          description: string | null
+          energy_required: Database["public"]["Enums"]["energy_level"] | null
+          id: string
+          status: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          energy_required?: Database["public"]["Enums"]["energy_level"] | null
+          id?: string
+          status?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          energy_required?: Database["public"]["Enums"]["energy_level"] | null
+          id?: string
+          status?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       task_interventions: {
         Row: {
           content: string
@@ -484,7 +517,7 @@ export type Database = {
         | "silenzioso"
         | "combattente"
       daily_mood: "congelato" | "disorientato" | "in_flusso" | "ispirato"
-      energy_level: "bassa" | "media" | "alta"
+      energy_level: "bassa" | "media" | "alta" | "molto_bassa" | "molto_alta"
       task_type:
         | "azione"
         | "riflessione"
@@ -626,7 +659,7 @@ export const Constants = {
         "combattente",
       ],
       daily_mood: ["congelato", "disorientato", "in_flusso", "ispirato"],
-      energy_level: ["bassa", "media", "alta"],
+      energy_level: ["bassa", "media", "alta", "molto_bassa", "molto_alta"],
       task_type: [
         "azione",
         "riflessione",

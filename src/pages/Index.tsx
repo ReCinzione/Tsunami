@@ -428,9 +428,14 @@ const AppContent = () => {
               <p className="text-muted-foreground mb-6">
                 Scopri tutti gli archetipi, i loro livelli e le trasformazioni che accompagnano il viaggio interiore.
               </p>
-              <Button onClick={() => navigate('/archetipi')} size="lg" className="gap-2">
-                🔮 Vai alla Pagina Archetipi <ChevronRight className="w-5 h-5" />
-              </Button>
+              <div className="flex gap-4 justify-center">
+                <Button onClick={() => navigate('/archetipi')} size="lg" className="gap-2">
+                  🔮 Archetipi <ChevronRight className="w-4 h-4" />
+                </Button>
+                <Button onClick={() => navigate('/progetti')} size="lg" className="gap-2" variant="outline">
+                  💡 Progetti <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
           </TabsContent>
         </Tabs>

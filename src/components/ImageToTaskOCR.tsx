@@ -23,6 +23,7 @@ const ImageToTaskOCR: React.FC<ImageToTaskOCRProps> = ({ onTaskCreated }) => {
   const [extractedText, setExtractedText] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [destination, setDestination] = useState<'task' | 'project'>('task');
   const [taskCreated, setTaskCreated] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();

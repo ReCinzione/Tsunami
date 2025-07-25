@@ -28,7 +28,7 @@ interface Task {
   is_recurring: boolean;
   recurrence_pattern?: string;
   task_type: 'azione' | 'riflessione' | 'comunicazione' | 'creativita' | 'organizzazione';
-  energy_required: 'bassa' | 'media' | 'alta';
+  energy_required: 'molto_bassa' | 'bassa' | 'media' | 'alta' | 'molto_alta';
   xp_reward: number;
   created_at: string;
   completed_at?: string;
@@ -58,7 +58,7 @@ export const TaskManager = ({ userId, showCompleted = false }: TaskManagerProps)
     is_recurring: false,
     recurrence_pattern: '',
     task_type: 'azione' as 'azione' | 'riflessione' | 'comunicazione' | 'creativita' | 'organizzazione',
-    energy_required: 'media' as 'bassa' | 'media' | 'alta',
+    energy_required: 'media' as 'molto_bassa' | 'bassa' | 'media' | 'alta' | 'molto_alta',
     xp_reward: 10,
     sync_to_calendar: false
   });
@@ -255,7 +255,7 @@ export const TaskManager = ({ userId, showCompleted = false }: TaskManagerProps)
       is_recurring: false,
       recurrence_pattern: '',
       task_type: 'azione' as 'azione' | 'riflessione' | 'comunicazione' | 'creativita' | 'organizzazione',
-      energy_required: 'media' as 'bassa' | 'media' | 'alta',
+      energy_required: 'media' as 'molto_bassa' | 'bassa' | 'media' | 'alta' | 'molto_alta',
       xp_reward: 10,
       sync_to_calendar: false
     });
@@ -427,10 +427,23 @@ export const TaskManager = ({ userId, showCompleted = false }: TaskManagerProps)
 
   const getEnergyColor = (energy: string) => {
     switch (energy) {
+      case 'molto_bassa': return 'text-green-500';
       case 'bassa': return 'text-green-600';
       case 'media': return 'text-yellow-600';
-      case 'alta': return 'text-red-600';
+      case 'alta': return 'text-orange-600';
+      case 'molto_alta': return 'text-red-600';
       default: return 'text-gray-600';
+    }
+  };
+
+  const getEnergyPoints = (energy: string) => {
+    switch (energy) {
+      case 'molto_bassa': return 1;
+      case 'bassa': return 3;
+      case 'media': return 6;
+      case 'alta': return 10;
+      case 'molto_alta': return 15;
+      default: return 6;
     }
   };
 
@@ -530,10 +543,12 @@ export const TaskManager = ({ userId, showCompleted = false }: TaskManagerProps)
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="bassa">🟢 Bassa</SelectItem>
-                      <SelectItem value="media">🟡 Media</SelectItem>
-                      <SelectItem value="alta">🔴 Alta</SelectItem>
+                      <SelectContent>
+                      <SelectItem value="molto_bassa">🟢 Molto Bassa (1 XP)</SelectItem>
+                      <SelectItem value="bassa">🟢 Bassa (3 XP)</SelectItem>
+                      <SelectItem value="media">🟡 Media (6 XP)</SelectItem>
+                      <SelectItem value="alta">🔴 Alta (10 XP)</SelectItem>
+                      <SelectItem value="molto_alta">🔴 Molto Alta (15 XP)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -674,9 +689,11 @@ export const TaskManager = ({ userId, showCompleted = false }: TaskManagerProps)
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="bassa">🟢 Bassa</SelectItem>
-                        <SelectItem value="media">🟡 Media</SelectItem>
-                        <SelectItem value="alta">🔴 Alta</SelectItem>
+                        <SelectItem value="molto_bassa">🟢 Molto Bassa (1 XP)</SelectItem>
+                        <SelectItem value="bassa">🟢 Bassa (3 XP)</SelectItem>
+                        <SelectItem value="media">🟡 Media (6 XP)</SelectItem>
+                        <SelectItem value="alta">🔴 Alta (10 XP)</SelectItem>
+                        <SelectItem value="molto_alta">🔴 Molto Alta (15 XP)</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -840,10 +857,7 @@ export const TaskManager = ({ userId, showCompleted = false }: TaskManagerProps)
                           </span>
                         )}
                         <span className={`flex items-center gap-1 ${getEnergyColor(task.energy_required)}`}>
-                          ⚡ {task.energy_required}
-                        </span>
-                        <span className="flex items-center gap-1 text-primary">
-                          ✨ {task.xp_reward} XP
+                          ⚡ {task.energy_required} ({getEnergyPoints(task.energy_required)} XP)
                         </span>
                       </div>
                     </div>
