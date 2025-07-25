@@ -193,29 +193,42 @@ const AppContent = () => {
     <div className="min-h-screen bg-background">
       <div className="container mx-auto p-6 space-y-6">
         {/* Header */}
-        <div className="flex flex-col lg:flex-row items-center justify-between gap-4">
-          <div className="text-center lg:text-left flex-1">
-            <h1 className="text-2xl md:text-4xl font-bold gradient-text">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mb-4">
+          <div className="text-center sm:text-left flex-1">
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold gradient-text">
               Il tuo universo personale
             </h1>
-            <p className="text-lg md:text-xl text-muted-foreground">
-              Archetipo dominante: <span className="text-primary font-semibold">{profile?.dominant_archetype}</span>
+            <p className="text-sm sm:text-base md:text-lg text-muted-foreground">
+              Archetipo: <span className="text-primary font-semibold capitalize">{profile?.dominant_archetype}</span>
             </p>
           </div>
-          <Button variant="outline" onClick={handleLogout} className="gap-2 shrink-0">
+          <Button variant="outline" onClick={handleLogout} className="gap-2 shrink-0 text-sm">
             <LogOut className="w-4 h-4" />
-            Logout
+            <span className="hidden sm:inline">Logout</span>
+            <span className="sm:hidden">Esci</span>
           </Button>
         </div>
 
         <Tabs defaultValue="dashboard" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 lg:grid-cols-6">
-            <TabsTrigger value="dashboard" className="text-xs lg:text-sm">🏠 Dashboard</TabsTrigger>
-            <TabsTrigger value="character" className="text-xs lg:text-sm">👤 Personaggio</TabsTrigger>
-            <TabsTrigger value="tasks" className="text-xs lg:text-sm">📋 Task Attivi</TabsTrigger>
-            <TabsTrigger value="completed" className="text-xs lg:text-sm">✅ Task Completati</TabsTrigger>
-            <TabsTrigger value="mental-inbox" className="text-xs lg:text-sm">🧠 Mental Inbox</TabsTrigger>
-            <TabsTrigger value="archetypes" className="text-xs lg:text-sm">🔮 Archetipi</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-3 md:grid-cols-6 gap-1 h-auto p-1">
+            <TabsTrigger value="dashboard" className="text-xs px-2 py-2 md:text-sm">
+              <span className="hidden sm:inline">🏠 </span>Dashboard
+            </TabsTrigger>
+            <TabsTrigger value="character" className="text-xs px-2 py-2 md:text-sm">
+              <span className="hidden sm:inline">👤 </span>Personaggio
+            </TabsTrigger>
+            <TabsTrigger value="tasks" className="text-xs px-2 py-2 md:text-sm">
+              <span className="hidden sm:inline">📋 </span>Task
+            </TabsTrigger>
+            <TabsTrigger value="completed" className="text-xs px-2 py-2 md:text-sm">
+              <span className="hidden sm:inline">✅ </span>Completati
+            </TabsTrigger>
+            <TabsTrigger value="mental-inbox" className="text-xs px-2 py-2 md:text-sm">
+              <span className="hidden sm:inline">🧠 </span>Inbox
+            </TabsTrigger>
+            <TabsTrigger value="archetypes" className="text-xs px-2 py-2 md:text-sm">
+              <span className="hidden sm:inline">🔮 </span>Archetipi
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="dashboard" className="space-y-6 mt-6">

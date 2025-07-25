@@ -3,9 +3,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Brain, CheckCircle, Plus, ArrowRight, Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import ImageToTaskOCR from './ImageToTaskOCR';
 
 interface MentalInboxItem {
   id: string;
@@ -200,34 +202,42 @@ const MentalInbox = ({ onTaskCreated }: MentalInboxProps) => {
   const processedItems = items.filter(item => item.is_processed);
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Brain className="w-5 h-5" />
-          Mental Inbox
-        </CardTitle>
-        <CardDescription>
-          Cattura pensieri e note che puoi trasformare in task quando sei pronto
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Add new note */}
-        <div className="space-y-3">
-          <Textarea
-            placeholder="Scrivi una nota, un'idea, un pensiero..."
-            value={newNote}
-            onChange={(e) => setNewNote(e.target.value)}
-            className="min-h-[80px]"
-          />
-          <Button 
-            onClick={addNote} 
-            disabled={!newNote.trim() || isLoading}
-            className="gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            Aggiungi Nota
-          </Button>
-        </div>
+    <div className="space-y-6">
+      <Tabs defaultValue="notes" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="notes">📝 Note Testuali</TabsTrigger>
+          <TabsTrigger value="ocr">📷 Immagine a Task</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="notes" className="space-y-4 mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Brain className="w-5 h-5" />
+                Mental Inbox
+              </CardTitle>
+              <CardDescription>
+                Cattura pensieri e note che puoi trasformare in task quando sei pronto
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Add new note */}
+              <div className="space-y-3">
+                <Textarea
+                  placeholder="Scrivi una nota, un'idea, un pensiero..."
+                  value={newNote}
+                  onChange={(e) => setNewNote(e.target.value)}
+                  className="min-h-[80px]"
+                />
+                <Button 
+                  onClick={addNote} 
+                  disabled={!newNote.trim() || isLoading}
+                  className="gap-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  Aggiungi Nota
+                </Button>
+              </div>
 
         {/* Pending notes */}
         {pendingItems.length > 0 && (
@@ -303,15 +313,22 @@ const MentalInbox = ({ onTaskCreated }: MentalInboxProps) => {
           </div>
         )}
 
-        {items.length === 0 && (
-          <div className="text-center py-8 text-muted-foreground">
-            <Brain className="w-12 h-12 mx-auto mb-3 opacity-50" />
-            <p>Il tuo mental inbox è vuoto</p>
-            <p className="text-sm">Aggiungi la prima nota per iniziare</p>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+              {items.length === 0 && (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Brain className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                  <p>Il tuo mental inbox è vuoto</p>
+                  <p className="text-sm">Aggiungi la prima nota per iniziare</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="ocr" className="mt-4">
+          <ImageToTaskOCR onTaskCreated={onTaskCreated} />
+        </TabsContent>
+      </Tabs>
+    </div>
   );
 };
 
