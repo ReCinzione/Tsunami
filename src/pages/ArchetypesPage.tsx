@@ -56,22 +56,22 @@ const ArchetypesPage = () => {
 
   const getArchetypeDescription = (archetype: string) => {
     const descriptions: { [key: string]: string } = {
-      visionario: "Traccia mappe simboliche e guarda oltre l'orizzonte. Vive di visioni e di traiettorie non ancora disegnate.",
-      costruttore: "Plasma il reale attraverso azione e volontà. Trasforma le idee in forma concreta step by step.",
-      sognatore: "Nutre il mondo interiore di immagini e possibilità. Crea spazi di bellezza e immaginazione.",
-      silenzioso: "Osserva, ascolta, comprende. Si muove con attenzione sottile e presenza silenziosa.",
-      combattente: "Affronta le sfide con energia e determinazione. Lotta per ciò che considera giusto e importante."
+      visionario: "Ama immaginare il futuro e creare nuove possibilità. È bravo a vedere le cose in grande e a ispirare gli altri.",
+      costruttore: "Preferisce l'azione concreta e i risultati tangibili. È organizzato e sa trasformare le idee in realtà.",
+      sognatore: "È creativo e sensibile, ama la bellezza e l'arte. Ha una ricca vita interiore e molta immaginazione.",
+      silenzioso: "È riflessivo e attento, preferisce osservare prima di agire. È un buon ascoltatore e sa cogliere i dettagli.",
+      combattente: "È energico e determinato, non si arrende facilmente. Ama le sfide e lotta per quello in cui crede."
     };
     return descriptions[archetype] || "";
   };
 
   const getArchetypeFullName = (archetype: string) => {
     const fullNames: { [key: string]: string } = {
-      visionario: "Errante Visionario",
-      costruttore: "Errante Costruttore", 
-      sognatore: "Errante Sognatore",
-      silenzioso: "Errante Silenzioso",
-      combattente: "Errante Combattente"
+      visionario: "Il Visionario",
+      costruttore: "Il Costruttore", 
+      sognatore: "Il Sognatore",
+      silenzioso: "L'Osservatore",
+      combattente: "Il Combattente"
     };
     return fullNames[archetype] || archetype.charAt(0).toUpperCase() + archetype.slice(1);
   };
@@ -105,24 +105,24 @@ const ArchetypesPage = () => {
             <ArrowLeft className="w-4 h-4" />
             Torna alla Dashboard
           </Button>
-          <Button
-            variant={compareMode ? "default" : "outline"}
-            onClick={() => setCompareMode(!compareMode)}
-            className="gap-2"
-          >
-            <Layers className="w-4 h-4" />
-            {compareMode ? "Vista Normale" : "Confronta Archetipi"}
-          </Button>
+            <Button
+              variant={compareMode ? "default" : "outline"}
+              onClick={() => setCompareMode(!compareMode)}
+              className="gap-2"
+            >
+              <Layers className="w-4 h-4" />
+              {compareMode ? "Vista Normale" : "Confronta Tipi"}
+            </Button>
         </div>
 
         {/* Introduction */}
         <div className="space-y-6">
           <div className="text-center">
             <h1 className="text-3xl md:text-5xl font-bold gradient-text mb-4">
-              Gli Archetipi
+              I Tipi di Personalità
             </h1>
             <p className="text-xl text-muted-foreground">
-              Esplora i modelli universali che guidano la trasformazione personale
+              Scopri i diversi modi di essere e di relazionarti al mondo
             </p>
           </div>
 
@@ -130,52 +130,50 @@ const ArchetypesPage = () => {
             <div>
               <h2 className="text-2xl font-semibold mb-3 flex items-center gap-2">
                 <Eye className="w-6 h-6" />
-                Chi è l'Errante?
+                Cosa sono i tipi di personalità?
               </h2>
               <p className="text-muted-foreground leading-relaxed">
-                L'Errante è una figura simbolica che cerca il proprio modo di camminare nel mondo. 
-                Invece di rappresentare un'identità fissa, l'Errante esprime un movimento, una tensione, 
-                una domanda. Tutti noi siamo Erranti: ciò che cambia è la direzione che stiamo seguendo.
+                I tipi di personalità sono modi diversi di approcciarsi alla vita, alle sfide e alle relazioni. 
+                Ognuno di noi ha un modo unico di vedere il mondo, di prendere decisioni e di entrare in contatto 
+                con gli altri. Conoscere il proprio tipo aiuta a capirsi meglio e a sviluppare le proprie potenzialità.
               </p>
             </div>
 
             <div>
-              <h2 className="text-2xl font-semibold mb-3">Perché solo l'Errante?</h2>
+              <h2 className="text-2xl font-semibold mb-3">Perché sono importanti?</h2>
               <p className="text-muted-foreground leading-relaxed">
-                Abbiamo scelto di lavorare su un unico archetipo metamorfico, l'Errante, perché riteniamo 
-                che il senso profondo dell'esperienza neurodivergente non sia da incasellare in tipologie 
-                fisse, ma da accompagnare attraverso forme diverse di esplorazione. L'Errante è un 
-                contenitore aperto, una mappa incompleta che si disegna camminando.
+                Comprendere il proprio tipo di personalità aiuta a accettarsi, a comunicare meglio con gli altri 
+                e a scegliere strategie più efficaci per raggiungere i propri obiettivi. Non si tratta di etichette 
+                che limitano, ma di strumenti che aiutano a crescere e a stare bene con se stessi.
               </p>
             </div>
 
             <div>
-              <h2 className="text-2xl font-semibold mb-3">Cosa sono gli archetipi?</h2>
+              <h2 className="text-2xl font-semibold mb-3">I diversi modi di essere</h2>
               <p className="text-muted-foreground leading-relaxed">
-                Gli archetipi sono immagini interiori universali, modelli narrativi che esprimono i modi 
-                in cui ci relazioniamo al mondo, al tempo e al cambiamento. In questa app, ogni variante 
-                dell'Errante rappresenta un modo possibile di stare nella complessità della vita: sognando, 
-                costruendo, osservando, combattendo, o tracciando visioni future.
+                Ci sono persone che amano sognare e immaginare, altre che preferiscono agire e costruire cose concrete. 
+                Alcune si sentono a loro agio nell'osservare e riflettere, mentre altre amano affrontare le sfide 
+                a testa alta. Ognuno di questi modi di essere ha i suoi punti di forza e le sue caratteristiche uniche.
               </p>
             </div>
 
             <div>
-              <h2 className="text-2xl font-semibold mb-3">Perché sono usati in questa app?</h2>
+              <h2 className="text-2xl font-semibold mb-3">Come ti aiutano nella vita quotidiana?</h2>
               <p className="text-muted-foreground leading-relaxed">
-                Gli archetipi aiutano a comprendere e accogliere la propria natura, i propri cicli, 
-                le proprie contraddizioni. Invece di spingere l'utente verso un'efficienza produttiva, 
-                il sistema archetipico favorisce una relazione personale, simbolica e trasformativa 
-                con l'organizzazione del tempo e dell'energia.
+                Conoscere il tuo tipo di personalità ti aiuta a organizzare meglio la tua giornata, a scegliere 
+                attività che ti danno energia invece di stressarti, e a capire perché certe cose ti riescono 
+                naturalmente mentre altre richiedono più sforzo. È come avere una mappa personale per navigare 
+                la vita in modo più sereno e autentico.
               </p>
             </div>
 
             <div>
-              <h2 className="text-2xl font-semibold mb-3">Come si evolvono nel tempo?</h2>
+              <h2 className="text-2xl font-semibold mb-3">Come cresci e ti sviluppi?</h2>
               <p className="text-muted-foreground leading-relaxed">
-                Ogni archetipo dell'Errante si manifesta attraverso un percorso di 10 livelli. Questi non sono 
-                premi da conquistare, ma stati di coscienza da attraversare. L'evoluzione non è 
-                lineare, ma ciclica: si può tornare indietro, saltare, restare. Ogni livello sblocca 
-                un oggetto immaginale, un simbolo da evocare nei momenti di difficoltà e trasformazione.
+                Il tuo tipo di personalità si sviluppa attraverso 10 livelli di crescita personale. Non sono tappe 
+                obbligatorie da superare, ma opportunità per conoscerti meglio e sviluppare nuove abilità. 
+                Puoi progredire nel tuo percorso completando attività, riflettendo su te stesso e affrontando 
+                nuove sfide in modo graduale e rispettoso dei tuoi tempi.
               </p>
             </div>
           </div>
@@ -183,7 +181,7 @@ const ArchetypesPage = () => {
 
         {/* Archetypes Navigation */}
         <div className="space-y-6">
-          <h2 className="text-2xl font-semibold text-center">Esplora gli Archetipi</h2>
+          <h2 className="text-2xl font-semibold text-center">Scopri i Tipi di Personalità</h2>
           
           {compareMode ? (
             /* Compare Mode */

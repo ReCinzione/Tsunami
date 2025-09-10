@@ -196,10 +196,10 @@ const AppContent = () => {
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mb-4">
           <div className="text-center sm:text-left flex-1">
             <h1 className="text-xl sm:text-2xl md:text-3xl font-bold gradient-text">
-              Il tuo universo personale
+              Il tuo spazio personale
             </h1>
             <p className="text-sm sm:text-base md:text-lg text-muted-foreground">
-              Archetipo: <span className="text-primary font-semibold capitalize">{profile?.dominant_archetype}</span>
+              Tipo di personalità: <span className="text-primary font-semibold capitalize">{profile?.dominant_archetype}</span>
             </p>
           </div>
           <Button variant="outline" onClick={handleLogout} className="gap-2 shrink-0 text-sm">
@@ -210,24 +210,27 @@ const AppContent = () => {
         </div>
 
         <Tabs defaultValue="dashboard" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 md:grid-cols-6 gap-1 h-auto p-1">
+          <TabsList className="grid w-full grid-cols-3 md:grid-cols-7 gap-1 h-auto p-1">
             <TabsTrigger value="dashboard" className="text-xs px-2 py-2 md:text-sm">
-              <span className="hidden sm:inline">🏠 </span>Dashboard
+              <span className="hidden sm:inline">🏠 </span>Casa
             </TabsTrigger>
             <TabsTrigger value="character" className="text-xs px-2 py-2 md:text-sm">
-              <span className="hidden sm:inline">👤 </span>Personaggio
+              <span className="hidden sm:inline">👤 </span>Profilo
             </TabsTrigger>
             <TabsTrigger value="tasks" className="text-xs px-2 py-2 md:text-sm">
-              <span className="hidden sm:inline">📋 </span>Task
+              <span className="hidden sm:inline">📋 </span>Attività
             </TabsTrigger>
             <TabsTrigger value="completed" className="text-xs px-2 py-2 md:text-sm">
-              <span className="hidden sm:inline">✅ </span>Completati
+              <span className="hidden sm:inline">✅ </span>Fatte
             </TabsTrigger>
             <TabsTrigger value="mental-inbox" className="text-xs px-2 py-2 md:text-sm">
-              <span className="hidden sm:inline">🧠 </span>Inbox
+              <span className="hidden sm:inline">🧠 </span>Note
             </TabsTrigger>
-            <TabsTrigger value="archetypes" className="text-xs px-2 py-2 md:text-sm">
-              <span className="hidden sm:inline">🔮 </span>Archetipi
+            <TabsTrigger value="routine" className="text-xs px-2 py-2 md:text-sm">
+              <span className="hidden sm:inline">⏰ </span>Routine
+            </TabsTrigger>
+            <TabsTrigger value="personality" className="text-xs px-2 py-2 md:text-sm">
+              <span className="hidden sm:inline">🔮 </span>Personalità
             </TabsTrigger>
           </TabsList>
 
@@ -266,7 +269,7 @@ const AppContent = () => {
               </div>
               <div className="bg-card border rounded-xl p-4 text-center">
                 <div className="text-2xl font-bold text-primary capitalize">{profile?.dominant_archetype}</div>
-                <div className="text-sm text-muted-foreground">Archetipo Dominante</div>
+                <div className="text-sm text-muted-foreground">Tipo Dominante</div>
               </div>
             </div>
           </TabsContent>
@@ -275,7 +278,7 @@ const AppContent = () => {
           <TabsContent value="character" className="space-y-6 mt-6">
             {/* Dominant Archetype Description */}
             <div className="bg-card border rounded-xl p-6 shadow-lg">
-              <h3 className="text-xl font-semibold mb-4">Il tuo Archetipo Dominante</h3>
+              <h3 className="text-xl font-semibold mb-4">Il tuo Tipo di Personalità</h3>
               <div className="flex items-start gap-4 mb-4">
                 <div className="text-4xl">
                   {profile?.dominant_archetype === 'visionario' ? '🔮' :
@@ -295,16 +298,16 @@ const AppContent = () => {
               </div>
               <Button 
                 variant="outline" 
-                onClick={() => navigate('/archetipi')}
+                onClick={() => navigate('/personalita')}
                 className="w-full gap-2"
               >
-                Esplora tutti gli Archetipi <ChevronRight className="w-4 h-4" />
+                Esplora tutti i Tipi di Personalità <ChevronRight className="w-4 h-4" />
               </Button>
             </div>
 
             {/* Archetype Breakdown */}
             <div className="bg-card border rounded-xl p-6 shadow-lg">
-              <h3 className="text-xl font-semibold mb-4">La tua composizione archetipica</h3>
+              <h3 className="text-xl font-semibold mb-4">La tua composizione di personalità</h3>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 {[
                   { name: 'Visionario', value: profile?.visionario_percentage, emoji: '🔮' },
@@ -324,7 +327,7 @@ const AppContent = () => {
 
             {/* Archetype Levels */}
             <div className="bg-card border rounded-xl p-6 shadow-lg">
-              <h3 className="text-xl font-semibold mb-4">Livelli del tuo Archetipo</h3>
+              <h3 className="text-xl font-semibold mb-4">Livelli della tua Personalità</h3>
               <div className="space-y-3">
                 {archetypeLevels.map((level) => (
                   <div 
