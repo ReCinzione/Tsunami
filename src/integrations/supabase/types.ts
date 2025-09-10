@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.3 (519615d)"
@@ -239,6 +239,139 @@ export type Database = {
           id?: string
           status?: string | null
           title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      routine_goals: {
+        Row: {
+          category: string
+          created_at: string
+          current_value: number
+          id: string
+          routine_id: string
+          target_value: number
+          unit: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          current_value?: number
+          id?: string
+          routine_id: string
+          target_value: number
+          unit: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          current_value?: number
+          id?: string
+          routine_id?: string
+          target_value?: number
+          unit?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "routine_goals_routine_id_fkey"
+            columns: ["routine_id"]
+            isOneToOne: false
+            referencedRelation: "routines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      routine_items: {
+        Row: {
+          created_at: string
+          id: string
+          is_completed: boolean
+          name: string
+          order_index: number
+          routine_id: string
+          time_duration: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_completed?: boolean
+          name: string
+          order_index?: number
+          routine_id: string
+          time_duration?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_completed?: boolean
+          name?: string
+          order_index?: number
+          routine_id?: string
+          time_duration?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "routine_items_routine_id_fkey"
+            columns: ["routine_id"]
+            isOneToOne: false
+            referencedRelation: "routines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      routines: {
+        Row: {
+          category: string
+          created_at: string
+          day_of_month: number | null
+          days_of_week: string[] | null
+          end_time: string | null
+          id: string
+          is_active: boolean
+          name: string
+          start_time: string | null
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          day_of_month?: number | null
+          days_of_week?: string[] | null
+          end_time?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          start_time?: string | null
+          type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          day_of_month?: number | null
+          days_of_week?: string[] | null
+          end_time?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          start_time?: string | null
+          type?: string
           updated_at?: string
           user_id?: string
         }

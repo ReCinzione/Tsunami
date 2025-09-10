@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,8 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Plus, Clock, Target, Check, X, Edit, Trash2 } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 
 interface Routine {
   id: string;
@@ -75,10 +74,9 @@ const RoutineManager: React.FC<RoutineManagerProps> = ({ userId }) => {
   const [routines, setRoutines] = useState<Routine[]>([]);
   const [routineItems, setRoutineItems] = useState<{ [key: string]: RoutineItem[] }>({});
   const [routineGoals, setRoutineGoals] = useState<{ [key: string]: RoutineGoal[] }>({});
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [editingRoutine, setEditingRoutine] = useState<Routine | null>(null);
-  const { toast } = useToast();
 
   // Form states
   const [routineName, setRoutineName] = useState('');
@@ -91,217 +89,141 @@ const RoutineManager: React.FC<RoutineManagerProps> = ({ userId }) => {
   const [newItems, setNewItems] = useState<string[]>(['']);
   const [newGoals, setNewGoals] = useState<{ text: string; target?: number; unit?: string }[]>([{ text: '', target: undefined, unit: '' }]);
 
-  useEffect(() => {
-    loadRoutines();
-  }, [userId]);
-
-  const loadRoutines = async () => {
-    try {
-      const { data: routinesData, error: routinesError } = await supabase
-        .from('routines')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false });
-
-      if (routinesError) throw routinesError;
-
-      setRoutines(routinesData || []);
-
-      // Load items and goals for each routine
-      for (const routine of routinesData || []) {
-        await loadRoutineItems(routine.id);
-        await loadRoutineGoals(routine.id);
-      }
-    } catch (error) {
-      console.error('Error loading routines:', error);
-      toast({
-        title: "Errore",
-        description: "Impossibile caricare le routine",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
+  // Temporary local data for demo purposes (until database types are updated)
+  const sampleRoutines: Routine[] = [
+    {
+      id: '1',
+      user_id: userId,
+      name: 'Routine Mattutina',
+      description: 'La mia routine per iniziare bene la giornata',
+      type: 'daily',
+      category: 'benessere',
+      time: '07:00',
+      is_active: true,
+      created_at: new Date().toISOString()
+    },
+    {
+      id: '2',
+      user_id: userId,
+      name: 'Allenamento Settimanale',
+      description: 'Sessioni di fitness programmate',
+      type: 'weekly',
+      category: 'fitness',
+      time: '18:30',
+      days_of_week: [1, 3, 5],
+      is_active: true,
+      created_at: new Date().toISOString()
     }
+  ];
+
+  const sampleItems: { [key: string]: RoutineItem[] } = {
+    '1': [
+      { id: '1a', routine_id: '1', name: 'Meditazione', is_completed: false, order_index: 0 },
+      { id: '1b', routine_id: '1', name: 'Stretching leggero', is_completed: false, order_index: 1 },
+      { id: '1c', routine_id: '1', name: 'Colazione sana', is_completed: false, order_index: 2 }
+    ],
+    '2': [
+      { id: '2a', routine_id: '2', name: 'Riscaldamento', is_completed: false, order_index: 0 },
+      { id: '2b', routine_id: '2', name: 'Allenamento cardio', is_completed: false, order_index: 1 },
+      { id: '2c', routine_id: '2', name: 'Defaticamento', is_completed: false, order_index: 2 }
+    ]
   };
 
-  const loadRoutineItems = async (routineId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('routine_items')
-        .select('*')
-        .eq('routine_id', routineId)
-        .order('order_index');
-
-      if (error) throw error;
-
-      setRoutineItems(prev => ({
-        ...prev,
-        [routineId]: data || []
-      }));
-    } catch (error) {
-      console.error('Error loading routine items:', error);
-    }
+  const sampleGoals: { [key: string]: RoutineGoal[] } = {
+    '1': [
+      { id: '1g', routine_id: '1', goal_text: 'Meditare per almeno 10 minuti', target_value: 10, current_value: 0, unit: 'minuti', is_achieved: false }
+    ],
+    '2': [
+      { id: '2g', routine_id: '2', goal_text: 'Bruciare 300 calorie', target_value: 300, current_value: 0, unit: 'calorie', is_achieved: false }
+    ]
   };
 
-  const loadRoutineGoals = async (routineId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('routine_goals')
-        .select('*')
-        .eq('routine_id', routineId);
+  // Initialize with sample data
+  useState(() => {
+    setRoutines(sampleRoutines);
+    setRoutineItems(sampleItems);
+    setRoutineGoals(sampleGoals);
+  });
 
-      if (error) throw error;
-
-      setRoutineGoals(prev => ({
-        ...prev,
-        [routineId]: data || []
-      }));
-    } catch (error) {
-      console.error('Error loading routine goals:', error);
-    }
-  };
-
-  const createRoutine = async () => {
+  const createRoutine = () => {
     if (!routineName.trim()) {
-      toast({
-        title: "Errore",
-        description: "Il nome della routine è obbligatorio",
-        variant: "destructive"
-      });
+      toast.error("Il nome della routine è obbligatorio");
       return;
     }
 
-    try {
-      setLoading(true);
+    const newRoutine: Routine = {
+      id: Date.now().toString(),
+      user_id: userId,
+      name: routineName,
+      description: routineDescription || undefined,
+      type: routineType,
+      category: routineCategory,
+      time: routineTime || undefined,
+      days_of_week: routineType === 'weekly' ? selectedDays : undefined,
+      day_of_month: routineType === 'monthly' ? dayOfMonth : undefined,
+      is_active: true,
+      created_at: new Date().toISOString()
+    };
 
-      const routineData = {
-        user_id: userId,
-        name: routineName,
-        description: routineDescription || null,
-        type: routineType,
-        category: routineCategory,
-        time: routineTime || null,
-        days_of_week: routineType === 'weekly' ? selectedDays : null,
-        day_of_month: routineType === 'monthly' ? dayOfMonth : null,
-        is_active: true
-      };
+    setRoutines(prev => [newRoutine, ...prev]);
 
-      const { data: routine, error: routineError } = await supabase
-        .from('routines')
-        .insert(routineData)
-        .select()
-        .single();
+    // Add items
+    const items = newItems.filter(item => item.trim()).map((item, index) => ({
+      id: `${newRoutine.id}_item_${index}`,
+      routine_id: newRoutine.id,
+      name: item.trim(),
+      is_completed: false,
+      order_index: index
+    }));
 
-      if (routineError) throw routineError;
-
-      // Create routine items
-      const items = newItems.filter(item => item.trim()).map((item, index) => ({
-        routine_id: routine.id,
-        name: item.trim(),
-        order_index: index,
-        is_completed: false
-      }));
-
-      if (items.length > 0) {
-        const { error: itemsError } = await supabase
-          .from('routine_items')
-          .insert(items);
-
-        if (itemsError) throw itemsError;
-      }
-
-      // Create routine goals
-      const goals = newGoals.filter(goal => goal.text.trim()).map(goal => ({
-        routine_id: routine.id,
-        goal_text: goal.text.trim(),
-        target_value: goal.target || null,
-        unit: goal.unit || null,
-        current_value: 0,
-        is_achieved: false
-      }));
-
-      if (goals.length > 0) {
-        const { error: goalsError } = await supabase
-          .from('routine_goals')
-          .insert(goals);
-
-        if (goalsError) throw goalsError;
-      }
-
-      resetForm();
-      setIsCreating(false);
-      await loadRoutines();
-
-      toast({
-        title: "Routine creata!",
-        description: "La tua nuova routine è stata salvata con successo"
-      });
-    } catch (error) {
-      console.error('Error creating routine:', error);
-      toast({
-        title: "Errore",
-        description: "Impossibile creare la routine",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const toggleRoutineActive = async (routineId: string, isActive: boolean) => {
-    try {
-      const { error } = await supabase
-        .from('routines')
-        .update({ is_active: !isActive })
-        .eq('id', routineId);
-
-      if (error) throw error;
-
-      setRoutines(prev => prev.map(routine => 
-        routine.id === routineId 
-          ? { ...routine, is_active: !isActive }
-          : routine
-      ));
-
-      toast({
-        title: !isActive ? "Routine attivata" : "Routine messa in pausa",
-        description: !isActive ? "La routine è ora attiva" : "La routine è stata messa in pausa"
-      });
-    } catch (error) {
-      console.error('Error toggling routine:', error);
-      toast({
-        title: "Errore",
-        description: "Impossibile modificare lo stato della routine",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const toggleItemComplete = async (routineId: string, itemId: string, isCompleted: boolean) => {
-    try {
-      const { error } = await supabase
-        .from('routine_items')
-        .update({ is_completed: !isCompleted })
-        .eq('id', itemId);
-
-      if (error) throw error;
-
+    if (items.length > 0) {
       setRoutineItems(prev => ({
         ...prev,
-        [routineId]: prev[routineId]?.map(item => 
-          item.id === itemId 
-            ? { ...item, is_completed: !isCompleted }
-            : item
-        ) || []
+        [newRoutine.id]: items
       }));
-    } catch (error) {
-      console.error('Error toggling item:', error);
-      toast({
-        title: "Errore",
-        description: "Impossibile aggiornare l'elemento",
-        variant: "destructive"
-      });
     }
+
+    // Add goals
+    const goals = newGoals.filter(goal => goal.text.trim()).map((goal, index) => ({
+      id: `${newRoutine.id}_goal_${index}`,
+      routine_id: newRoutine.id,
+      goal_text: goal.text.trim(),
+      target_value: goal.target,
+      unit: goal.unit,
+      current_value: 0,
+      is_achieved: false
+    }));
+
+    if (goals.length > 0) {
+      setRoutineGoals(prev => ({
+        ...prev,
+        [newRoutine.id]: goals
+      }));
+    }
+
+    resetForm();
+    setIsCreating(false);
+    toast.success("Routine creata con successo!");
+  };
+
+  const toggleRoutineActive = (routineId: string, isActive: boolean) => {
+    setRoutines(prev => prev.map(routine => 
+      routine.id === routineId 
+        ? { ...routine, is_active: !isActive }
+        : routine
+    ));
+    toast.success(!isActive ? "Routine attivata" : "Routine messa in pausa");
+  };
+
+  const toggleItemComplete = (routineId: string, itemId: string, isCompleted: boolean) => {
+    setRoutineItems(prev => ({
+      ...prev,
+      [routineId]: prev[routineId]?.map(item => 
+        item.id === itemId 
+          ? { ...item, is_completed: !isCompleted }
+          : item
+      ) || []
+    }));
   };
 
   const resetForm = () => {
@@ -500,89 +422,89 @@ const RoutineManager: React.FC<RoutineManagerProps> = ({ userId }) => {
                 </div>
               </div>
 
-              {/* Checklist Items */}
+              {/* Items Checklist */}
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <Label>Lista delle attività</Label>
-                  <Button type="button" variant="outline" size="sm" onClick={addNewItem}>
-                    <Plus className="w-4 h-4" />
-                  </Button>
-                </div>
-                <div className="space-y-2">
-                  {newItems.map((item, index) => (
-                    <div key={index} className="flex gap-2">
-                      <Input
-                        value={item}
-                        onChange={(e) => updateNewItem(index, e.target.value)}
-                        placeholder="Descrivi un'attività..."
-                      />
-                      {newItems.length > 1 && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="icon"
-                          onClick={() => removeNewItem(index)}
-                        >
-                          <X className="w-4 h-4" />
-                        </Button>
-                      )}
-                    </div>
-                  ))}
-                </div>
+                <Label>Checklist Attività</Label>
+                {newItems.map((item, index) => (
+                  <div key={index} className="flex gap-2">
+                    <Input
+                      value={item}
+                      onChange={(e) => updateNewItem(index, e.target.value)}
+                      placeholder="Es. Fare stretching, Bere un bicchiere d'acqua..."
+                    />
+                    {newItems.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => removeNewItem(index)}
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+                <Button type="button" variant="outline" onClick={addNewItem} className="w-full">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Aggiungi Attività
+                </Button>
               </div>
 
               {/* Goals */}
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <Label>Obiettivi (opzionali)</Label>
-                  <Button type="button" variant="outline" size="sm" onClick={addNewGoal}>
-                    <Plus className="w-4 h-4" />
-                  </Button>
-                </div>
-                <div className="space-y-2">
-                  {newGoals.map((goal, index) => (
-                    <div key={index} className="flex gap-2">
+                <Label>Obiettivi</Label>
+                {newGoals.map((goal, index) => (
+                  <div key={index} className="space-y-2 p-4 border rounded-lg">
+                    <div className="flex gap-2">
                       <Input
                         value={goal.text}
                         onChange={(e) => updateNewGoal(index, 'text', e.target.value)}
-                        placeholder="Descrivi l'obiettivo..."
+                        placeholder="Descrizione obiettivo..."
                         className="flex-1"
-                      />
-                      <Input
-                        type="number"
-                        value={goal.target || ''}
-                        onChange={(e) => updateNewGoal(index, 'target', parseInt(e.target.value))}
-                        placeholder="Meta"
-                        className="w-20"
-                      />
-                      <Input
-                        value={goal.unit || ''}
-                        onChange={(e) => updateNewGoal(index, 'unit', e.target.value)}
-                        placeholder="Unità"
-                        className="w-20"
                       />
                       {newGoals.length > 1 && (
                         <Button
                           type="button"
                           variant="outline"
-                          size="icon"
+                          size="sm"
                           onClick={() => removeNewGoal(index)}
                         >
                           <X className="w-4 h-4" />
                         </Button>
                       )}
                     </div>
-                  ))}
-                </div>
+                    <div className="flex gap-2">
+                      <Input
+                        type="number"
+                        value={goal.target || ''}
+                        onChange={(e) => updateNewGoal(index, 'target', parseInt(e.target.value) || undefined)}
+                        placeholder="Valore target"
+                        className="flex-1"
+                      />
+                      <Input
+                        value={goal.unit || ''}
+                        onChange={(e) => updateNewGoal(index, 'unit', e.target.value)}
+                        placeholder="Unità (es. minuti, km...)"
+                        className="flex-1"
+                      />
+                    </div>
+                  </div>
+                ))}
+                <Button type="button" variant="outline" onClick={addNewGoal} className="w-full">
+                  <Target className="w-4 h-4 mr-2" />
+                  Aggiungi Obiettivo
+                </Button>
               </div>
 
-              {/* Actions */}
-              <div className="flex gap-2 justify-end">
-                <Button variant="outline" onClick={() => setIsCreating(false)}>
-                  Annulla
+              <div className="flex gap-2 pt-4">
+                <Button onClick={createRoutine} disabled={loading} className="flex-1">
+                  {loading ? "Creazione..." : "Crea Routine"}
                 </Button>
-                <Button onClick={createRoutine}>
-                  Crea Routine
+                <Button variant="outline" onClick={() => {
+                  resetForm();
+                  setIsCreating(false);
+                }}>
+                  Annulla
                 </Button>
               </div>
             </div>
@@ -591,194 +513,111 @@ const RoutineManager: React.FC<RoutineManagerProps> = ({ userId }) => {
       </div>
 
       {/* Routines List */}
-      <Tabs defaultValue="all" className="w-full">
-        <TabsList>
-          <TabsTrigger value="all">Tutte</TabsTrigger>
-          <TabsTrigger value="daily">Giornaliere</TabsTrigger>
-          <TabsTrigger value="weekly">Settimanali</TabsTrigger>
-          <TabsTrigger value="monthly">Mensili</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="all" className="space-y-4">
-          {routines.length === 0 ? (
-            <Card>
-              <CardContent className="text-center py-8">
-                <Clock className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold mb-2">Nessuna routine creata</h3>
-                <p className="text-muted-foreground mb-4">
-                  Inizia creando la tua prima routine personalizzata
-                </p>
-                <Button onClick={() => setIsCreating(true)} className="gap-2">
-                  <Plus className="w-4 h-4" />
-                  Crea la tua prima routine
-                </Button>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid gap-4">
-              {routines.map(routine => (
-                <Card key={routine.id} className={`${!routine.is_active ? 'opacity-60' : ''}`}>
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <span className="text-2xl">{getCategoryEmoji(routine.category)}</span>
-                        <div>
-                          <CardTitle className="flex items-center gap-2">
-                            {routine.name}
-                            {!routine.is_active && <Badge variant="secondary">In pausa</Badge>}
-                          </CardTitle>
-                          <p className="text-sm text-muted-foreground">
-                            {getRoutineSchedule(routine)}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => toggleRoutineActive(routine.id, routine.is_active)}
-                        >
-                          {routine.is_active ? 'Pausa' : 'Attiva'}
-                        </Button>
-                      </div>
+      {routines.length === 0 ? (
+        <Card>
+          <CardContent className="py-8 text-center">
+            <Clock className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+            <h3 className="text-lg font-semibold mb-2">Nessuna routine ancora</h3>
+            <p className="text-muted-foreground mb-4">
+              Crea la tua prima routine per organizzare le tue abitudini
+            </p>
+            <Button onClick={() => setIsCreating(true)}>
+              <Plus className="w-4 h-4 mr-2" />
+              Crea la tua prima routine
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid gap-6">
+          {routines.map(routine => (
+            <Card key={routine.id} className={`${routine.is_active ? '' : 'opacity-60'}`}>
+              <CardHeader>
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-2xl">{getCategoryEmoji(routine.category)}</span>
+                      <CardTitle className="text-xl">{routine.name}</CardTitle>
+                      <Badge variant={routine.is_active ? "default" : "secondary"}>
+                        {routine.is_active ? "Attiva" : "In pausa"}
+                      </Badge>
                     </div>
                     {routine.description && (
-                      <p className="text-sm text-muted-foreground">{routine.description}</p>
+                      <p className="text-muted-foreground mb-2">{routine.description}</p>
                     )}
-                  </CardHeader>
-                  <CardContent>
-                    {/* Checklist */}
-                    {routineItems[routine.id]?.length > 0 && (
-                      <div className="space-y-3 mb-4">
-                        <h4 className="font-semibold text-sm flex items-center gap-2">
-                          <Check className="w-4 h-4" />
-                          Lista attività
-                        </h4>
-                        <div className="space-y-2">
-                          {routineItems[routine.id].map(item => (
-                            <div key={item.id} className="flex items-center space-x-2">
-                              <Checkbox
-                                checked={item.is_completed}
-                                onCheckedChange={() => toggleItemComplete(routine.id, item.id, item.is_completed)}
-                              />
-                              <span className={`text-sm ${item.is_completed ? 'line-through text-muted-foreground' : ''}`}>
-                                {item.name}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Goals */}
-                    {routineGoals[routine.id]?.length > 0 && (
-                      <div className="space-y-3">
-                        <h4 className="font-semibold text-sm flex items-center gap-2">
-                          <Target className="w-4 h-4" />
-                          Obiettivi
-                        </h4>
-                        <div className="space-y-2">
-                          {routineGoals[routine.id].map(goal => (
-                            <div key={goal.id} className="flex items-center justify-between text-sm">
-                              <span>{goal.goal_text}</span>
-                              {goal.target_value && (
-                                <Badge variant="outline">
-                                  {goal.current_value}/{goal.target_value} {goal.unit}
-                                </Badge>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </TabsContent>
-
-        {['daily', 'weekly', 'monthly'].map(type => (
-          <TabsContent key={type} value={type} className="space-y-4">
-            <div className="grid gap-4">
-              {routines.filter(r => r.type === type).map(routine => (
-                <Card key={routine.id} className={`${!routine.is_active ? 'opacity-60' : ''}`}>
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <span className="text-2xl">{getCategoryEmoji(routine.category)}</span>
-                        <div>
-                          <CardTitle className="flex items-center gap-2">
-                            {routine.name}
-                            {!routine.is_active && <Badge variant="secondary">In pausa</Badge>}
-                          </CardTitle>
-                          <p className="text-sm text-muted-foreground">
-                            {getRoutineSchedule(routine)}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => toggleRoutineActive(routine.id, routine.is_active)}
-                        >
-                          {routine.is_active ? 'Pausa' : 'Attiva'}
-                        </Button>
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                      <div className="flex items-center gap-1">
+                        <Clock className="w-4 h-4" />
+                        {getRoutineSchedule(routine)}
                       </div>
                     </div>
-                  </CardHeader>
-                  <CardContent>
-                    {/* Same content as above for checklist and goals */}
-                    {routineItems[routine.id]?.length > 0 && (
-                      <div className="space-y-3 mb-4">
-                        <h4 className="font-semibold text-sm flex items-center gap-2">
-                          <Check className="w-4 h-4" />
-                          Lista attività
-                        </h4>
-                        <div className="space-y-2">
-                          {routineItems[routine.id].map(item => (
-                            <div key={item.id} className="flex items-center space-x-2">
-                              <Checkbox
-                                checked={item.is_completed}
-                                onCheckedChange={() => toggleItemComplete(routine.id, item.id, item.is_completed)}
-                              />
-                              <span className={`text-sm ${item.is_completed ? 'line-through text-muted-foreground' : ''}`}>
-                                {item.name}
-                              </span>
-                            </div>
-                          ))}
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => toggleRoutineActive(routine.id, routine.is_active)}
+                    >
+                      {routine.is_active ? "Pausa" : "Attiva"}
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <Tabs defaultValue="checklist" className="w-full">
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="checklist">Checklist</TabsTrigger>
+                    <TabsTrigger value="goals">Obiettivi</TabsTrigger>
+                  </TabsList>
+                  
+                  <TabsContent value="checklist" className="space-y-2">
+                    {routineItems[routine.id]?.length > 0 ? (
+                      routineItems[routine.id].map(item => (
+                        <div key={item.id} className="flex items-center space-x-2 p-2 rounded border">
+                          <Checkbox
+                            checked={item.is_completed}
+                            onCheckedChange={() => toggleItemComplete(routine.id, item.id, item.is_completed)}
+                          />
+                          <span className={item.is_completed ? 'line-through text-muted-foreground' : ''}>
+                            {item.name}
+                          </span>
                         </div>
-                      </div>
+                      ))
+                    ) : (
+                      <p className="text-muted-foreground text-center py-4">
+                        Nessuna attività nella checklist
+                      </p>
                     )}
-
-                    {routineGoals[routine.id]?.length > 0 && (
-                      <div className="space-y-3">
-                        <h4 className="font-semibold text-sm flex items-center gap-2">
-                          <Target className="w-4 h-4" />
-                          Obiettivi
-                        </h4>
-                        <div className="space-y-2">
-                          {routineGoals[routine.id].map(goal => (
-                            <div key={goal.id} className="flex items-center justify-between text-sm">
-                              <span>{goal.goal_text}</span>
-                              {goal.target_value && (
-                                <Badge variant="outline">
-                                  {goal.current_value}/{goal.target_value} {goal.unit}
-                                </Badge>
-                              )}
+                  </TabsContent>
+                  
+                  <TabsContent value="goals" className="space-y-2">
+                    {routineGoals[routine.id]?.length > 0 ? (
+                      routineGoals[routine.id].map(goal => (
+                        <div key={goal.id} className="p-3 rounded border">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="font-medium">{goal.goal_text}</span>
+                            <Badge variant={goal.is_achieved ? "default" : "secondary"}>
+                              {goal.is_achieved ? "Raggiunto" : "In corso"}
+                            </Badge>
+                          </div>
+                          {goal.target_value && (
+                            <div className="text-sm text-muted-foreground">
+                              Progresso: {goal.current_value} / {goal.target_value} {goal.unit}
                             </div>
-                          ))}
+                          )}
                         </div>
-                      </div>
+                      ))
+                    ) : (
+                      <p className="text-muted-foreground text-center py-4">
+                        Nessun obiettivo configurato
+                      </p>
                     )}
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </TabsContent>
-        ))}
-      </Tabs>
+                  </TabsContent>
+                </Tabs>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
