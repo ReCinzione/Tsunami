@@ -288,29 +288,29 @@ const ArchetypesPage = () => {
                                 </p>
                                 
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                  <div className="p-2 bg-green-50 dark:bg-green-950/50 rounded">
-                                    <div className="text-xs font-medium text-green-700 dark:text-green-300 mb-1">
+                                  <div className="p-3 bg-card border border-border rounded-lg">
+                                    <div className="text-xs font-medium text-primary mb-1">
                                       Qualità Emergente
                                     </div>
-                                    <div className="text-sm text-green-800 dark:text-green-200">
+                                    <div className="text-sm text-foreground">
                                       {level.emerging_quality}
                                     </div>
                                   </div>
                                   
-                                  <div className="p-2 bg-red-50 dark:bg-red-950/50 rounded">
-                                    <div className="text-xs font-medium text-red-700 dark:text-red-300 mb-1">
+                                  <div className="p-3 bg-card border border-border rounded-lg">
+                                    <div className="text-xs font-medium text-destructive mb-1">
                                       Ombra da Affrontare
                                     </div>
-                                    <div className="text-sm text-red-800 dark:text-red-200">
+                                    <div className="text-sm text-foreground">
                                       {level.shadow_aspect}
                                     </div>
                                   </div>
                                   
-                                  <div className="p-2 bg-purple-50 dark:bg-purple-950/50 rounded">
-                                    <div className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-1">
+                                  <div className="p-3 bg-card border border-border rounded-lg">
+                                    <div className="text-xs font-medium text-accent-foreground mb-1">
                                       Oggetto Immaginale
                                     </div>
-                                    <div className="text-sm text-purple-800 dark:text-purple-200">
+                                    <div className="text-sm text-foreground">
                                       {level.imaginal_object_name}
                                     </div>
                                   </div>

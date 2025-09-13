@@ -572,29 +572,31 @@ const RoutineManager: React.FC<RoutineManagerProps> = ({ userId }) => {
                   <TabsContent value="checklist" className="space-y-2">
                     {routineItems[routine.id]?.length > 0 ? (
                       routineItems[routine.id].map(item => (
-                        <div key={item.id} className="flex items-center space-x-2 p-2 rounded border">
+                        <div key={item.id} className="flex items-center space-x-2 p-3 rounded-lg bg-muted/30 border border-border">
                           <Checkbox
                             checked={item.is_completed}
                             onCheckedChange={() => toggleItemComplete(routine.id, item.id, item.is_completed)}
                           />
-                          <span className={item.is_completed ? 'line-through text-muted-foreground' : ''}>
+                          <span className={item.is_completed ? 'line-through text-muted-foreground' : 'text-foreground'}>
                             {item.name}
                           </span>
                         </div>
                       ))
                     ) : (
-                      <p className="text-muted-foreground text-center py-4">
-                        Nessuna attività nella checklist
-                      </p>
+                      <div className="text-center py-8 bg-muted/20 rounded-lg border border-dashed border-border">
+                        <p className="text-muted-foreground">
+                          Nessuna attività nella checklist
+                        </p>
+                      </div>
                     )}
                   </TabsContent>
                   
                   <TabsContent value="goals" className="space-y-2">
                     {routineGoals[routine.id]?.length > 0 ? (
                       routineGoals[routine.id].map(goal => (
-                        <div key={goal.id} className="p-3 rounded border">
+                        <div key={goal.id} className="p-4 rounded-lg bg-muted/30 border border-border">
                           <div className="flex items-center justify-between mb-2">
-                            <span className="font-medium">{goal.goal_text}</span>
+                            <span className="font-medium text-foreground">{goal.goal_text}</span>
                             <Badge variant={goal.is_achieved ? "default" : "secondary"}>
                               {goal.is_achieved ? "Raggiunto" : "In corso"}
                             </Badge>
@@ -607,9 +609,11 @@ const RoutineManager: React.FC<RoutineManagerProps> = ({ userId }) => {
                         </div>
                       ))
                     ) : (
-                      <p className="text-muted-foreground text-center py-4">
-                        Nessun obiettivo configurato
-                      </p>
+                      <div className="text-center py-8 bg-muted/20 rounded-lg border border-dashed border-border">
+                        <p className="text-muted-foreground">
+                          Nessun obiettivo configurato
+                        </p>
+                      </div>
                     )}
                   </TabsContent>
                 </Tabs>
