@@ -569,48 +569,48 @@ const RoutineManager: React.FC<RoutineManagerProps> = ({ userId }) => {
                     <TabsTrigger value="goals">Obiettivi</TabsTrigger>
                   </TabsList>
                   
-                  <TabsContent value="checklist" className="space-y-2">
+                  <TabsContent value="checklist" className="space-y-3 mt-4">
                     {routineItems[routine.id]?.length > 0 ? (
                       routineItems[routine.id].map(item => (
-                        <div key={item.id} className="flex items-center space-x-2 p-3 rounded-lg bg-muted/30 border border-border">
+                        <div key={item.id} className="flex items-center space-x-3 p-4 rounded-lg bg-secondary/50 border border-border hover:bg-secondary/70 transition-colors">
                           <Checkbox
                             checked={item.is_completed}
                             onCheckedChange={() => toggleItemComplete(routine.id, item.id, item.is_completed)}
                           />
-                          <span className={item.is_completed ? 'line-through text-muted-foreground' : 'text-foreground'}>
+                          <span className={item.is_completed ? 'line-through text-muted-foreground' : 'text-card-foreground font-medium'}>
                             {item.name}
                           </span>
                         </div>
                       ))
                     ) : (
-                      <div className="text-center py-8 bg-muted/20 rounded-lg border border-dashed border-border">
-                        <p className="text-muted-foreground">
+                      <div className="text-center py-12 bg-secondary/30 rounded-lg border-2 border-dashed border-border">
+                        <p className="text-muted-foreground font-medium">
                           Nessuna attività nella checklist
                         </p>
                       </div>
                     )}
                   </TabsContent>
                   
-                  <TabsContent value="goals" className="space-y-2">
+                  <TabsContent value="goals" className="space-y-3 mt-4">
                     {routineGoals[routine.id]?.length > 0 ? (
                       routineGoals[routine.id].map(goal => (
-                        <div key={goal.id} className="p-4 rounded-lg bg-muted/30 border border-border">
+                        <div key={goal.id} className="p-4 rounded-lg bg-secondary/50 border border-border hover:bg-secondary/70 transition-colors">
                           <div className="flex items-center justify-between mb-2">
-                            <span className="font-medium text-foreground">{goal.goal_text}</span>
+                            <span className="font-semibold text-card-foreground">{goal.goal_text}</span>
                             <Badge variant={goal.is_achieved ? "default" : "secondary"}>
                               {goal.is_achieved ? "Raggiunto" : "In corso"}
                             </Badge>
                           </div>
                           {goal.target_value && (
-                            <div className="text-sm text-muted-foreground">
+                            <div className="text-sm text-muted-foreground font-medium">
                               Progresso: {goal.current_value} / {goal.target_value} {goal.unit}
                             </div>
                           )}
                         </div>
                       ))
                     ) : (
-                      <div className="text-center py-8 bg-muted/20 rounded-lg border border-dashed border-border">
-                        <p className="text-muted-foreground">
+                      <div className="text-center py-12 bg-secondary/30 rounded-lg border-2 border-dashed border-border">
+                        <p className="text-muted-foreground font-medium">
                           Nessun obiettivo configurato
                         </p>
                       </div>
