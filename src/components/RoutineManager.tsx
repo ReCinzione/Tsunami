@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,14 +17,15 @@ interface Routine {
   id: string;
   user_id: string;
   name: string;
-  description?: string;
-  type: 'daily' | 'weekly' | 'monthly';
+  type: string;
   category: string;
-  time?: string;
-  days_of_week?: number[];
-  day_of_month?: number;
+  start_time?: string | null;
+  end_time?: string | null;
+  days_of_week?: string[] | null;
+  day_of_month?: number | null;
   is_active: boolean;
   created_at: string;
+  updated_at: string;
 }
 
 interface RoutineItem {
@@ -81,7 +83,7 @@ const RoutineManager: React.FC<RoutineManagerProps> = ({ userId }) => {
   // Form states
   const [routineName, setRoutineName] = useState('');
   const [routineDescription, setRoutineDescription] = useState('');
-  const [routineType, setRoutineType] = useState<'daily' | 'weekly' | 'monthly'>('daily');
+  const [routineType, setRoutineType] = useState<string>('daily');
   const [routineCategory, setRoutineCategory] = useState('benessere');
   const [routineTime, setRoutineTime] = useState('');
   const [selectedDays, setSelectedDays] = useState<number[]>([]);
@@ -89,141 +91,199 @@ const RoutineManager: React.FC<RoutineManagerProps> = ({ userId }) => {
   const [newItems, setNewItems] = useState<string[]>(['']);
   const [newGoals, setNewGoals] = useState<{ text: string; target?: number; unit?: string }[]>([{ text: '', target: undefined, unit: '' }]);
 
-  // Temporary local data for demo purposes (until database types are updated)
-  const sampleRoutines: Routine[] = [
-    {
-      id: '1',
-      user_id: userId,
-      name: 'Routine Mattutina',
-      description: 'La mia routine per iniziare bene la giornata',
-      type: 'daily',
-      category: 'benessere',
-      time: '07:00',
-      is_active: true,
-      created_at: new Date().toISOString()
-    },
-    {
-      id: '2',
-      user_id: userId,
-      name: 'Allenamento Settimanale',
-      description: 'Sessioni di fitness programmate',
-      type: 'weekly',
-      category: 'fitness',
-      time: '18:30',
-      days_of_week: [1, 3, 5],
-      is_active: true,
-      created_at: new Date().toISOString()
+
+
+  // Load data from database
+  useEffect(() => {
+    loadRoutines();
+  }, [userId]);
+
+  const loadRoutines = async () => {
+    try {
+      setLoading(true);
+      
+      // Load routines
+      const { data: routinesData, error: routinesError } = await supabase
+        .from('routines')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+
+      if (routinesError) throw routinesError;
+      setRoutines(routinesData || []);
+
+      // Load routine items for all routines
+      if (routinesData && routinesData.length > 0) {
+        const { data: itemsData, error: itemsError } = await supabase
+          .from('routine_items')
+          .select('*')
+          .eq('user_id', userId)
+          .order('order_index');
+
+        if (itemsError) throw itemsError;
+        
+        // Group items by routine_id
+        const groupedItems = (itemsData || []).reduce((acc, item) => {
+          if (!acc[item.routine_id]) acc[item.routine_id] = [];
+          acc[item.routine_id].push(item);
+          return acc;
+        }, {} as { [key: string]: RoutineItem[] });
+        
+        setRoutineItems(groupedItems);
+
+        // Load routine goals
+        const { data: goalsData, error: goalsError } = await supabase
+          .from('routine_goals')
+          .select('*')
+          .eq('user_id', userId);
+
+        if (goalsError) throw goalsError;
+        
+        // Group goals by routine_id
+        const groupedGoals = (goalsData || []).reduce((acc, goal) => {
+          if (!acc[goal.routine_id]) acc[goal.routine_id] = [];
+          acc[goal.routine_id].push({
+            id: goal.id,
+            routine_id: goal.routine_id,
+            goal_text: `${goal.category}: ${goal.target_value} ${goal.unit}`,
+            target_value: goal.target_value,
+            current_value: goal.current_value,
+            unit: goal.unit,
+            is_achieved: goal.current_value >= goal.target_value
+          });
+          return acc;
+        }, {} as { [key: string]: RoutineGoal[] });
+        
+        setRoutineGoals(groupedGoals);
+      }
+    } catch (error) {
+      console.error('Error loading routines:', error);
+      toast.error("Errore nel caricamento delle routine");
+    } finally {
+      setLoading(false);
     }
-  ];
-
-  const sampleItems: { [key: string]: RoutineItem[] } = {
-    '1': [
-      { id: '1a', routine_id: '1', name: 'Meditazione', is_completed: false, order_index: 0 },
-      { id: '1b', routine_id: '1', name: 'Stretching leggero', is_completed: false, order_index: 1 },
-      { id: '1c', routine_id: '1', name: 'Colazione sana', is_completed: false, order_index: 2 }
-    ],
-    '2': [
-      { id: '2a', routine_id: '2', name: 'Riscaldamento', is_completed: false, order_index: 0 },
-      { id: '2b', routine_id: '2', name: 'Allenamento cardio', is_completed: false, order_index: 1 },
-      { id: '2c', routine_id: '2', name: 'Defaticamento', is_completed: false, order_index: 2 }
-    ]
   };
 
-  const sampleGoals: { [key: string]: RoutineGoal[] } = {
-    '1': [
-      { id: '1g', routine_id: '1', goal_text: 'Meditare per almeno 10 minuti', target_value: 10, current_value: 0, unit: 'minuti', is_achieved: false }
-    ],
-    '2': [
-      { id: '2g', routine_id: '2', goal_text: 'Bruciare 300 calorie', target_value: 300, current_value: 0, unit: 'calorie', is_achieved: false }
-    ]
-  };
-
-  // Initialize with sample data
-  useState(() => {
-    setRoutines(sampleRoutines);
-    setRoutineItems(sampleItems);
-    setRoutineGoals(sampleGoals);
-  });
-
-  const createRoutine = () => {
+  const createRoutine = async () => {
     if (!routineName.trim()) {
       toast.error("Il nome della routine è obbligatorio");
       return;
     }
 
-    const newRoutine: Routine = {
-      id: Date.now().toString(),
-      user_id: userId,
-      name: routineName,
-      description: routineDescription || undefined,
-      type: routineType,
-      category: routineCategory,
-      time: routineTime || undefined,
-      days_of_week: routineType === 'weekly' ? selectedDays : undefined,
-      day_of_month: routineType === 'monthly' ? dayOfMonth : undefined,
-      is_active: true,
-      created_at: new Date().toISOString()
-    };
+    try {
+      setLoading(true);
 
-    setRoutines(prev => [newRoutine, ...prev]);
+      // Create routine
+      const { data: routineData, error: routineError } = await supabase
+        .from('routines')
+        .insert({
+          user_id: userId,
+          name: routineName,
+          type: routineType,
+          category: routineCategory,
+          start_time: routineTime || null,
+          days_of_week: routineType === 'weekly' ? selectedDays.map(String) : null,
+          day_of_month: routineType === 'monthly' ? dayOfMonth : null,
+          is_active: true
+        })
+        .select()
+        .single();
 
-    // Add items
-    const items = newItems.filter(item => item.trim()).map((item, index) => ({
-      id: `${newRoutine.id}_item_${index}`,
-      routine_id: newRoutine.id,
-      name: item.trim(),
-      is_completed: false,
-      order_index: index
-    }));
+      if (routineError) throw routineError;
 
-    if (items.length > 0) {
+      // Add items
+      const items = newItems.filter(item => item.trim());
+      if (items.length > 0) {
+        const { error: itemsError } = await supabase
+          .from('routine_items')
+          .insert(
+            items.map((item, index) => ({
+              routine_id: routineData.id,
+              user_id: userId,
+              name: item.trim(),
+              order_index: index,
+              is_completed: false
+            }))
+          );
+
+        if (itemsError) throw itemsError;
+      }
+
+      // Add goals
+      const goals = newGoals.filter(goal => goal.text.trim() && goal.target);
+      if (goals.length > 0) {
+        const { error: goalsError } = await supabase
+          .from('routine_goals')
+          .insert(
+            goals.map(goal => ({
+              routine_id: routineData.id,
+              user_id: userId,
+              category: goal.text.trim(),
+              target_value: goal.target!,
+              unit: goal.unit || '',
+              current_value: 0
+            }))
+          );
+
+        if (goalsError) throw goalsError;
+      }
+
+      resetForm();
+      setIsCreating(false);
+      toast.success("Routine creata con successo!");
+      loadRoutines(); // Reload data
+    } catch (error) {
+      console.error('Error creating routine:', error);
+      toast.error("Errore nella creazione della routine");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const toggleRoutineActive = async (routineId: string, isActive: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('routines')
+        .update({ is_active: !isActive })
+        .eq('id', routineId)
+        .eq('user_id', userId);
+
+      if (error) throw error;
+
+      setRoutines(prev => prev.map(routine => 
+        routine.id === routineId 
+          ? { ...routine, is_active: !isActive }
+          : routine
+      ));
+      toast.success(!isActive ? "Routine attivata" : "Routine messa in pausa");
+    } catch (error) {
+      console.error('Error updating routine:', error);
+      toast.error("Errore nell'aggiornamento della routine");
+    }
+  };
+
+  const toggleItemComplete = async (routineId: string, itemId: string, isCompleted: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('routine_items')
+        .update({ is_completed: !isCompleted })
+        .eq('id', itemId)
+        .eq('user_id', userId);
+
+      if (error) throw error;
+
       setRoutineItems(prev => ({
         ...prev,
-        [newRoutine.id]: items
+        [routineId]: prev[routineId]?.map(item => 
+          item.id === itemId 
+            ? { ...item, is_completed: !isCompleted }
+            : item
+        ) || []
       }));
+    } catch (error) {
+      console.error('Error updating routine item:', error);
+      toast.error("Errore nell'aggiornamento dell'elemento");
     }
-
-    // Add goals
-    const goals = newGoals.filter(goal => goal.text.trim()).map((goal, index) => ({
-      id: `${newRoutine.id}_goal_${index}`,
-      routine_id: newRoutine.id,
-      goal_text: goal.text.trim(),
-      target_value: goal.target,
-      unit: goal.unit,
-      current_value: 0,
-      is_achieved: false
-    }));
-
-    if (goals.length > 0) {
-      setRoutineGoals(prev => ({
-        ...prev,
-        [newRoutine.id]: goals
-      }));
-    }
-
-    resetForm();
-    setIsCreating(false);
-    toast.success("Routine creata con successo!");
-  };
-
-  const toggleRoutineActive = (routineId: string, isActive: boolean) => {
-    setRoutines(prev => prev.map(routine => 
-      routine.id === routineId 
-        ? { ...routine, is_active: !isActive }
-        : routine
-    ));
-    toast.success(!isActive ? "Routine attivata" : "Routine messa in pausa");
-  };
-
-  const toggleItemComplete = (routineId: string, itemId: string, isCompleted: boolean) => {
-    setRoutineItems(prev => ({
-      ...prev,
-      [routineId]: prev[routineId]?.map(item => 
-        item.id === itemId 
-          ? { ...item, is_completed: !isCompleted }
-          : item
-      ) || []
-    }));
   };
 
   const resetForm = () => {
@@ -270,19 +330,19 @@ const RoutineManager: React.FC<RoutineManagerProps> = ({ userId }) => {
     return categories.find(c => c.value === category)?.emoji || '✨';
   };
 
-  const formatTimeDisplay = (time: string) => {
+  const formatTimeDisplay = (time: string | null) => {
     if (!time) return '';
     return time.slice(0, 5); // HH:MM format
   };
 
   const getRoutineSchedule = (routine: Routine) => {
     if (routine.type === 'daily') {
-      return routine.time ? `Ogni giorno alle ${formatTimeDisplay(routine.time)}` : 'Ogni giorno';
+      return routine.start_time ? `Ogni giorno alle ${formatTimeDisplay(routine.start_time)}` : 'Ogni giorno';
     } else if (routine.type === 'weekly') {
-      const days = routine.days_of_week?.map(day => daysOfWeek.find(d => d.value === day)?.label).join(', ') || '';
-      return `${days}${routine.time ? ` alle ${formatTimeDisplay(routine.time)}` : ''}`;
+      const days = routine.days_of_week?.map(day => daysOfWeek.find(d => d.value === parseInt(day))?.label).join(', ') || '';
+      return `${days}${routine.start_time ? ` alle ${formatTimeDisplay(routine.start_time)}` : ''}`;
     } else {
-      return `Il ${routine.day_of_month} di ogni mese${routine.time ? ` alle ${formatTimeDisplay(routine.time)}` : ''}`;
+      return `Il ${routine.day_of_month} di ogni mese${routine.start_time ? ` alle ${formatTimeDisplay(routine.start_time)}` : ''}`;
     }
   };
 
@@ -541,9 +601,6 @@ const RoutineManager: React.FC<RoutineManagerProps> = ({ userId }) => {
                         {routine.is_active ? "Attiva" : "In pausa"}
                       </Badge>
                     </div>
-                    {routine.description && (
-                      <p className="text-muted-foreground mb-2">{routine.description}</p>
-                    )}
                     <div className="flex items-center gap-4 text-sm text-muted-foreground">
                       <div className="flex items-center gap-1">
                         <Clock className="w-4 h-4" />
