@@ -24,6 +24,9 @@ const AppContent = () => {
   const [todayMood, setTodayMood] = useState<any>(null);
   const [archetypeLevels, setArchetypeLevels] = useState<any[]>([]);
   const [refreshTasks, setRefreshTasks] = useState(0);
+  const [showTasks, setShowTasks] = useState(false);
+  const [showMentalInbox, setShowMentalInbox] = useState(false);
+  const [showArchetypeTest, setShowArchetypeTest] = useState(false);
   const { toast } = useToast();
 
   const handleTaskCreated = () => {
@@ -442,7 +445,66 @@ const AppContent = () => {
           </TabsContent>
 
           <TabsContent value="personality" className="mt-6">
-            <ArchetypeTest onTestComplete={handleTestComplete} />
+            {profile?.test_completed && profile?.dominant_archetype ? (
+              <div className="bg-card border rounded-xl p-6 shadow-lg">
+                <div className="text-center mb-6">
+                  <h3 className="text-2xl font-semibold mb-2">Il Tuo Archetipo</h3>
+                  <div className="flex items-center justify-center gap-4 mb-4">
+                    <span className="text-4xl">
+                      {profile.dominant_archetype === 'visionario' && '🔮'}
+                      {profile.dominant_archetype === 'costruttore' && '🔨'}
+                      {profile.dominant_archetype === 'sognatore' && '💭'}
+                      {profile.dominant_archetype === 'silenzioso' && '🤫'}
+                      {profile.dominant_archetype === 'combattente' && '⚔️'}
+                    </span>
+                    <div>
+                      <h4 className="text-xl font-bold">
+                        {profile.dominant_archetype === 'visionario' && 'Il Visionario'}
+                        {profile.dominant_archetype === 'costruttore' && 'Il Costruttore'}
+                        {profile.dominant_archetype === 'sognatore' && 'Il Sognatore'}
+                        {profile.dominant_archetype === 'silenzioso' && "L'Osservatore"}
+                        {profile.dominant_archetype === 'combattente' && 'Il Combattente'}
+                      </h4>
+                      <p className="text-muted-foreground">Livello {profile.current_level}</p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-blue-600">{profile.visionario_percentage}%</div>
+                    <div className="text-sm text-muted-foreground">Visionario</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-green-600">{profile.costruttore_percentage}%</div>
+                    <div className="text-sm text-muted-foreground">Costruttore</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-purple-600">{profile.sognatore_percentage}%</div>
+                    <div className="text-sm text-muted-foreground">Sognatore</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-gray-600">{profile.silenzioso_percentage}%</div>
+                    <div className="text-sm text-muted-foreground">Osservatore</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-red-600">{profile.combattente_percentage}%</div>
+                    <div className="text-sm text-muted-foreground">Combattente</div>
+                  </div>
+                </div>
+
+                <div className="flex gap-4 justify-center">
+                  <Button onClick={() => navigate('/personalita')} className="gap-2">
+                    🔮 Esplora tutti i Tipi <ChevronRight className="w-4 h-4" />
+                  </Button>
+                  <Button onClick={() => setShowArchetypeTest(true)} variant="outline" className="gap-2">
+                    🔄 Rifai il Test
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <ArchetypeTest onTestComplete={handleTestComplete} />
+            )}
           </TabsContent>
 
           <TabsContent value="projects" className="mt-6">
