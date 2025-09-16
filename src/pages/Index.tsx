@@ -32,9 +32,14 @@ const AppContent = () => {
     if (user) {
       loadUserProfile();
       checkTodayMood();
-      loadArchetypeLevels();
     }
   }, [user]);
+
+  useEffect(() => {
+    if (profile?.dominant_archetype) {
+      loadArchetypeLevels();
+    }
+  }, [profile?.dominant_archetype]);
 
   const loadUserProfile = async () => {
     if (!user) return;
@@ -86,11 +91,13 @@ const AppContent = () => {
   };
 
   const loadArchetypeLevels = async () => {
+    if (!profile?.dominant_archetype) return;
+    
     try {
       const { data, error } = await supabase
         .from('archetype_levels')
         .select('*')
-        .eq('archetype', profile?.dominant_archetype)
+        .eq('archetype', profile.dominant_archetype)
         .order('level_number');
 
       if (error) throw error;
@@ -425,15 +432,27 @@ const AppContent = () => {
             <MentalInbox onTaskCreated={handleTaskCreated} />
           </TabsContent>
 
-          <TabsContent value="archetypes" className="mt-6">
+          <TabsContent value="routine" className="mt-6">
             <div className="bg-card border rounded-xl p-6 shadow-lg text-center">
-              <h3 className="text-xl font-semibold mb-4">Esplora il Mondo degli Archetipi</h3>
+              <h3 className="text-xl font-semibold mb-4">Gestisci le tue Routine</h3>
               <p className="text-muted-foreground mb-6">
-                Scopri tutti gli archetipi, i loro livelli e le trasformazioni che accompagnano il viaggio interiore.
+                Crea e organizza le tue abitudini quotidiane, settimanali e mensili per raggiungere i tuoi obiettivi.
               </p>
-              <div className="flex gap-4 justify-center">
-                <Button onClick={() => navigate('/archetipi')} size="lg" className="gap-2">
-                  🔮 Archetipi <ChevronRight className="w-4 h-4" />
+              <Button onClick={() => navigate('/routine')} size="lg" className="gap-2">
+                ⏰ Vai alle Routine <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="personality" className="mt-6">
+            <div className="bg-card border rounded-xl p-6 shadow-lg text-center">
+              <h3 className="text-xl font-semibold mb-4">Esplora i Tipi di Personalità</h3>
+              <p className="text-muted-foreground mb-6">
+                Scopri tutti i tipi di personalità, i loro livelli e le trasformazioni che accompagnano il viaggio interiore.
+              </p>
+              <div className="flex gap-4 justify-center flex-wrap">
+                <Button onClick={() => navigate('/personalita')} size="lg" className="gap-2">
+                  🔮 Tipi di Personalità <ChevronRight className="w-4 h-4" />
                 </Button>
                 <Button onClick={() => navigate('/progetti')} size="lg" className="gap-2" variant="outline">
                   💡 Progetti <ChevronRight className="w-4 h-4" />
