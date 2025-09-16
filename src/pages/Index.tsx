@@ -5,6 +5,8 @@ import { ArchetypeTest } from '@/components/ArchetypeTest';
 import { DailyMoodSelector } from '@/components/DailyMoodSelector';
 import { TaskManager } from '@/components/TaskManager';
 import MentalInbox from '@/components/MentalInbox';
+import RoutineManager from '@/components/RoutineManager';
+import ProjectManager from '@/components/ProjectManager';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Toaster } from '@/components/ui/toaster';
@@ -217,7 +219,7 @@ const AppContent = () => {
         </div>
 
         <Tabs defaultValue="dashboard" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 md:grid-cols-7 gap-1 h-auto p-1">
+          <TabsList className="grid w-full grid-cols-3 md:grid-cols-8 gap-1 h-auto p-1">
             <TabsTrigger value="dashboard" className="text-xs px-2 py-2 md:text-sm">
               <span className="hidden sm:inline">🏠 </span>Casa
             </TabsTrigger>
@@ -238,6 +240,9 @@ const AppContent = () => {
             </TabsTrigger>
             <TabsTrigger value="personality" className="text-xs px-2 py-2 md:text-sm">
               <span className="hidden sm:inline">🔮 </span>Personalità
+            </TabsTrigger>
+            <TabsTrigger value="projects" className="text-xs px-2 py-2 md:text-sm">
+              <span className="hidden sm:inline">💡 </span>Progetti
             </TabsTrigger>
           </TabsList>
 
@@ -433,32 +438,15 @@ const AppContent = () => {
           </TabsContent>
 
           <TabsContent value="routine" className="mt-6">
-            <div className="bg-card border rounded-xl p-6 shadow-lg text-center">
-              <h3 className="text-xl font-semibold mb-4">Gestisci le tue Routine</h3>
-              <p className="text-muted-foreground mb-6">
-                Crea e organizza le tue abitudini quotidiane, settimanali e mensili per raggiungere i tuoi obiettivi.
-              </p>
-              <Button onClick={() => navigate('/routine')} size="lg" className="gap-2">
-                ⏰ Vai alle Routine <ChevronRight className="w-4 h-4" />
-              </Button>
-            </div>
+            <RoutineManager userId={user.id} />
           </TabsContent>
 
           <TabsContent value="personality" className="mt-6">
-            <div className="bg-card border rounded-xl p-6 shadow-lg text-center">
-              <h3 className="text-xl font-semibold mb-4">Esplora i Tipi di Personalità</h3>
-              <p className="text-muted-foreground mb-6">
-                Scopri tutti i tipi di personalità, i loro livelli e le trasformazioni che accompagnano il viaggio interiore.
-              </p>
-              <div className="flex gap-4 justify-center flex-wrap">
-                <Button onClick={() => navigate('/personalita')} size="lg" className="gap-2">
-                  🔮 Tipi di Personalità <ChevronRight className="w-4 h-4" />
-                </Button>
-                <Button onClick={() => navigate('/progetti')} size="lg" className="gap-2" variant="outline">
-                  💡 Progetti <ChevronRight className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
+            <ArchetypeTest onTestComplete={handleTestComplete} />
+          </TabsContent>
+
+          <TabsContent value="projects" className="mt-6">
+            <ProjectManager userId={user.id} />
           </TabsContent>
         </Tabs>
       </div>
