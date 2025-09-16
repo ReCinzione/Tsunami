@@ -51,16 +51,18 @@ export const ArchetypeTest = ({ onTestComplete }: ArchetypeTestProps) => {
 
       const { data: answersData, error: answersError } = await supabase
         .from('test_answers')
-        .select('*');
+        .select('*')
+        .not('archetype', 'is', null);
 
       if (answersError) throw answersError;
 
       setQuestions(questionsData || []);
       setAnswers(answersData || []);
     } catch (error: any) {
+      console.error('Error loading test data:', error);
       toast({
         title: "Errore",
-        description: "Impossibile caricare il test",
+        description: error.message || "Impossibile caricare il test",
         variant: "destructive"
       });
     } finally {

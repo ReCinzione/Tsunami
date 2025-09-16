@@ -34,12 +34,15 @@ const ArchetypesPage = () => {
       const { data, error } = await supabase
         .from('archetype_levels')
         .select('*')
+        .not('archetype', 'is', null)
         .order('archetype, level_number');
 
       if (error) throw error;
       setArchetypeLevels(data || []);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error loading archetype levels:', error);
+      // Mostra un messaggio di errore più utile
+      console.log('Detailed error:', error.message);
     }
   };
 
