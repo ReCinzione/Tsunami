@@ -449,15 +449,8 @@ const AppContent = () => {
               <div className="bg-card border rounded-xl p-6 shadow-lg">
                 <div className="text-center mb-6">
                   <h3 className="text-2xl font-semibold mb-2">Il Tuo Archetipo</h3>
-                  <div className="flex items-center justify-center gap-4 mb-4">
-                    <span className="text-4xl">
-                      {profile.dominant_archetype === 'visionario' && '🔮'}
-                      {profile.dominant_archetype === 'costruttore' && '🔨'}
-                      {profile.dominant_archetype === 'sognatore' && '💭'}
-                      {profile.dominant_archetype === 'silenzioso' && '🤫'}
-                      {profile.dominant_archetype === 'combattente' && '⚔️'}
-                    </span>
-                    <div>
+                <div className="flex items-center justify-center gap-4 mb-4">
+                  <div>
                       <h4 className="text-xl font-bold">
                         {profile.dominant_archetype === 'visionario' && 'Il Visionario'}
                         {profile.dominant_archetype === 'costruttore' && 'Il Costruttore'}
