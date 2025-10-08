@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ArrowLeft, User, Trophy, Star, Zap, Target, Calendar, Award, Sparkles } from 'lucide-react';
+import { ArrowLeft, User, Trophy, Star, Zap, Target, Calendar, Award, Sparkles, TrendingUp, Crown, CheckCircle, Lock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
