@@ -255,13 +255,19 @@ const CharacterSheet = () => {
     );
   }
 
-  const currentLevel = profile.current_level || 1;
   const totalXP = profile.total_xp || 0;
+  const calculatedLevel = calculateLevelFromXP(totalXP);
+  const currentLevel = calculatedLevel; // Usa il livello calcolato dall'XP
   const xpForCurrentLevel = currentLevel > 1 ? getXPForNextLevel(currentLevel - 1) : 0;
   const xpForNextLevel = getXPForNextLevel(currentLevel);
   const xpProgress = totalXP - xpForCurrentLevel;
   const xpNeeded = xpForNextLevel - xpForCurrentLevel;
   const progressPercentage = Math.min((xpProgress / xpNeeded) * 100, 100);
+  
+  // Trova il livello attuale dell'archetipo dominante
+  const currentArchetypeLevel = archetypeLevels.find(
+    level => level.archetype === profile.dominant_archetype && level.level_number === currentLevel
+  );
 
   return (
     <div className="min-h-screen bg-background">
@@ -305,6 +311,36 @@ const CharacterSheet = () => {
                     {getArchetypeDescription(profile.dominant_archetype)}
                   </p>
                 </div>
+                
+                {/* Current Level Details */}
+                {currentArchetypeLevel && (
+                  <div className="bg-primary/5 border border-primary/20 rounded-lg p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-semibold text-primary flex items-center gap-2">
+                        <Sparkles className="w-4 h-4" />
+                        {currentArchetypeLevel.level_name}
+                      </h4>
+                      <Badge variant="default">Livello {currentLevel}</Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {currentArchetypeLevel.description}
+                    </p>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs">
+                      <div className="bg-green-50 border border-green-200 p-2 rounded">
+                        <div className="font-medium text-green-700">✨ Qualità Emergente</div>
+                        <div className="text-green-600">{currentArchetypeLevel.emerging_quality}</div>
+                      </div>
+                      <div className="bg-orange-50 border border-orange-200 p-2 rounded">
+                        <div className="font-medium text-orange-700">⚠️ Aspetto Ombra</div>
+                        <div className="text-orange-600">{currentArchetypeLevel.shadow_aspect}</div>
+                      </div>
+                      <div className="bg-purple-50 border border-purple-200 p-2 rounded">
+                        <div className="font-medium text-purple-700">🎭 Oggetto Immaginale</div>
+                        <div className="text-purple-600">{currentArchetypeLevel.imaginal_object_name}</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
                 
                 {/* XP Progress */}
                 <div className="space-y-2">
@@ -404,35 +440,131 @@ const CharacterSheet = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {[
-                    { name: 'Visionario', value: profile.visionario_percentage, emoji: '🔮', key: 'visionario' },
-                    { name: 'Costruttore', value: profile.costruttore_percentage, emoji: '🔨', key: 'costruttore' },
-                    { name: 'Sognatore', value: profile.sognatore_percentage, emoji: '💭', key: 'sognatore' },
-                    { name: 'Silenzioso', value: profile.silenzioso_percentage, emoji: '🤫', key: 'silenzioso' },
-                    { name: 'Combattente', value: profile.combattente_percentage, emoji: '⚔️', key: 'combattente' }
-                  ].map((archetype) => {
-                    const isDominant = profile.dominant_archetype === archetype.key;
-                    return (
-                      <div 
-                        key={archetype.name} 
-                        className={`p-4 rounded-lg border text-center space-y-2 ${
-                          isDominant ? 'bg-primary/10 border-primary/30' : 'bg-muted/30'
-                        }`}
-                      >
-                        <div className="text-3xl">{archetype.emoji}</div>
-                        <div className="font-semibold">{archetype.name}</div>
-                        <div className="text-2xl font-bold text-primary">{archetype.value}%</div>
-                        {isDominant && (
-                          <Badge variant="default" className="text-xs">
-                            <Star className="w-3 h-3 mr-1" />
-                            Dominante
-                          </Badge>
-                        )}
-                        <Progress value={archetype.value || 0} className="h-2" />
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {[
+                      { 
+                        name: 'Visionario', 
+                        value: profile.visionario_percentage, 
+                        emoji: '🔮', 
+                        key: 'visionario',
+                        influence: 'Aumenta la creatività e la capacità di vedere opportunità future. Migliora la pianificazione a lungo termine.',
+                        traits: ['Immaginazione', 'Intuizione', 'Visione strategica']
+                      },
+                      { 
+                        name: 'Costruttore', 
+                        value: profile.costruttore_percentage, 
+                        emoji: '🔨', 
+                        key: 'costruttore',
+                        influence: 'Potenzia l\'organizzazione e l\'efficienza nell\'esecuzione. Migliora la gestione dei task pratici.',
+                        traits: ['Organizzazione', 'Pragmatismo', 'Risultati concreti']
+                      },
+                      { 
+                        name: 'Sognatore', 
+                        value: profile.sognatore_percentage, 
+                        emoji: '💭', 
+                        key: 'sognatore',
+                        influence: 'Stimola la creatività artistica e l\'empatia. Favorisce l\'ispirazione e l\'innovazione.',
+                        traits: ['Creatività', 'Sensibilità', 'Immaginazione']
+                      },
+                      { 
+                        name: 'Silenzioso', 
+                        value: profile.silenzioso_percentage, 
+                        emoji: '🤫', 
+                        key: 'silenzioso',
+                        influence: 'Migliora la riflessione profonda e l\'attenzione ai dettagli. Favorisce l\'ascolto attivo.',
+                        traits: ['Riflessione', 'Osservazione', 'Profondità']
+                      },
+                      { 
+                        name: 'Combattente', 
+                        value: profile.combattente_percentage, 
+                        emoji: '⚔️', 
+                        key: 'combattente',
+                        influence: 'Aumenta la determinazione e la resistenza alle difficoltà. Potenzia la leadership.',
+                        traits: ['Determinazione', 'Coraggio', 'Leadership']
+                      }
+                    ].map((archetype) => {
+                      const isDominant = profile.dominant_archetype === archetype.key;
+                      const percentage = archetype.value || 0;
+                      
+                      return (
+                        <div 
+                          key={archetype.name} 
+                          className={`p-4 rounded-lg border space-y-3 ${
+                            isDominant ? 'bg-primary/10 border-primary/30 ring-2 ring-primary/20' : 'bg-muted/30'
+                          }`}
+                        >
+                          <div className="text-center space-y-2">
+                            <div className="text-3xl">{archetype.emoji}</div>
+                            <div className="font-semibold">{archetype.name}</div>
+                            <div className="text-2xl font-bold text-primary">{percentage}%</div>
+                            {isDominant && (
+                              <Badge variant="default" className="text-xs">
+                                <Star className="w-3 h-3 mr-1" />
+                                Dominante
+                              </Badge>
+                            )}
+                            <Progress value={percentage} className="h-2" />
+                          </div>
+                          
+                          {percentage > 0 && (
+                            <div className="space-y-2 text-left">
+                              <div className="text-xs text-muted-foreground">
+                                <strong>Influenza:</strong> {archetype.influence}
+                              </div>
+                              <div className="flex flex-wrap gap-1">
+                                {archetype.traits.map((trait) => (
+                                  <Badge key={trait} variant="outline" className="text-xs">
+                                    {trait}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  
+                  {/* Archetype Synergy */}
+                  <Card className="bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <Zap className="w-5 h-5" />
+                        Sinergia degli Archetipi
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm text-muted-foreground mb-3">
+                        La combinazione dei tuoi archetipi crea un profilo unico che influenza il tuo approccio ai task e alle sfide:
+                      </p>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                        <div className="bg-white/50 p-3 rounded border">
+                          <div className="font-medium text-green-700 mb-1">🎯 Punti di Forza</div>
+                          <ul className="text-xs space-y-1 text-muted-foreground">
+                            {profile.dominant_archetype === 'visionario' && <li>• Eccellente nella pianificazione strategica</li>}
+                            {profile.dominant_archetype === 'costruttore' && <li>• Ottima esecuzione e organizzazione</li>}
+                            {profile.dominant_archetype === 'sognatore' && <li>• Grande creatività e innovazione</li>}
+                            {profile.dominant_archetype === 'silenzioso' && <li>• Profonda riflessione e analisi</li>}
+                            {profile.dominant_archetype === 'combattente' && <li>• Forte determinazione e leadership</li>}
+                            <li>• Approccio bilanciato grazie agli archetipi secondari</li>
+                            <li>• Flessibilità nell'adattarsi a diverse situazioni</li>
+                          </ul>
+                        </div>
+                        <div className="bg-white/50 p-3 rounded border">
+                          <div className="font-medium text-orange-700 mb-1">⚡ Aree di Crescita</div>
+                          <ul className="text-xs space-y-1 text-muted-foreground">
+                            {(profile.costruttore_percentage || 0) < 20 && <li>• Sviluppare maggiore organizzazione</li>}
+                            {(profile.visionario_percentage || 0) < 20 && <li>• Migliorare la visione a lungo termine</li>}
+                            {(profile.sognatore_percentage || 0) < 20 && <li>• Coltivare la creatività</li>}
+                            {(profile.silenzioso_percentage || 0) < 20 && <li>• Praticare la riflessione profonda</li>}
+                            {(profile.combattente_percentage || 0) < 20 && <li>• Aumentare la determinazione</li>}
+                            <li>• Bilanciare gli aspetti ombra degli archetipi dominanti</li>
+                          </ul>
+                        </div>
                       </div>
-                    );
-                  })}
+                    </CardContent>
+                  </Card>
                 </div>
               </CardContent>
             </Card>
@@ -451,63 +583,150 @@ const CharacterSheet = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {archetypeLevels
-                    .filter(level => level.archetype === profile.dominant_archetype)
-                    .slice(0, Math.min(currentLevel + 2, 10))
-                    .map((level) => {
-                      const isUnlocked = level.level_number <= currentLevel;
-                      const isCurrent = level.level_number === currentLevel;
-                      const isNext = level.level_number === currentLevel + 1;
-                      
-                      return (
-                        <div 
-                          key={level.id}
-                          className={`border rounded-lg p-4 ${
-                            isCurrent ? 'bg-primary/10 border-primary/30 ring-2 ring-primary/20' :
-                            isUnlocked ? 'bg-green-50 border-green-200' :
-                            isNext ? 'bg-yellow-50 border-yellow-200' :
-                            'bg-muted/30 border-muted opacity-60'
-                          }`}
-                        >
-                          <div className="flex items-start justify-between mb-3">
-                            <div className="flex items-center gap-3">
-                              <Badge 
-                                variant={isUnlocked ? "default" : "secondary"}
-                                className={isCurrent ? 'bg-primary' : ''}
-                              >
-                                Livello {level.level_number}
-                                {isCurrent && <Sparkles className="w-3 h-3 ml-1" />}
-                              </Badge>
-                              <h5 className="font-semibold">{level.level_name}</h5>
-                            </div>
-                            <span className="text-sm text-muted-foreground">
-                              {level.xp_required} XP
-                            </span>
-                          </div>
-                          
-                          <p className="text-sm text-muted-foreground mb-3">
-                            {level.description}
-                          </p>
-                          
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
-                            <div className="bg-background/50 p-2 rounded">
-                              <div className="font-medium text-green-600">Qualità Emergente</div>
-                              <div>{level.emerging_quality}</div>
-                            </div>
-                            <div className="bg-background/50 p-2 rounded">
-                              <div className="font-medium text-orange-600">Aspetto Ombra</div>
-                              <div>{level.shadow_aspect}</div>
-                            </div>
-                            <div className="bg-background/50 p-2 rounded">
-                              <div className="font-medium text-purple-600">Oggetto Immaginale</div>
-                              <div>{level.imaginal_object_name}</div>
-                            </div>
-                          </div>
+                <div className="space-y-6">
+                  {/* Current Level Highlight */}
+                  {currentArchetypeLevel && (
+                    <div className="bg-gradient-to-r from-primary/10 to-primary/5 p-6 rounded-lg border-2 border-primary/30">
+                      <div className="flex items-center gap-4 mb-4">
+                        <div className="w-12 h-12 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-lg font-bold">
+                          {currentLevel}
                         </div>
-                      );
-                    })
-                  }
+                        <div>
+                          <h3 className="text-xl font-bold">{currentArchetypeLevel.level_name}</h3>
+                          <p className="text-sm text-muted-foreground">Livello Attuale - {currentArchetypeLevel.xp_required} XP</p>
+                          <p className="text-sm mt-1">{currentArchetypeLevel.description}</p>
+                        </div>
+                        <Badge variant="default" className="ml-auto">
+                          <Crown className="w-4 h-4 mr-1" />
+                          Attuale
+                        </Badge>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                        <div className="bg-white/50 p-3 rounded border">
+                          <div className="font-medium text-green-700 mb-1">🌟 Qualità Emergente</div>
+                          <p className="text-muted-foreground">{currentArchetypeLevel.emerging_quality}</p>
+                        </div>
+                        <div className="bg-white/50 p-3 rounded border">
+                          <div className="font-medium text-red-700 mb-1">🌑 Aspetto Ombra</div>
+                          <p className="text-muted-foreground">{currentArchetypeLevel.shadow_aspect}</p>
+                        </div>
+                        <div className="bg-white/50 p-3 rounded border">
+                          <div className="font-medium text-purple-700 mb-1">🔮 Oggetto Immaginale</div>
+                          <p className="text-muted-foreground">{currentArchetypeLevel.imaginal_object_name}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Complete Level Progression */}
+                  <div>
+                    <h4 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                      <TrendingUp className="w-5 h-5" />
+                      Progressione Completa - {getArchetypeEmoji(profile.dominant_archetype)} {getArchetypeDescription(profile.dominant_archetype)}
+                    </h4>
+                    <div className="space-y-3">
+                      {archetypeLevels
+                        .filter(level => level.archetype === profile.dominant_archetype)
+                        .sort((a, b) => a.level_number - b.level_number)
+                        .map((level) => {
+                          const isUnlocked = level.level_number <= currentLevel;
+                          const isCurrent = level.level_number === currentLevel;
+                          const isNext = level.level_number === currentLevel + 1;
+                          
+                          return (
+                            <div 
+                              key={level.id}
+                              className={`p-4 rounded-lg border space-y-3 transition-all ${
+                                isCurrent 
+                                  ? 'bg-primary/5 border-primary/50 shadow-md' 
+                                  : isUnlocked 
+                                    ? 'bg-green-50 border-green-200' 
+                                    : isNext
+                                      ? 'bg-blue-50 border-blue-200'
+                                      : 'bg-muted/30 border-muted opacity-75'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                  <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold ${
+                                    isCurrent 
+                                      ? 'bg-primary text-primary-foreground ring-2 ring-primary/30' 
+                                      : isUnlocked 
+                                        ? 'bg-green-500 text-white' 
+                                        : isNext
+                                          ? 'bg-blue-500 text-white'
+                                          : 'bg-muted text-muted-foreground'
+                                  }`}>
+                                    {isUnlocked ? (
+                                      <CheckCircle className="w-5 h-5" />
+                                    ) : isNext ? (
+                                      <Target className="w-5 h-5" />
+                                    ) : (
+                                      <Lock className="w-5 h-5" />
+                                    )}
+                                  </div>
+                                  <div>
+                                    <div className="font-semibold flex items-center gap-2">
+                                      Livello {level.level_number}: {level.level_name}
+                                      {isCurrent && <Badge variant="default" className="text-xs"><Sparkles className="w-3 h-3 mr-1" />Attuale</Badge>}
+                                      {isNext && <Badge variant="outline" className="text-xs">Prossimo</Badge>}
+                                    </div>
+                                    <div className="text-sm text-muted-foreground">
+                                      {level.xp_required} XP richiesti
+                                      {isNext && totalXP > 0 && (
+                                        <span className="ml-2 text-blue-600">
+                                          (mancano {level.xp_required - totalXP} XP)
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  {isUnlocked && (
+                                    <div className="text-green-600 text-sm font-medium">✓ Sbloccato</div>
+                                  )}
+                                  {!isUnlocked && !isNext && (
+                                    <div className="text-muted-foreground text-sm">🔒 Bloccato</div>
+                                  )}
+                                </div>
+                              </div>
+                              
+                              <div className="text-sm text-muted-foreground mb-3">
+                                {level.description}
+                              </div>
+                              
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+                                <div className={`p-2 rounded border ${
+                                  isUnlocked ? 'bg-green-50 border-green-200' : 'bg-muted/50'
+                                }`}>
+                                  <div className="font-medium text-green-700 mb-1">🌟 Qualità Emergente</div>
+                                  <p className={isUnlocked ? 'text-foreground' : 'text-muted-foreground'}>
+                                    {level.emerging_quality}
+                                  </p>
+                                </div>
+                                <div className={`p-2 rounded border ${
+                                  isUnlocked ? 'bg-red-50 border-red-200' : 'bg-muted/50'
+                                }`}>
+                                  <div className="font-medium text-red-700 mb-1">🌑 Aspetto Ombra</div>
+                                  <p className={isUnlocked ? 'text-foreground' : 'text-muted-foreground'}>
+                                    {level.shadow_aspect}
+                                  </p>
+                                </div>
+                                <div className={`p-2 rounded border ${
+                                  isUnlocked ? 'bg-purple-50 border-purple-200' : 'bg-muted/50'
+                                }`}>
+                                  <div className="font-medium text-purple-700 mb-1">🔮 Oggetto Immaginale</div>
+                                  <p className={isUnlocked ? 'text-foreground' : 'text-muted-foreground'}>
+                                    {level.imaginal_object_name}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })
+                      }
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>
