@@ -162,6 +162,8 @@ export type Database = {
           dominant_archetype:
             | Database["public"]["Enums"]["archetype_type"]
             | null
+          google_calendar_access_token: string | null
+          google_calendar_refresh_token: string | null
           id: string
           silenzioso_percentage: number | null
           sognatore_percentage: number | null
@@ -181,6 +183,8 @@ export type Database = {
           dominant_archetype?:
             | Database["public"]["Enums"]["archetype_type"]
             | null
+          google_calendar_access_token?: string | null
+          google_calendar_refresh_token?: string | null
           id?: string
           silenzioso_percentage?: number | null
           sognatore_percentage?: number | null
@@ -200,6 +204,8 @@ export type Database = {
           dominant_archetype?:
             | Database["public"]["Enums"]["archetype_type"]
             | null
+          google_calendar_access_token?: string | null
+          google_calendar_refresh_token?: string | null
           id?: string
           silenzioso_percentage?: number | null
           sognatore_percentage?: number | null

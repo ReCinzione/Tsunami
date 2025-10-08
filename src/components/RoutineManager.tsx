@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { usePatternMining } from '@/hooks/usePatternMining';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,6 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Textarea } from '@/components/ui/textarea';
 import { Plus, Clock, Target, Check, X, Edit, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { SmartSuggestionsPanel } from '@/components/SmartSuggestionsPanel';
 
 interface Routine {
   id: string;
@@ -77,8 +79,18 @@ const RoutineManager: React.FC<RoutineManagerProps> = ({ userId }) => {
   const [routineItems, setRoutineItems] = useState<{ [key: string]: RoutineItem[] }>({});
   const [routineGoals, setRoutineGoals] = useState<{ [key: string]: RoutineGoal[] }>({});
   const [loading, setLoading] = useState(false);
+  
+  // Pattern Mining Integration
+  const {
+    suggestions,
+    applySuggestion,
+    dismissSuggestion,
+    logRoutineActivation,
+    isProcessing
+  } = usePatternMining(userId);
   const [isCreating, setIsCreating] = useState(false);
   const [editingRoutine, setEditingRoutine] = useState<Routine | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
 
   // Form states
   const [routineName, setRoutineName] = useState('');
@@ -90,6 +102,7 @@ const RoutineManager: React.FC<RoutineManagerProps> = ({ userId }) => {
   const [dayOfMonth, setDayOfMonth] = useState(1);
   const [newItems, setNewItems] = useState<string[]>(['']);
   const [newGoals, setNewGoals] = useState<{ text: string; target?: number; unit?: string }[]>([{ text: '', target: undefined, unit: '' }]);
+  const [showSpecificDays, setShowSpecificDays] = useState(false);
 
 
 
@@ -170,6 +183,11 @@ const RoutineManager: React.FC<RoutineManagerProps> = ({ userId }) => {
       return;
     }
 
+    if (routineType === 'weekly' && selectedDays.length === 0) {
+      toast.error("Seleziona almeno un giorno per le routine settimanali");
+      return;
+    }
+
     try {
       setLoading(true);
 
@@ -182,7 +200,7 @@ const RoutineManager: React.FC<RoutineManagerProps> = ({ userId }) => {
           type: routineType,
           category: routineCategory,
           start_time: routineTime || null,
-          days_of_week: routineType === 'weekly' ? selectedDays.map(String) : null,
+          days_of_week: (routineType === 'weekly' || showSpecificDays) ? selectedDays.map(String) : null,
           day_of_month: routineType === 'monthly' ? dayOfMonth : null,
           is_active: true
         })
@@ -228,6 +246,20 @@ const RoutineManager: React.FC<RoutineManagerProps> = ({ userId }) => {
         if (goalsError) throw goalsError;
       }
 
+      // Log routine creation event
+      logRoutineActivation({
+        routineId: routineData.id,
+        routineName: routineData.name,
+        routineType: routineData.type,
+        category: routineData.category,
+        action: 'created',
+        metadata: {
+          itemsCount: items.length,
+          goalsCount: goals.length,
+          hasSchedule: !!(routineData.start_time || routineData.days_of_week)
+        }
+      });
+      
       resetForm();
       setIsCreating(false);
       toast.success("Routine creata con successo!");
@@ -250,11 +282,27 @@ const RoutineManager: React.FC<RoutineManagerProps> = ({ userId }) => {
 
       if (error) throw error;
 
+      const routine = routines.find(r => r.id === routineId);
       setRoutines(prev => prev.map(routine => 
         routine.id === routineId 
           ? { ...routine, is_active: !isActive }
           : routine
       ));
+      
+      // Log routine activation/deactivation event
+      if (routine) {
+        logRoutineActivation({
+          routineId: routineId,
+          routineName: routine.name,
+          routineType: routine.type,
+          category: routine.category,
+          action: !isActive ? 'activated' : 'deactivated',
+          metadata: {
+            previousState: isActive ? 'active' : 'inactive'
+          }
+        });
+      }
+      
       toast.success(!isActive ? "Routine attivata" : "Routine messa in pausa");
     } catch (error) {
       console.error('Error updating routine:', error);
@@ -296,6 +344,164 @@ const RoutineManager: React.FC<RoutineManagerProps> = ({ userId }) => {
     setDayOfMonth(1);
     setNewItems(['']);
     setNewGoals([{ text: '', target: undefined, unit: '' }]);
+    setShowSpecificDays(false);
+    setEditingRoutine(null);
+    setIsEditing(false);
+  };
+
+  const startEditRoutine = (routine: Routine) => {
+    setEditingRoutine(routine);
+    setIsEditing(true);
+    setRoutineName(routine.name);
+    setRoutineType(routine.type);
+    setRoutineCategory(routine.category);
+    setRoutineTime(routine.start_time || '');
+    setSelectedDays(routine.days_of_week ? routine.days_of_week.map(d => parseInt(d)) : []);
+    setDayOfMonth(routine.day_of_month || 1);
+    setShowSpecificDays(routine.type === 'weekly' || (routine.days_of_week && routine.days_of_week.length > 0));
+    
+    // Load existing items
+    const items = routineItems[routine.id] || [];
+    setNewItems(items.length > 0 ? items.map(item => item.name) : ['']);
+    
+    // Load existing goals
+    const goals = routineGoals[routine.id] || [];
+    setNewGoals(goals.length > 0 ? goals.map(goal => ({
+      text: goal.goal_text.split(': ')[0] || goal.goal_text,
+      target: goal.target_value,
+      unit: goal.unit
+    })) : [{ text: '', target: undefined, unit: '' }]);
+  };
+
+  const updateRoutine = async () => {
+    if (!routineName.trim() || !editingRoutine) {
+      toast.error("Il nome della routine è obbligatorio");
+      return;
+    }
+
+    if (routineType === 'weekly' && selectedDays.length === 0) {
+      toast.error("Seleziona almeno un giorno per le routine settimanali");
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      // Update routine
+      const { error: routineError } = await supabase
+        .from('routines')
+        .update({
+          name: routineName,
+          type: routineType,
+          category: routineCategory,
+          start_time: routineTime || null,
+          days_of_week: (routineType === 'weekly' || showSpecificDays) ? selectedDays.map(String) : null,
+          day_of_month: routineType === 'monthly' ? dayOfMonth : null,
+        })
+        .eq('id', editingRoutine.id)
+        .eq('user_id', userId);
+
+      if (routineError) throw routineError;
+
+      // Delete existing items and goals
+      await supabase
+        .from('routine_items')
+        .delete()
+        .eq('routine_id', editingRoutine.id)
+        .eq('user_id', userId);
+
+      await supabase
+        .from('routine_goals')
+        .delete()
+        .eq('routine_id', editingRoutine.id)
+        .eq('user_id', userId);
+
+      // Add updated items
+      const items = newItems.filter(item => item.trim());
+      if (items.length > 0) {
+        const { error: itemsError } = await supabase
+          .from('routine_items')
+          .insert(
+            items.map((item, index) => ({
+              routine_id: editingRoutine.id,
+              user_id: userId,
+              name: item.trim(),
+              order_index: index,
+              is_completed: false
+            }))
+          );
+
+        if (itemsError) throw itemsError;
+      }
+
+      // Add updated goals
+      const goals = newGoals.filter(goal => goal.text.trim() && goal.target);
+      if (goals.length > 0) {
+        const { error: goalsError } = await supabase
+          .from('routine_goals')
+          .insert(
+            goals.map(goal => ({
+              routine_id: editingRoutine.id,
+              user_id: userId,
+              category: goal.text.trim(),
+              target_value: goal.target!,
+              unit: goal.unit || '',
+              current_value: 0
+            }))
+          );
+
+        if (goalsError) throw goalsError;
+      }
+
+      resetForm();
+      toast.success("Routine aggiornata con successo!");
+      loadRoutines(); // Reload data
+    } catch (error) {
+      console.error('Error updating routine:', error);
+      toast.error("Errore nell'aggiornamento della routine");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const deleteRoutine = async (routineId: string) => {
+    if (!confirm('Sei sicuro di voler eliminare questa routine? Questa azione non può essere annullata.')) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      // Delete routine items and goals first (cascade should handle this, but being explicit)
+      await supabase
+        .from('routine_items')
+        .delete()
+        .eq('routine_id', routineId)
+        .eq('user_id', userId);
+
+      await supabase
+        .from('routine_goals')
+        .delete()
+        .eq('routine_id', routineId)
+        .eq('user_id', userId);
+
+      // Delete routine
+      const { error } = await supabase
+        .from('routines')
+        .delete()
+        .eq('id', routineId)
+        .eq('user_id', userId);
+
+      if (error) throw error;
+
+      toast.success("Routine eliminata con successo!");
+      loadRoutines(); // Reload data
+    } catch (error) {
+      console.error('Error deleting routine:', error);
+      toast.error("Errore nell'eliminazione della routine");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const addNewItem = () => {
@@ -337,6 +543,10 @@ const RoutineManager: React.FC<RoutineManagerProps> = ({ userId }) => {
 
   const getRoutineSchedule = (routine: Routine) => {
     if (routine.type === 'daily') {
+      if (routine.days_of_week && routine.days_of_week.length > 0) {
+        const days = routine.days_of_week.map(day => daysOfWeek.find(d => d.value === parseInt(day))?.label).join(', ');
+        return `${days}${routine.start_time ? ` alle ${formatTimeDisplay(routine.start_time)}` : ''}`;
+      }
       return routine.start_time ? `Ogni giorno alle ${formatTimeDisplay(routine.start_time)}` : 'Ogni giorno';
     } else if (routine.type === 'weekly') {
       const days = routine.days_of_week?.map(day => daysOfWeek.find(d => d.value === parseInt(day))?.label).join(', ') || '';
@@ -362,18 +572,24 @@ const RoutineManager: React.FC<RoutineManagerProps> = ({ userId }) => {
           <h2 className="text-2xl font-bold">Le tue Routine</h2>
           <p className="text-muted-foreground">Organizza le tue abitudini quotidiane, settimanali e mensili</p>
         </div>
-        <Dialog open={isCreating} onOpenChange={setIsCreating}>
+        <Dialog open={isCreating || isEditing} onOpenChange={(open) => {
+          if (!open) {
+            resetForm();
+          }
+          setIsCreating(open && !isEditing);
+          setIsEditing(open && isEditing);
+        }}>
           <DialogTrigger asChild>
-            <Button className="gap-2">
+            <Button className="gap-2" onClick={() => setIsCreating(true)}>
               <Plus className="w-4 h-4" />
               Nuova Routine
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Crea una nuova routine</DialogTitle>
+              <DialogTitle>{isEditing ? 'Modifica routine' : 'Crea una nuova routine'}</DialogTitle>
               <DialogDescription>
-                Imposta una routine personalizzata con orari e obiettivi specifici
+                {isEditing ? 'Modifica la tua routine esistente' : 'Imposta una routine personalizzata con orari e obiettivi specifici'}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-6">
@@ -444,28 +660,6 @@ const RoutineManager: React.FC<RoutineManagerProps> = ({ userId }) => {
                       onChange={(e) => setRoutineTime(e.target.value)}
                     />
                   </div>
-                  {routineType === 'weekly' && (
-                    <div>
-                      <Label>Giorni della settimana</Label>
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        {daysOfWeek.map(day => (
-                          <label key={day.value} className="flex items-center space-x-2 cursor-pointer">
-                            <Checkbox
-                              checked={selectedDays.includes(day.value)}
-                              onCheckedChange={(checked) => {
-                                if (checked) {
-                                  setSelectedDays([...selectedDays, day.value]);
-                                } else {
-                                  setSelectedDays(selectedDays.filter(d => d !== day.value));
-                                }
-                              }}
-                            />
-                            <span className="text-sm">{day.label}</span>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                  )}
                   {routineType === 'monthly' && (
                     <div>
                       <Label htmlFor="day-of-month">Giorno del mese</Label>
@@ -480,6 +674,55 @@ const RoutineManager: React.FC<RoutineManagerProps> = ({ userId }) => {
                     </div>
                   )}
                 </div>
+                
+                {/* Specific Days Selection */}
+                {(routineType === 'daily' || routineType === 'weekly') && (
+                  <div className="space-y-3">
+                    {routineType === 'daily' && (
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="specific-days"
+                          checked={showSpecificDays}
+                          onCheckedChange={(checked) => {
+                            setShowSpecificDays(!!checked);
+                            if (!checked) {
+                              setSelectedDays([]);
+                            }
+                          }}
+                        />
+                        <Label htmlFor="specific-days">Seleziona giorni specifici della settimana</Label>
+                      </div>
+                    )}
+                    
+                    {(routineType === 'weekly' || showSpecificDays) && (
+                      <div>
+                        <Label>Giorni della settimana</Label>
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {daysOfWeek.map(day => (
+                            <label key={day.value} className="flex items-center space-x-2 cursor-pointer">
+                              <Checkbox
+                                checked={selectedDays.includes(day.value)}
+                                onCheckedChange={(checked) => {
+                                  if (checked) {
+                                    setSelectedDays([...selectedDays, day.value]);
+                                  } else {
+                                    setSelectedDays(selectedDays.filter(d => d !== day.value));
+                                  }
+                                }}
+                              />
+                              <span className="text-sm">{day.label}</span>
+                            </label>
+                          ))}
+                        </div>
+                        {routineType === 'weekly' && selectedDays.length === 0 && (
+                          <p className="text-sm text-muted-foreground mt-1">
+                            Seleziona almeno un giorno per le routine settimanali
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Items Checklist */}
@@ -557,13 +800,14 @@ const RoutineManager: React.FC<RoutineManagerProps> = ({ userId }) => {
               </div>
 
               <div className="flex gap-2 pt-4">
-                <Button onClick={createRoutine} disabled={loading} className="flex-1">
-                  {loading ? "Creazione..." : "Crea Routine"}
+                <Button 
+                  onClick={isEditing ? updateRoutine : createRoutine} 
+                  disabled={loading || (routineType === 'weekly' && selectedDays.length === 0)} 
+                  className="flex-1"
+                >
+                  {loading ? (isEditing ? "Aggiornamento..." : "Creazione...") : (isEditing ? "Aggiorna Routine" : "Crea Routine")}
                 </Button>
-                <Button variant="outline" onClick={() => {
-                  resetForm();
-                  setIsCreating(false);
-                }}>
+                <Button variant="outline" onClick={resetForm}>
                   Annulla
                 </Button>
               </div>
@@ -571,6 +815,16 @@ const RoutineManager: React.FC<RoutineManagerProps> = ({ userId }) => {
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* Smart Suggestions Panel */}
+      {suggestions.length > 0 && (
+        <SmartSuggestionsPanel
+          suggestions={suggestions}
+          onApply={applySuggestion}
+          onDismiss={dismissSuggestion}
+          isProcessing={isProcessing}
+        />
+      )}
 
       {/* Routines List */}
       {routines.length === 0 ? (
@@ -612,9 +866,26 @@ const RoutineManager: React.FC<RoutineManagerProps> = ({ userId }) => {
                     <Button
                       variant="outline"
                       size="sm"
+                      onClick={() => {
+                        startEditRoutine(routine);
+                      }}
+                    >
+                      <Edit className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={() => toggleRoutineActive(routine.id, routine.is_active)}
                     >
                       {routine.is_active ? "Pausa" : "Attiva"}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => deleteRoutine(routine.id)}
+                      className="text-destructive hover:text-destructive"
+                    >
+                      <Trash2 className="w-4 h-4" />
                     </Button>
                   </div>
                 </div>

@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { usePatternMining } from '@/hooks/usePatternMining';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -8,9 +9,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Calendar, CalendarDays, Clock, Plus, Trash2, Edit, CheckCircle2, Circle } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Calendar, CalendarDays, Clock, Plus, Trash2, Edit, CheckCircle2, Circle, Focus, X } from 'lucide-react';
+import { googleCalendarService } from '@/services/googleCalendar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { SmartSuggestionsPanel } from '@/components/SmartSuggestionsPanel';
+import LevelUpNotification from '@/components/LevelUpNotification';
 
 interface TaskIntervention {
   id: string;
@@ -38,16 +43,101 @@ interface Task {
 interface TaskManagerProps {
   userId: string;
   showCompleted?: boolean;
+  focusMode?: boolean;
+  focusTaskCount?: number;
+  onProfileUpdate?: () => void;
 }
 
-export const TaskManager = ({ userId, showCompleted = false }: TaskManagerProps) => {
+// Funzione per calcolare il livello basato sui punti XP
+const calculateLevelFromXP = (totalXP: number): number => {
+  // Sistema di livellamento progressivo: ogni livello richiede più XP del precedente
+  // Livello 1: 0-99 XP, Livello 2: 100-249 XP, Livello 3: 250-449 XP, etc.
+  if (totalXP < 100) return 1;
+  if (totalXP < 250) return 2;
+  if (totalXP < 450) return 3;
+  if (totalXP < 700) return 4;
+  if (totalXP < 1000) return 5;
+  if (totalXP < 1350) return 6;
+  if (totalXP < 1750) return 7;
+  if (totalXP < 2200) return 8;
+  if (totalXP < 2700) return 9;
+  if (totalXP < 3250) return 10;
+  
+  // Per livelli superiori al 10, ogni livello richiede 600 XP aggiuntivi
+  return Math.floor((totalXP - 3250) / 600) + 11;
+};
+
+export const TaskManager = ({ userId, showCompleted = false, focusMode = false, focusTaskCount = 3, onProfileUpdate }: TaskManagerProps) => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(false);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [levelUpData, setLevelUpData] = useState<{
+    isVisible: boolean;
+    newLevel: number;
+    archetype?: string;
+    xpGained: number;
+  }>({ isVisible: false, newLevel: 1, xpGained: 0 });
+  
+  // Pattern Mining Integration
+  const {
+    suggestions,
+    applySuggestion,
+    dismissSuggestion,
+    isProcessing
+  } = usePatternMining(userId);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [showTemplates, setShowTemplates] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [interventions, setInterventions] = useState<TaskIntervention[]>([]);
   const [newIntervention, setNewIntervention] = useState('');
+  
+  // Funzione per calcolare la priorità dei task
+  const calculateTaskPriority = (task: Task) => {
+    let priority = 0;
+    
+    // Priorità basata su scadenza
+    if (task.due_date) {
+      const dueDate = new Date(task.due_date);
+      const today = new Date();
+      const daysUntilDue = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      
+      if (daysUntilDue <= 1) priority += 100; // Scade oggi/domani
+      else if (daysUntilDue <= 3) priority += 50; // Scade entro 3 giorni
+      else if (daysUntilDue <= 7) priority += 25; // Scade entro una settimana
+    }
+    
+    // Priorità basata su energia richiesta (task più facili hanno priorità quando in focus mode)
+    const energyPriority = {
+      'molto_bassa': 20,
+      'bassa': 15,
+      'media': 10,
+      'alta': 5,
+      'molto_alta': 0
+    };
+    priority += energyPriority[task.energy_required] || 0;
+    
+    // Priorità basata su XP reward
+    priority += Math.min(task.xp_reward / 10, 20);
+    
+    return priority;
+  };
+  
+  // Filtra e ordina i task per focus mode e filtri dinamici
+  const getDisplayTasks = () => {
+    let displayTasks = filteredTasks.filter(task => 
+      showCompleted ? task.status === 'completato' : task.status !== 'completato'
+    );
+    
+    if (focusMode && !showCompleted) {
+      // In focus mode, mostra solo i task più prioritari (numero personalizzabile)
+      displayTasks = displayTasks
+        .map(task => ({ ...task, priority: calculateTaskPriority(task) }))
+        .sort((a, b) => b.priority - a.priority)
+        .slice(0, focusTaskCount);
+    }
+    
+    return displayTasks;
+  };
   const { toast } = useToast();
 
   // Form state
@@ -63,9 +153,42 @@ export const TaskManager = ({ userId, showCompleted = false }: TaskManagerProps)
     sync_to_calendar: false
   });
 
+  // Filtri dinamici basati su energia e mood
+  const [energyFilter, setEnergyFilter] = useState<string>('all');
+  const [smartFilter, setSmartFilter] = useState<boolean>(false);
+  const [todayMood, setTodayMood] = useState<any>(null);
+
   useEffect(() => {
     loadTasks();
+    loadTodayMood();
   }, [userId, showCompleted]);
+
+  // Carica il mood giornaliero per i filtri intelligenti
+  const loadTodayMood = async () => {
+    if (!userId) return;
+    
+    try {
+      const today = new Date();
+      const todayString = today.getFullYear() + '-' + 
+        String(today.getMonth() + 1).padStart(2, '0') + '-' + 
+        String(today.getDate()).padStart(2, '0');
+      
+      const { data, error } = await supabase
+        .from('daily_moods')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('date', todayString)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        throw error;
+      }
+
+      setTodayMood(data);
+    } catch (error: any) {
+      console.error('Error loading today mood:', error);
+    }
+  };
 
   const loadTasks = async () => {
     setLoading(true);
@@ -89,6 +212,33 @@ export const TaskManager = ({ userId, showCompleted = false }: TaskManagerProps)
       setLoading(false);
     }
   };
+
+  // Funzione per ottenere i suggerimenti energetici basati sul mood
+  const getEnergyRecommendations = (mood: string) => {
+    const recommendations = {
+      'congelato': ['molto_bassa', 'bassa'],
+      'disorientato': ['bassa', 'media'],
+      'in_flusso': ['media', 'alta', 'molto_alta'],
+      'ispirato': ['alta', 'molto_alta']
+    };
+    return recommendations[mood as keyof typeof recommendations] || ['bassa', 'media'];
+  };
+
+  // Filtra i task basandosi sui filtri attivi
+  const filteredTasks = tasks.filter(task => {
+    // Filtro per energia specifica
+    if (energyFilter !== 'all' && task.energy_required !== energyFilter) {
+      return false;
+    }
+
+    // Filtro intelligente basato sul mood
+    if (smartFilter && todayMood) {
+      const recommendedEnergies = getEnergyRecommendations(todayMood.mood);
+      return recommendedEnergies.includes(task.energy_required);
+    }
+
+    return true;
+  });
 
   const createTask = async () => {
     if (!formData.title.trim()) {
@@ -136,6 +286,7 @@ export const TaskManager = ({ userId, showCompleted = false }: TaskManagerProps)
       }
 
       setTasks(prev => [data, ...prev]);
+      
       resetForm();
       setIsCreateDialogOpen(false);
 
@@ -189,19 +340,48 @@ export const TaskManager = ({ userId, showCompleted = false }: TaskManagerProps)
         
         if (currentProfile) {
           const newTotalXp = (currentProfile.total_xp || 0) + task.xp_reward;
+          
+          // Calcolare il nuovo livello basato sui punti XP
+          const newLevel = calculateLevelFromXP(newTotalXp);
+          
           await supabase
             .from('profiles')
-            .update({ total_xp: newTotalXp })
+            .update({ 
+              total_xp: newTotalXp,
+              current_level: newLevel
+            })
             .eq('user_id', userId);
-        }
-      }
+            
+          // Notificare se c'è stato un aumento di livello
+           if (newLevel > (currentProfile.current_level || 1)) {
+             // Ottenere l'archetipo dominante per la notifica
+             const { data: profileData } = await supabase
+               .from('profiles')
+               .select('dominant_archetype')
+               .eq('user_id', userId)
+               .single();
+               
+             setLevelUpData({
+               isVisible: true,
+               newLevel,
+               archetype: profileData?.dominant_archetype || undefined,
+               xpGained: task.xp_reward
+             });
+           }
+           
+           // Chiamare il callback per aggiornare il profilo nell'interfaccia
+           if (onProfileUpdate) {
+             onProfileUpdate();
+           }
+         }
+       }
 
       setTasks(prev => prev.map(t => 
         t.id === task.id 
           ? { ...t, status: newStatus, completed_at }
           : t
       ));
-
+      
       toast({
         title: newStatus === 'completed' ? "Task completato!" : "Task riattivato",
         description: newStatus === 'completed' 
@@ -227,7 +407,9 @@ export const TaskManager = ({ userId, showCompleted = false }: TaskManagerProps)
 
       if (error) throw error;
 
+      const deletedTask = tasks.find(t => t.id === taskId);
       setTasks(prev => prev.filter(t => t.id !== taskId));
+      
       toast({
         title: "Task eliminato",
         description: "Task eliminato con successo"
@@ -242,10 +424,59 @@ export const TaskManager = ({ userId, showCompleted = false }: TaskManagerProps)
   };
 
   const syncToGoogleCalendar = async (task: Task) => {
-    // Placeholder per l'integrazione Google Calendar
-    // Implementeremo questo dopo aver configurato l'Edge Function
-    throw new Error("Integrazione Google Calendar non ancora configurata");
-  };
+    try {
+      if (!googleCalendarService.isAuthenticated()) {
+        throw new Error("Google Calendar non è collegato. Collegalo dalle impostazioni.");
+      }
+
+      if (!task.due_date) {
+        throw new Error("La data di scadenza è richiesta per la sincronizzazione con Google Calendar.");
+      }
+
+      // Prepara l'evento per Google Calendar
+      const startDate = new Date(task.due_date);
+      const endDate = new Date(startDate.getTime() + (60 * 60 * 1000)); // 1 ora di durata predefinita
+
+      const calendarEvent = {
+        summary: task.title,
+        description: task.description || `Task creato in TSUNAMI\n\nPriorità: ${task.priority}\nCategoria: ${task.category}`,
+        start: {
+          dateTime: startDate.toISOString(),
+          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
+        },
+        end: {
+          dateTime: endDate.toISOString(),
+          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
+        },
+        reminders: {
+          useDefault: false,
+          overrides: [
+            { method: 'popup', minutes: 15 },
+            { method: 'popup', minutes: 60 }
+          ]
+        }
+      };
+
+      // Crea l'evento in Google Calendar
+      const eventId = await googleCalendarService.createEvent(calendarEvent);
+      
+      // Aggiorna il task con l'ID dell'evento Google Calendar
+      const { error: updateError } = await supabase
+        .from('tasks')
+        .update({ google_calendar_event_id: eventId })
+        .eq('id', task.id);
+
+      if (updateError) {
+        console.error('Error updating task with calendar event ID:', updateError);
+        // Non lanciare errore qui, l'evento è stato creato con successo
+      }
+
+      return eventId;
+     } catch (error: any) {
+       console.error('Error syncing to Google Calendar:', error);
+       throw error;
+     }
+   };
 
   const resetForm = () => {
     setFormData({
@@ -259,6 +490,106 @@ export const TaskManager = ({ userId, showCompleted = false }: TaskManagerProps)
       xp_reward: 10,
       sync_to_calendar: false
     });
+  };
+
+  // Template per task ADHD-friendly
+  const getTaskTemplates = () => {
+    return [
+      {
+        name: "Quick Win",
+        icon: "⚡",
+        description: "Task veloce per iniziare la giornata",
+        energy: "Molto Bassa",
+        type: "Azione",
+        template: {
+          title: "Quick Win: ",
+          description: "Task semplice da completare in 5-10 minuti per iniziare con energia positiva",
+          task_type: 'azione',
+          energy_required: 'molto_bassa',
+          due_date: new Date().toISOString().split('T')[0]
+        }
+      },
+      {
+        name: "Pomodoro Focus",
+        icon: "🍅",
+        description: "Task da 25 minuti con focus intenso",
+        energy: "Media",
+        type: "Azione",
+        template: {
+          title: "Focus 25min: ",
+          description: "Task strutturato per una sessione Pomodoro (25 min focus + 5 min pausa)",
+          task_type: 'azione',
+          energy_required: 'media',
+          due_date: new Date().toISOString().split('T')[0]
+        }
+      },
+      {
+        name: "Brain Dump",
+        icon: "🧠",
+        description: "Svuota la mente, scrivi tutto",
+        energy: "Bassa",
+        type: "Riflessione",
+        template: {
+          title: "Brain Dump: ",
+          description: "Scrivi tutti i pensieri, idee e preoccupazioni per liberare la mente",
+          task_type: 'riflessione',
+          energy_required: 'bassa',
+          due_date: new Date().toISOString().split('T')[0]
+        }
+      },
+      {
+        name: "Comunicazione Difficile",
+        icon: "💬",
+        description: "Email, chiamata o conversazione importante",
+        energy: "Alta",
+        type: "Comunicazione",
+        template: {
+          title: "Comunicazione: ",
+          description: "Preparare e gestire una comunicazione che richiede attenzione e energia",
+          task_type: 'comunicazione',
+          energy_required: 'alta',
+          due_date: new Date().toISOString().split('T')[0]
+        }
+      },
+      {
+        name: "Progetto Creativo",
+        icon: "🎨",
+        description: "Sessione di creatività e brainstorming",
+        energy: "Alta",
+        type: "Creatività",
+        template: {
+          title: "Creatività: ",
+          description: "Sessione dedicata alla creatività, brainstorming o progetto artistico",
+          task_type: 'creativita',
+          energy_required: 'alta',
+          due_date: new Date().toISOString().split('T')[0]
+        }
+      },
+      {
+        name: "Organizza Spazio",
+        icon: "📋",
+        description: "Riordina, organizza, sistema",
+        energy: "Media",
+        type: "Organizzazione",
+        template: {
+          title: "Organizzazione: ",
+          description: "Riordinare, organizzare o sistemare uno spazio fisico o digitale",
+          task_type: 'organizzazione',
+          energy_required: 'media',
+          due_date: new Date().toISOString().split('T')[0]
+        }
+      }
+    ];
+  };
+
+  // Applica template selezionato
+  const applyTemplate = (template: any) => {
+    setFormData({
+      ...formData,
+      ...template.template
+    });
+    setShowTemplates(false);
+    setIsCreateDialogOpen(true);
   };
 
   const loadInterventions = async (taskId: string) => {
@@ -390,20 +721,29 @@ export const TaskManager = ({ userId, showCompleted = false }: TaskManagerProps)
 
       if (error) throw error;
 
+      // Aggiorna lo stato locale immediatamente
       setTasks(prev => prev.map(t => 
         t.id === editingTask.id 
           ? { ...t, ...taskData }
           : t
       ));
 
+      // Chiudi il dialog e resetta il form
       resetForm();
       setIsEditDialogOpen(false);
       setEditingTask(null);
+      setInterventions([]);
+      setNewIntervention('');
 
       toast({
         title: "Task aggiornato",
         description: `Task "${formData.title}" aggiornato con successo`
       });
+
+      // Ricarica i task dal database per sincronizzare
+      setTimeout(() => {
+        loadTasks();
+      }, 100);
 
     } catch (error: any) {
       toast({
@@ -477,158 +817,292 @@ export const TaskManager = ({ userId, showCompleted = false }: TaskManagerProps)
             {showCompleted ? 'Storico dei task completati' : 'Gestisci i tuoi compiti e rituali'}
           </p>
         </div>
+      </div>
+
+      {/* Filtri Dinamici */}
+      {!showCompleted && (
+        <div className="bg-card border rounded-xl p-4 space-y-4">
+          <div className="flex items-center gap-4">
+            <h3 className="font-semibold text-sm">🎯 Filtri Intelligenti</h3>
+            {todayMood && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <span>
+                  {todayMood.mood === 'disorientato' ? '🌀' : 
+                   todayMood.mood === 'congelato' ? '❄️' :
+                   todayMood.mood === 'in_flusso' ? '🌊' :
+                   todayMood.mood === 'ispirato' ? '✨' : '🎭'}
+                </span>
+                <span className="capitalize">{todayMood.mood?.replace('_', ' ')}</span>
+              </div>
+            )}
+          </div>
+          
+          <div className="flex flex-wrap gap-3">
+            {/* Filtro Smart basato su mood */}
+            {todayMood && (
+              <Button
+                variant={smartFilter ? "default" : "outline"}
+                size="sm"
+                onClick={() => setSmartFilter(!smartFilter)}
+                className="gap-2"
+              >
+                <span>🧠</span>
+                <span>Suggeriti per oggi</span>
+                {smartFilter && (
+                  <span className="text-xs bg-primary-foreground/20 px-1 rounded">
+                    {filteredTasks.filter(t => t.status !== 'completato').length}
+                  </span>
+                )}
+              </Button>
+            )}
+            
+            {/* Filtri per livello di energia */}
+            <Select value={energyFilter} onValueChange={setEnergyFilter}>
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="Filtra per energia" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">🔄 Tutti i livelli</SelectItem>
+                <SelectItem value="molto_bassa">🟢 Molto Bassa</SelectItem>
+                <SelectItem value="bassa">🟢 Bassa</SelectItem>
+                <SelectItem value="media">🟡 Media</SelectItem>
+                <SelectItem value="alta">🔴 Alta</SelectItem>
+                <SelectItem value="molto_alta">🔴 Molto Alta</SelectItem>
+              </SelectContent>
+            </Select>
+            
+            {/* Reset filtri */}
+            {(energyFilter !== 'all' || smartFilter) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setEnergyFilter('all');
+                  setSmartFilter(false);
+                }}
+                className="gap-2 text-muted-foreground"
+              >
+                <span>↻</span>
+                <span>Reset</span>
+              </Button>
+            )}
+          </div>
+          
+          {/* Statistiche filtri */}
+          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+            <span>📊 Mostrando {filteredTasks.filter(t => t.status !== 'completato').length} di {tasks.filter(t => t.status !== 'completato').length} task</span>
+            {smartFilter && todayMood && (
+              <span>💡 Energia consigliata: {getEnergyRecommendations(todayMood.mood).join(', ')}</span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Smart Suggestions Panel */}
+      {suggestions.length > 0 && (
+        <SmartSuggestionsPanel
+          suggestions={suggestions}
+          onApply={applySuggestion}
+          onDismiss={dismissSuggestion}
+          isProcessing={isProcessing}
+        />
+      )}
+
+      <div className="flex items-center justify-between">
         
         {!showCompleted && (
-          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="gap-2">
-                <Plus className="w-4 h-4" />
-                Nuovo Task
-              </Button>
-            </DialogTrigger>
-          
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>Crea Nuovo Task</DialogTitle>
-            </DialogHeader>
+          <div className="flex gap-2">
+            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="gap-2">
+                  <Plus className="w-4 h-4" />
+                  Nuovo Task
+                </Button>
+              </DialogTrigger>
+              
+              <DialogContent className="max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Crea Nuovo Task</DialogTitle>
+                </DialogHeader>
+                
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="title">Titolo *</Label>
+                    <Input
+                      id="title"
+                      value={formData.title}
+                      onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                      placeholder="Inserisci il titolo del task..."
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="description">Descrizione</Label>
+                    <Textarea
+                      id="description"
+                      value={formData.description}
+                      onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                      placeholder="Descrizione opzionale..."
+                      rows={3}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label htmlFor="task_type">Tipo</Label>
+                      <Select 
+                        value={formData.task_type} 
+                        onValueChange={(value: any) => setFormData(prev => ({ ...prev, task_type: value }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="azione">🎯 Azione</SelectItem>
+                          <SelectItem value="riflessione">🤔 Riflessione</SelectItem>
+                          <SelectItem value="comunicazione">💬 Comunicazione</SelectItem>
+                          <SelectItem value="creativita">🎨 Creatività</SelectItem>
+                          <SelectItem value="organizzazione">📋 Organizzazione</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="energy_required">Energia</Label>
+                      <Select 
+                        value={formData.energy_required} 
+                        onValueChange={(value: any) => setFormData(prev => ({ ...prev, energy_required: value, xp_reward: getEnergyPoints(value) }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                          <SelectContent>
+                          <SelectItem value="molto_bassa">🟢 Molto Bassa (1 XP)</SelectItem>
+                          <SelectItem value="bassa">🟢 Bassa (3 XP)</SelectItem>
+                          <SelectItem value="media">🟡 Media (6 XP)</SelectItem>
+                          <SelectItem value="alta">🔴 Alta (10 XP)</SelectItem>
+                          <SelectItem value="molto_alta">🔴 Molto Alta (15 XP)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label htmlFor="due_date">Scadenza</Label>
+                      <Input
+                        id="due_date"
+                        type="date"
+                        value={formData.due_date}
+                        onChange={(e) => setFormData(prev => ({ ...prev, due_date: e.target.value }))}
+                      />
+                    </div>
+                    
+                    <div className="flex items-center space-x-2 pt-6">
+                      <Checkbox
+                        id="is_recurring"
+                        checked={formData.is_recurring}
+                        onCheckedChange={(checked) => setFormData(prev => ({ ...prev, is_recurring: !!checked }))}
+                      />
+                      <Label htmlFor="is_recurring" className="text-sm">Ricorrente</Label>
+                    </div>
+                  </div>
+
+                  {formData.is_recurring && (
+                    <div>
+                      <Label htmlFor="recurrence_pattern">Pattern di ricorrenza</Label>
+                      <Select 
+                        value={formData.recurrence_pattern} 
+                        onValueChange={(value) => setFormData(prev => ({ ...prev, recurrence_pattern: value }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleziona frequenza" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="daily">Giornaliero</SelectItem>
+                          <SelectItem value="weekly">Settimanale</SelectItem>
+                          <SelectItem value="monthly">Mensile</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  <div className="flex justify-end gap-2 pt-4">
+                    <Button 
+                      variant="outline" 
+                      onClick={() => {
+                        setIsCreateDialogOpen(false);
+                        resetForm();
+                      }}
+                    >
+                      Annulla
+                    </Button>
+                    <Button 
+                      onClick={createTask}
+                      disabled={!formData.title.trim() || loading}
+                    >
+                      {loading ? 'Creazione...' : 'Crea Task'}
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
             
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="title">Titolo *</Label>
-                <Input
-                  id="title"
-                  value={formData.title}
-                  onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                  placeholder="Inserisci il titolo del task..."
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="description">Descrizione</Label>
-                <Textarea
-                  id="description"
-                  value={formData.description}
-                  onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                  placeholder="Descrizione opzionale..."
-                  rows={3}
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label htmlFor="task_type">Tipo</Label>
-                  <Select 
-                    value={formData.task_type} 
-                    onValueChange={(value: any) => setFormData(prev => ({ ...prev, task_type: value }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="azione">🎯 Azione</SelectItem>
-                      <SelectItem value="riflessione">🤔 Riflessione</SelectItem>
-                      <SelectItem value="comunicazione">💬 Comunicazione</SelectItem>
-                      <SelectItem value="creativita">🎨 Creatività</SelectItem>
-                      <SelectItem value="organizzazione">📋 Organizzazione</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label htmlFor="energy_required">Energia</Label>
-                  <Select 
-                    value={formData.energy_required} 
-                    onValueChange={(value: any) => setFormData(prev => ({ ...prev, energy_required: value }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                      <SelectContent>
-                      <SelectItem value="molto_bassa">🟢 Molto Bassa (1 XP)</SelectItem>
-                      <SelectItem value="bassa">🟢 Bassa (3 XP)</SelectItem>
-                      <SelectItem value="media">🟡 Media (6 XP)</SelectItem>
-                      <SelectItem value="alta">🔴 Alta (10 XP)</SelectItem>
-                      <SelectItem value="molto_alta">🔴 Molto Alta (15 XP)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label htmlFor="due_date">Scadenza</Label>
-                  <Input
-                    id="due_date"
-                    type="datetime-local"
-                    value={formData.due_date}
-                    onChange={(e) => setFormData(prev => ({ ...prev, due_date: e.target.value }))}
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="xp_reward">XP Reward</Label>
-                  <Input
-                    id="xp_reward"
-                    type="number"
-                    min="1"
-                    max="100"
-                    value={formData.xp_reward}
-                    onChange={(e) => setFormData(prev => ({ ...prev, xp_reward: parseInt(e.target.value) || 10 }))}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <div className="flex items-center space-x-2">
-                  <Checkbox 
-                    id="is_recurring"
-                    checked={formData.is_recurring}
-                    onCheckedChange={(checked) => setFormData(prev => ({ ...prev, is_recurring: !!checked }))}
-                  />
-                  <Label htmlFor="is_recurring">Task ricorrente</Label>
-                </div>
-
-                {formData.is_recurring && (
-                  <Select 
-                    value={formData.recurrence_pattern} 
-                    onValueChange={(value) => setFormData(prev => ({ ...prev, recurrence_pattern: value }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleziona frequenza..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="daily">📅 Giornaliero</SelectItem>
-                      <SelectItem value="weekly">📅 Settimanale</SelectItem>
-                      <SelectItem value="monthly">📅 Mensile</SelectItem>
-                    </SelectContent>
-                  </Select>
-                )}
-
-                <div className="flex items-center space-x-2">
-                  <Checkbox 
-                    id="sync_to_calendar"
-                    checked={formData.sync_to_calendar}
-                    onCheckedChange={(checked) => setFormData(prev => ({ ...prev, sync_to_calendar: !!checked }))}
-                  />
-                  <Label htmlFor="sync_to_calendar">Sincronizza con Google Calendar</Label>
-                </div>
-              </div>
-
-              <div className="flex gap-3 pt-4">
-                <Button onClick={createTask} className="flex-1">
-                  Crea Task
-                </Button>
-                <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
-                  Annulla
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
+            <Button 
+              variant="outline" 
+              className="gap-2"
+              onClick={() => setShowTemplates(!showTemplates)}
+            >
+              📋 Template
+            </Button>
+          </div>
         )}
+        
+        {/* Template Wizard */}
+        {showTemplates && !showCompleted && (
+          <Card className="mb-4">
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                🧙‍♂️ Wizard Template ADHD-Friendly
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {getTaskTemplates().map((template, index) => (
+                  <Button
+                    key={index}
+                    variant="outline"
+                    className="h-auto p-4 flex flex-col items-start gap-2 text-left"
+                    onClick={() => applyTemplate(template)}
+                  >
+                    <div className="flex items-center gap-2 font-medium">
+                      <span className="text-lg">{template.icon}</span>
+                      <span>{template.name}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">{template.description}</p>
+                    <div className="flex gap-1 mt-1">
+                      <Badge variant="outline" className="text-xs">{template.energy}</Badge>
+                      <Badge variant="outline" className="text-xs">{template.type}</Badge>
+                    </div>
+                  </Button>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+        
+
 
         {/* Edit Task Dialog */}
-        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <Dialog open={isEditDialogOpen} onOpenChange={(open) => {
+          if (!open) {
+            setIsEditDialogOpen(false);
+            setEditingTask(null);
+            setInterventions([]);
+            setNewIntervention('');
+            resetForm();
+          }
+        }}>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Modifica Task</DialogTitle>
@@ -683,7 +1157,7 @@ export const TaskManager = ({ userId, showCompleted = false }: TaskManagerProps)
                     <Label htmlFor="edit-energy_required">Energia</Label>
                     <Select 
                       value={formData.energy_required} 
-                      onValueChange={(value: any) => setFormData(prev => ({ ...prev, energy_required: value }))}
+                      onValueChange={(value: any) => setFormData(prev => ({ ...prev, energy_required: value, xp_reward: getEnergyPoints(value) }))}
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -793,20 +1267,34 @@ export const TaskManager = ({ userId, showCompleted = false }: TaskManagerProps)
       </div>
 
       {/* Tasks List */}
-      {tasks.length === 0 ? (
+      {getDisplayTasks().length === 0 ? (
         <Card>
           <CardContent className="pt-6 text-center">
             <CalendarDays className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Nessun task ancora</h3>
-            <p className="text-muted-foreground mb-4">Crea il tuo primo task per iniziare</p>
+            <h3 className="text-lg font-semibold mb-2">
+              {focusMode ? 'Nessun task prioritario' : 'Nessun task ancora'}
+            </h3>
+            <p className="text-muted-foreground mb-4">
+              {focusMode 
+                ? 'Tutti i task sono completati o non ci sono task urgenti'
+                : 'Crea il tuo primo task per iniziare'
+              }
+            </p>
             <Button onClick={() => setIsCreateDialogOpen(true)} variant="outline">
-              Crea il primo task
+              {focusMode ? 'Aggiungi task' : 'Crea il primo task'}
             </Button>
           </CardContent>
         </Card>
       ) : (
         <div className="space-y-3">
-          {tasks.map((task) => (
+          {focusMode && !showCompleted && (
+            <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 mb-4">
+              <p className="text-sm text-primary font-medium">
+                📍 Mostrando {getDisplayTasks().length} task prioritari su {tasks.filter(t => t.status !== 'completato').length} totali
+              </p>
+            </div>
+          )}
+          {getDisplayTasks().map((task) => (
             <Card key={task.id} className={`${task.status === 'completed' ? 'bg-muted/50' : ''}`}>
               <CardContent className="pt-4">
                 <div className="flex items-start justify-between gap-4">
@@ -889,6 +1377,20 @@ export const TaskManager = ({ userId, showCompleted = false }: TaskManagerProps)
           ))}
         </div>
       )}
+      
+      {/* Level Up Notification */}
+      <LevelUpNotification
+        isVisible={levelUpData.isVisible}
+        newLevel={levelUpData.newLevel}
+        archetype={levelUpData.archetype}
+        xpGained={levelUpData.xpGained}
+        onClose={() => setLevelUpData(prev => ({ ...prev, isVisible: false }))}
+        onViewCharacterSheet={() => {
+          setLevelUpData(prev => ({ ...prev, isVisible: false }));
+          // Navigate to character sheet if navigation function is available
+          window.location.href = '/personaggio';
+        }}
+      />
     </div>
   );
 };

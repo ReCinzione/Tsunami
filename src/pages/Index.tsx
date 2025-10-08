@@ -7,13 +7,14 @@ import { TaskManager } from '@/components/TaskManager';
 import MentalInbox from '@/components/MentalInbox';
 import RoutineManager from '@/components/RoutineManager';
 import ProjectManager from '@/components/ProjectManager';
+import { LocalChatBot } from '@/components/LocalChatBot';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Toaster } from '@/components/ui/toaster';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { LogOut, User, ChevronRight } from 'lucide-react';
+import { LogOut, User, ChevronRight, Focus, Plus, Settings } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const AppContent = () => {
@@ -27,6 +28,11 @@ const AppContent = () => {
   const [showTasks, setShowTasks] = useState(false);
   const [showMentalInbox, setShowMentalInbox] = useState(false);
   const [showArchetypeTest, setShowArchetypeTest] = useState(false);
+  const [focusMode, setFocusMode] = useState(false);
+  const [focusTaskCount, setFocusTaskCount] = useState(3);
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [tasks, setTasks] = useState([]);
+  const [energyLevel, setEnergyLevel] = useState(7);
   const { toast } = useToast();
 
   const handleTaskCreated = () => {
@@ -37,8 +43,15 @@ const AppContent = () => {
     if (user) {
       loadUserProfile();
       checkTodayMood();
+      loadTasks();
     }
   }, [user]);
+
+  useEffect(() => {
+    if (user) {
+      loadTasks();
+    }
+  }, [refreshTasks]);
 
   useEffect(() => {
     if (profile?.dominant_archetype) {
@@ -77,12 +90,16 @@ const AppContent = () => {
     if (!user) return;
     
     try {
-      const today = new Date().toISOString().split('T')[0];
+      const today = new Date();
+      const todayString = today.getFullYear() + '-' + 
+        String(today.getMonth() + 1).padStart(2, '0') + '-' + 
+        String(today.getDate()).padStart(2, '0');
+      
       const { data, error } = await supabase
         .from('daily_moods')
         .select('*')
         .eq('user_id', user.id)
-        .eq('date', today)
+        .eq('date', todayString)
         .single();
 
       if (error && error.code !== 'PGRST116') {
@@ -92,6 +109,23 @@ const AppContent = () => {
       setTodayMood(data);
     } catch (error: any) {
       console.error('Error checking today mood:', error);
+    }
+  };
+
+  const loadTasks = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('tasks')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setTasks(data || []);
+    } catch (error) {
+      console.error('Error loading tasks:', error);
     }
   };
 
@@ -135,14 +169,18 @@ const AppContent = () => {
     if (!user) return;
 
     try {
-      const today = new Date().toISOString().split('T')[0];
+      const today = new Date();
+      const todayString = today.getFullYear() + '-' + 
+        String(today.getMonth() + 1).padStart(2, '0') + '-' + 
+        String(today.getDate()).padStart(2, '0');
+      
       const { error } = await supabase
         .from('daily_moods')
         .insert({
           user_id: user.id,
           mood: mood as any,
           suggested_ritual: ritual,
-          date: today
+          date: todayString
         });
 
       if (error) throw error;
@@ -214,38 +252,79 @@ const AppContent = () => {
               Tipo di personalità: <span className="text-primary font-semibold capitalize">{profile?.dominant_archetype}</span>
             </p>
           </div>
-          <Button variant="outline" onClick={handleLogout} className="gap-2 shrink-0 text-sm">
-            <LogOut className="w-4 h-4" />
-            <span className="hidden sm:inline">Logout</span>
-            <span className="sm:hidden">Esci</span>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => navigate('/impostazioni')} className="gap-2 shrink-0 text-sm">
+              <Settings className="w-4 h-4" />
+              <span className="hidden sm:inline">Impostazioni</span>
+            </Button>
+            <Button variant="outline" onClick={handleLogout} className="gap-2 shrink-0 text-sm">
+              <LogOut className="w-4 h-4" />
+              <span className="hidden sm:inline">Logout</span>
+              <span className="sm:hidden">Esci</span>
+            </Button>
+          </div>
+        </div>
+
+        {/* Focus Mode & Quick Actions Bar */}
+        <div className="flex items-center justify-between gap-4 mb-4 p-4 bg-card border rounded-xl">
+          <div className="flex items-center gap-3">
+            <Button
+              variant={focusMode ? "default" : "outline"}
+              size="sm"
+              onClick={() => setFocusMode(!focusMode)}
+              className="gap-2"
+            >
+              <Focus className="w-4 h-4" />
+              {focusMode ? 'Modalità Focus ON' : 'Attiva Focus'}
+            </Button>
+            {focusMode && (
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary" className="text-xs">
+                  {focusTaskCount} task prioritari visibili
+                </Badge>
+                <div className="flex items-center gap-2 text-xs">
+                  <span>1</span>
+                  <input
+                    type="range"
+                    min="1"
+                    max="5"
+                    value={focusTaskCount}
+                    onChange={(e) => setFocusTaskCount(Number(e.target.value))}
+                    className="w-16 h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                  />
+                  <span>5</span>
+                </div>
+              </div>
+            )}
+          </div>
+          <Button
+            size="sm"
+            onClick={() => setActiveTab('mental-inbox')}
+            className="gap-2 bg-primary/10 text-primary hover:bg-primary/20"
+            variant="ghost"
+          >
+            <Plus className="w-4 h-4" />
+            Quick Add
           </Button>
         </div>
 
-        <Tabs defaultValue="dashboard" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 md:grid-cols-8 gap-1 h-auto p-1">
-            <TabsTrigger value="dashboard" className="text-xs px-2 py-2 md:text-sm">
-              <span className="hidden sm:inline">🏠 </span>Casa
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-4 gap-1 h-auto p-1">
+            <TabsTrigger value="dashboard" className="text-sm px-3 py-3 flex flex-col gap-1">
+              <span className="text-lg">🏠</span>
+              <span>Casa</span>
             </TabsTrigger>
-            <TabsTrigger value="character" className="text-xs px-2 py-2 md:text-sm">
-              <span className="hidden sm:inline">👤 </span>Profilo
+            <TabsTrigger value="tasks" className="text-sm px-3 py-3 flex flex-col gap-1">
+              <span className="text-lg">📋</span>
+              <span>Attività</span>
             </TabsTrigger>
-            <TabsTrigger value="tasks" className="text-xs px-2 py-2 md:text-sm">
-              <span className="hidden sm:inline">📋 </span>Attività
+            <TabsTrigger value="mental-inbox" className="text-sm px-3 py-3 flex flex-col gap-1">
+              <span className="text-lg">🧠</span>
+              <span>Note</span>
             </TabsTrigger>
-            <TabsTrigger value="completed" className="text-xs px-2 py-2 md:text-sm">
-              <span className="hidden sm:inline">✅ </span>Fatte
-            </TabsTrigger>
-            <TabsTrigger value="mental-inbox" className="text-xs px-2 py-2 md:text-sm">
-              <span className="hidden sm:inline">🧠 </span>Note
-            </TabsTrigger>
-            <TabsTrigger value="routine" className="text-xs px-2 py-2 md:text-sm">
-              <span className="hidden sm:inline">⏰ </span>Routine
-            </TabsTrigger>
-            <TabsTrigger value="personality" className="text-xs px-2 py-2 md:text-sm">
-              <span className="hidden sm:inline">🔮 </span>Personalità
-            </TabsTrigger>
-            <TabsTrigger value="projects" className="text-xs px-2 py-2 md:text-sm">
-              <span className="hidden sm:inline">💡 </span>Progetti
+            <TabsTrigger value="routine" className="text-sm px-3 py-3 flex flex-col gap-1">
+              <span className="text-lg">⏰</span>
+              <span>Routine</span>
             </TabsTrigger>
           </TabsList>
 
@@ -287,8 +366,171 @@ const AppContent = () => {
                 <div className="text-sm text-muted-foreground">Tipo Dominante</div>
               </div>
             </div>
+
+            {/* Next Suggested Task */}
+            <div className="bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20 rounded-xl p-6">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="text-2xl">🎯</div>
+                <h3 className="text-lg font-semibold">Prossimo Task Suggerito</h3>
+              </div>
+              <p className="text-muted-foreground mb-4">
+                Basato sul tuo livello di energia attuale e priorità
+              </p>
+              <div className="flex gap-2">
+                <Button 
+                  onClick={() => setActiveTab('tasks')}
+                  className="gap-2"
+                >
+                  📋 Vai alle Attività
+                </Button>
+                <Button 
+                  variant="outline"
+                  onClick={() => setActiveTab('mental-inbox')}
+                  className="gap-2"
+                >
+                  🧠 Aggiungi Idea
+                </Button>
+              </div>
+            </div>
+
+            {/* Quick Access to Other Features */}
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              <Button
+                variant="outline"
+                onClick={() => navigate('/personalita')}
+                className="h-20 flex flex-col gap-2"
+              >
+                <span className="text-2xl">🔮</span>
+                <span>Esplora Personalità</span>
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => navigate('/progetti')}
+                className="h-20 flex flex-col gap-2"
+              >
+                <span className="text-2xl">💡</span>
+                <span>Gestisci Progetti</span>
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => navigate('/personaggio')}
+                className="h-20 flex flex-col gap-2"
+              >
+                <span className="text-2xl">🎭</span>
+                <span>Scheda Personaggio</span>
+              </Button>
+            </div>
+            
+
           </TabsContent>
           
+
+          {/* Floating Quick Add Button */}
+          <div className="fixed bottom-6 left-6 z-50">
+            <Button
+              size="lg"
+              onClick={() => setActiveTab('mental-inbox')}
+              className="rounded-full w-14 h-14 shadow-lg hover:shadow-xl transition-all duration-200 bg-primary hover:bg-primary/90"
+            >
+              <Plus className="w-6 h-6" />
+            </Button>
+          </div>
+
+          {/* Local ChatBot */}
+          <LocalChatBot
+            userId="current-user"
+            tasks={tasks}
+            adhdContext={{
+              focusMode,
+              energyLevel,
+              activeTasks: tasks.length,
+              timeOfDay: new Date().getHours() < 12 ? 'morning' : 
+                        new Date().getHours() < 18 ? 'afternoon' : 'evening',
+              todayMood
+            }}
+            onActionSuggested={(action, params) => {
+              switch (action) {
+                case 'activate_focus_mode':
+                case 'enable_focus_mode':
+                  setFocusMode(true);
+                  toast({
+                    title: "Focus Mode Attivato",
+                    description: "Ora vedrai solo i task più importanti",
+                  });
+                  break;
+                case 'filter_low_energy_tasks':
+                case 'show_low_energy_tasks':
+                  setActiveTab('tasks');
+                  toast({
+                    title: "Task a Bassa Energia",
+                    description: `Trovati ${params?.tasks?.length || 0} task adatti al tuo livello di energia`,
+                  });
+                  break;
+                case 'suggest_high_energy_tasks':
+                case 'show_high_priority_tasks':
+                  setActiveTab('tasks');
+                  toast({
+                    title: "Task ad Alta Energia",
+                    description: `${params?.tasks?.length || 0} task impegnativi disponibili`,
+                  });
+                  break;
+                case 'organize_tasks_by_priority':
+                  setActiveTab('tasks');
+                  toast({
+                    title: "Organizzazione Task",
+                    description: "Task organizzati per priorità",
+                  });
+                  break;
+                case 'show_progress_stats':
+                  toast({
+                    title: "Statistiche Progresso",
+                    description: `Hai completato ${params?.completedToday || 0} task oggi!`,
+                  });
+                  break;
+                case 'suggest_next_task':
+                  if (params?.task) {
+                    toast({
+                      title: "Prossimo Task",
+                      description: `Inizia con: ${params.task.title}`,
+                    });
+                  }
+                  break;
+                case 'open_prioritization_mode':
+                  setActiveTab('tasks');
+                  toast({
+                    title: "Modalità Prioritizzazione",
+                    description: "Organizza i tuoi task per importanza",
+                  });
+                  break;
+                case 'suggest_break':
+                  toast({
+                    title: "Pausa Consigliata",
+                    description: `Prenditi ${params?.duration || 5} minuti di pausa`,
+                  });
+                  break;
+                case 'start_pomodoro':
+                  console.log('Starting Pomodoro timer');
+                  toast({
+                    title: "Timer Pomodoro",
+                    description: "Timer di 25 minuti avviato",
+                  });
+                  break;
+                case 'start_2min_timer':
+                  console.log('Starting 2-minute timer');
+                  toast({
+                    title: "Timer Veloce",
+                    description: "Timer di 2 minuti avviato",
+                  });
+                  break;
+                default:
+                  console.log('Action not implemented:', action, params);
+                  toast({
+                    title: "Azione Eseguita",
+                    description: `${action} completata`,
+                  });
+              }
+            }}
+          />
 
           <TabsContent value="character" className="space-y-6 mt-6">
             {/* Dominant Archetype Description */}
@@ -429,11 +671,27 @@ const AppContent = () => {
           </TabsContent>
 
           <TabsContent value="tasks" className="mt-6">
-            <TaskManager userId={user.id} showCompleted={false} key={`tasks-${refreshTasks}`} />
-          </TabsContent>
-
-          <TabsContent value="completed" className="mt-6">
-            <TaskManager userId={user.id} showCompleted={true} key={`completed-${refreshTasks}`} />
+            <div className="space-y-4">
+              {focusMode && (
+                <div className="bg-primary/10 border border-primary/20 rounded-xl p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Focus className="w-5 h-5 text-primary" />
+                    <h3 className="font-semibold text-primary">Modalità Focus Attiva</h3>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Visualizzando solo i 3 task più importanti per ridurre il cognitive load
+                  </p>
+                </div>
+              )}
+              <TaskManager
+                  userId={user.id}
+                  showCompleted={false}
+                  focusMode={focusMode}
+                  focusTaskCount={focusTaskCount}
+                  onProfileUpdate={loadUserProfile}
+                  key={`tasks-${refreshTasks}-${focusMode}-${focusTaskCount}`}
+                />
+            </div>
           </TabsContent>
 
           <TabsContent value="mental-inbox" className="mt-6">
@@ -444,65 +702,7 @@ const AppContent = () => {
             <RoutineManager userId={user.id} />
           </TabsContent>
 
-          <TabsContent value="personality" className="mt-6">
-            {profile?.test_completed && profile?.dominant_archetype ? (
-              <div className="bg-card border rounded-xl p-6 shadow-lg">
-                <div className="text-center mb-6">
-                  <h3 className="text-2xl font-semibold mb-2">Il Tuo Archetipo</h3>
-                <div className="flex items-center justify-center gap-4 mb-4">
-                  <div>
-                      <h4 className="text-xl font-bold">
-                        {profile.dominant_archetype === 'visionario' && 'Il Visionario'}
-                        {profile.dominant_archetype === 'costruttore' && 'Il Costruttore'}
-                        {profile.dominant_archetype === 'sognatore' && 'Il Sognatore'}
-                        {profile.dominant_archetype === 'silenzioso' && "L'Osservatore"}
-                        {profile.dominant_archetype === 'combattente' && 'Il Combattente'}
-                      </h4>
-                      <p className="text-muted-foreground">Livello {profile.current_level}</p>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-blue-600">{profile.visionario_percentage}%</div>
-                    <div className="text-sm text-muted-foreground">Visionario</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-green-600">{profile.costruttore_percentage}%</div>
-                    <div className="text-sm text-muted-foreground">Costruttore</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-purple-600">{profile.sognatore_percentage}%</div>
-                    <div className="text-sm text-muted-foreground">Sognatore</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-gray-600">{profile.silenzioso_percentage}%</div>
-                    <div className="text-sm text-muted-foreground">Osservatore</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-red-600">{profile.combattente_percentage}%</div>
-                    <div className="text-sm text-muted-foreground">Combattente</div>
-                  </div>
-                </div>
 
-                <div className="flex gap-4 justify-center">
-                  <Button onClick={() => navigate('/personalita')} className="gap-2">
-                    🔮 Esplora tutti i Tipi <ChevronRight className="w-4 h-4" />
-                  </Button>
-                  <Button onClick={() => setShowArchetypeTest(true)} variant="outline" className="gap-2">
-                    🔄 Rifai il Test
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <ArchetypeTest onTestComplete={handleTestComplete} />
-            )}
-          </TabsContent>
-
-          <TabsContent value="projects" className="mt-6">
-            <ProjectManager userId={user.id} />
-          </TabsContent>
         </Tabs>
       </div>
     </div>

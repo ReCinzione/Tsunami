@@ -4,7 +4,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Brain, CheckCircle, Plus, ArrowRight, Trash2 } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Brain, CheckCircle, Plus, ArrowRight, Trash2, ChevronDown, Lightbulb, Zap, Clock, Target } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import ImageToTaskOCR from './ImageToTaskOCR';
@@ -94,21 +95,115 @@ const MentalInbox = ({ onTaskCreated }: MentalInboxProps) => {
     }
   };
 
+  // Analisi intelligente del contenuto per suggerimenti
+  const analyzeNoteContent = (content: string) => {
+    const text = content.toLowerCase();
+    
+    // Analisi tipo di task
+    let suggestedType = 'azione';
+    if (text.includes('pensare') || text.includes('riflettere') || text.includes('considerare') || text.includes('valutare')) {
+      suggestedType = 'riflessione';
+    } else if (text.includes('chiamare') || text.includes('scrivere') || text.includes('email') || text.includes('messaggio') || text.includes('contattare')) {
+      suggestedType = 'comunicazione';
+    } else if (text.includes('creare') || text.includes('disegnare') || text.includes('progettare') || text.includes('inventare') || text.includes('scrivere')) {
+      suggestedType = 'creativita';
+    } else if (text.includes('organizzare') || text.includes('pianificare') || text.includes('sistemare') || text.includes('ordinare')) {
+      suggestedType = 'organizzazione';
+    }
+    
+    // Analisi energia richiesta
+    let suggestedEnergy = 'media';
+    if (text.includes('veloce') || text.includes('semplice') || text.includes('facile') || text.includes('breve')) {
+      suggestedEnergy = 'bassa';
+    } else if (text.includes('complesso') || text.includes('difficile') || text.includes('impegnativo') || text.includes('lungo')) {
+      suggestedEnergy = 'alta';
+    } else if (text.includes('molto') && (text.includes('difficile') || text.includes('complesso'))) {
+      suggestedEnergy = 'molto_alta';
+    } else if (text.includes('piccolissimo') || text.includes('minimo') || text.includes('micro')) {
+      suggestedEnergy = 'molto_bassa';
+    }
+    
+    // Estrazione titolo intelligente
+    let suggestedTitle = content.substring(0, 100);
+    const sentences = content.split(/[.!?]/);
+    if (sentences.length > 0 && sentences[0].trim().length > 0) {
+      suggestedTitle = sentences[0].trim().substring(0, 100);
+    }
+    
+    // Rilevamento urgenza
+    const isUrgent = text.includes('urgente') || text.includes('subito') || text.includes('oggi') || text.includes('asap');
+    
+    return {
+      suggestedType,
+      suggestedEnergy,
+      suggestedTitle,
+      isUrgent,
+      confidence: calculateConfidence(text, suggestedType, suggestedEnergy)
+    };
+  };
+  
+  const calculateConfidence = (text: string, type: string, energy: string) => {
+    let confidence = 0.5; // Base confidence
+    
+    // Aumenta confidence basandosi su parole chiave specifiche
+    const typeKeywords = {
+      'riflessione': ['pensare', 'riflettere', 'considerare', 'valutare'],
+      'comunicazione': ['chiamare', 'scrivere', 'email', 'messaggio', 'contattare'],
+      'creativita': ['creare', 'disegnare', 'progettare', 'inventare'],
+      'organizzazione': ['organizzare', 'pianificare', 'sistemare', 'ordinare']
+    };
+    
+    const energyKeywords = {
+      'bassa': ['veloce', 'semplice', 'facile', 'breve'],
+      'alta': ['complesso', 'difficile', 'impegnativo', 'lungo'],
+      'molto_alta': ['molto difficile', 'molto complesso'],
+      'molto_bassa': ['piccolissimo', 'minimo', 'micro']
+    };
+    
+    if (typeKeywords[type as keyof typeof typeKeywords]?.some(keyword => text.includes(keyword))) {
+      confidence += 0.3;
+    }
+    
+    if (energyKeywords[energy as keyof typeof energyKeywords]?.some(keyword => text.includes(keyword))) {
+      confidence += 0.2;
+    }
+    
+    return Math.min(confidence, 1.0);
+  };
+
   const convertToTask = async (item: MentalInboxItem) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      // Create task
+      // Analisi intelligente del contenuto
+      const analysis = analyzeNoteContent(item.content);
+      
+      // Calcola XP reward basato su energia e tipo
+      const xpRewards = {
+        'molto_bassa': 1,
+        'bassa': 3,
+        'media': 6,
+        'alta': 10,
+        'molto_alta': 15
+      };
+      
+      const baseXP = xpRewards[analysis.suggestedEnergy as keyof typeof xpRewards];
+      const urgencyBonus = analysis.isUrgent ? 2 : 0;
+      const finalXP = baseXP + urgencyBonus;
+
+      // Create task con suggerimenti intelligenti
       const { data: taskData, error: taskError } = await supabase
         .from('tasks')
         .insert({
           user_id: user.id,
-          title: item.content.substring(0, 100), // Limit title length
+          title: analysis.suggestedTitle,
           description: item.content,
-          task_type: 'azione',
-          energy_required: 'media',
-          status: 'pending'
+          task_type: analysis.suggestedType,
+          energy_required: analysis.suggestedEnergy,
+          xp_reward: finalXP,
+          status: 'pending',
+          due_date: analysis.isUrgent ? new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() : null // Se urgente, scadenza domani
         })
         .select()
         .single();
@@ -131,9 +226,11 @@ const MentalInbox = ({ onTaskCreated }: MentalInboxProps) => {
       await loadInboxItems();
       onTaskCreated?.();
       
+      const confidenceText = analysis.confidence > 0.7 ? 'alta' : analysis.confidence > 0.5 ? 'media' : 'bassa';
+      
       toast({
-        title: "Task creato",
-        description: "La nota è stata convertita in un task."
+        title: "🎯 Task creato intelligentemente",
+        description: `Tipo: ${analysis.suggestedType} | Energia: ${analysis.suggestedEnergy} | XP: ${finalXP} (confidenza: ${confidenceText})`
       });
     } catch (error) {
       console.error('Error converting to task:', error);
@@ -248,39 +345,88 @@ const MentalInbox = ({ onTaskCreated }: MentalInboxProps) => {
             </h4>
             
             <div className="space-y-2">
-              {pendingItems.map((item) => (
-                <div key={item.id} className="p-3 border rounded-lg bg-muted/30 space-y-3">
-                  <p className="text-sm">{item.content}</p>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      size="sm"
-                      onClick={() => convertToTask(item)}
-                      className="gap-1"
-                    >
-                      <ArrowRight className="w-3 h-3" />
-                      Converti in Task
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => markAsProcessed(item)}
-                      className="gap-1"
-                    >
-                      <CheckCircle className="w-3 h-3" />
-                      Processa
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => deleteNote(item)}
-                      className="gap-1 text-destructive hover:text-destructive"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                      Elimina
-                    </Button>
+              {pendingItems.map((item) => {
+                const suggestions = analyzeNoteContent(item.content);
+                const confidence = suggestions.confidence;
+                
+                return (
+                  <div key={item.id} className="p-3 border rounded-lg bg-muted/30 space-y-3">
+                    <p className="text-sm">{item.content}</p>
+                    
+                    {/* Smart Suggestions Preview */}
+                    <Collapsible>
+                      <CollapsibleTrigger asChild>
+                        <Button variant="ghost" size="sm" className="gap-2 text-xs p-1 h-auto">
+                          <Lightbulb className="w-3 h-3" />
+                          Anteprima suggerimenti AI
+                          <Badge variant={confidence >= 0.8 ? "default" : confidence >= 0.6 ? "secondary" : "outline"} className="text-xs">
+                            {Math.round(confidence * 100)}% sicurezza
+                          </Badge>
+                          <ChevronDown className="w-3 h-3" />
+                        </Button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="mt-2">
+                        <div className="bg-background/50 rounded-md p-3 space-y-2 border">
+                          <div className="grid grid-cols-2 gap-2 text-xs">
+                            <div className="flex items-center gap-1">
+                              <Target className="w-3 h-3 text-blue-500" />
+                              <span className="font-medium">Tipo:</span>
+                              <Badge variant="outline" className="text-xs">{suggestions.suggestedType}</Badge>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Zap className="w-3 h-3 text-yellow-500" />
+                              <span className="font-medium">Energia:</span>
+                              <Badge variant="outline" className="text-xs">{suggestions.suggestedEnergy}</Badge>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Clock className="w-3 h-3 text-green-500" />
+                              <span className="font-medium">Urgenza:</span>
+                              <Badge variant={suggestions.isUrgent ? "destructive" : "secondary"} className="text-xs">
+                                {suggestions.isUrgent ? "Alta" : "Normale"}
+                              </Badge>
+                            </div>
+                          </div>
+                          {suggestions.suggestedTitle !== item.content.slice(0, 50) && (
+                            <div className="text-xs">
+                              <span className="font-medium">Titolo suggerito:</span>
+                              <p className="text-muted-foreground mt-1 italic">"{suggestions.suggestedTitle}"</p>
+                            </div>
+                          )}
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                    
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() => convertToTask(item)}
+                        className="gap-1"
+                      >
+                        <ArrowRight className="w-3 h-3" />
+                        Converti in Task
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => markAsProcessed(item)}
+                        className="gap-1"
+                      >
+                        <CheckCircle className="w-3 h-3" />
+                        Processa
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => deleteNote(item)}
+                        className="gap-1 text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                        Elimina
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}

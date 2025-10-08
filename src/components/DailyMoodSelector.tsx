@@ -1,11 +1,9 @@
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Snowflake, Zap, Flame, Lightbulb } from 'lucide-react';
 
 interface MoodOption {
   id: 'congelato' | 'disorientato' | 'in_flusso' | 'ispirato';
-  icon: React.ComponentType<{ className?: string }>;
   emoji: string;
   label: string;
   description: string;
@@ -15,23 +13,20 @@ interface MoodOption {
 const moodOptions: MoodOption[] = [
   {
     id: 'congelato',
-    icon: Snowflake,
-    emoji: '🧪',
+    emoji: '🧊',
     label: 'Congelato',
     description: 'Senti di essere bloccato, le energie sono ferme',
     ritual: 'Scegli un compito piccolissimo, di 2 minuti massimo'
   },
   {
     id: 'disorientato',
-    icon: Zap,
-    emoji: '🌀',
+    emoji: '⚡',
     label: 'Disorientato',
     description: 'Hai energie ma non sai dove dirigerle',
     ritual: 'Fai una lista di 3 cose che ti vengono in mente'
   },
   {
     id: 'in_flusso',
-    icon: Flame,
     emoji: '🔥',
     label: 'In Flusso',
     description: 'Ti senti connesso e pronto all\'azione',
@@ -39,7 +34,6 @@ const moodOptions: MoodOption[] = [
   },
   {
     id: 'ispirato',
-    icon: Lightbulb,
     emoji: '💡',
     label: 'Ispirato',
     description: 'Vedi possibilità ovunque, sei in modalità visione',
@@ -75,7 +69,6 @@ export const DailyMoodSelector = ({ onMoodSelect }: DailyMoodSelectorProps) => {
 
         <div className="grid md:grid-cols-2 gap-6">
           {moodOptions.map((option) => {
-            const Icon = option.icon;
             const isSelected = selectedMood === option.id;
             
             return (
@@ -91,9 +84,6 @@ export const DailyMoodSelector = ({ onMoodSelect }: DailyMoodSelectorProps) => {
                 <CardHeader className="text-center">
                   <div className="mx-auto mb-4 relative">
                     <div className="text-6xl mb-2">{option.emoji}</div>
-                    <Icon className={`h-8 w-8 mx-auto ${
-                      isSelected ? 'text-primary animate-pulse' : 'text-muted-foreground'
-                    }`} />
                   </div>
                   <CardTitle className="text-2xl">{option.label}</CardTitle>
                   <CardDescription className="text-base">
