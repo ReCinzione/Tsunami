@@ -9,6 +9,7 @@ Un task manager gamificato progettato specificamente per persone con ADHD, che c
 - **Mental Inbox** per catturare rapidamente pensieri e idee
 - **Quick Actions** per azioni rapide e frequenti
 - **Smart Suggestions** basate su pattern comportamentali
+- **Tag System**: Organizza tasks con tag multipli (array PostgreSQL text[])
 
 ### 🎮 Sistema Gamificato
 - **Sistema di Livelli** con progressione personalizzata
@@ -54,60 +55,73 @@ Un task manager gamificato progettato specificamente per persone con ADHD, che c
    ```bash
    cp .env.example .env
    ```
-   Modifica il file `.env` con le tue credenziali Supabase e Google Calendar.
+   Compila il file `.env` con:
+   - `VITE_SUPABASE_URL`: URL del tuo progetto Supabase
+   - `VITE_SUPABASE_ANON_KEY`: Chiave anonima di Supabase
+   - Altre variabili opzionali per Google Calendar
 
-4. **Avvia il server di sviluppo**
+4. **Applica le migration del database**
+   ```bash
+   # Se usi Supabase CLI
+   supabase db push
+   
+   # Oppure applica manualmente le migration dalla cartella supabase/migrations
+   ```
+
+5. **Avvia il server di sviluppo**
    ```bash
    npm run dev
    # oppure
    bun dev
    ```
 
-5. **Apri l'applicazione**
-   Naviga su `http://localhost:8080` nel tuo browser.
+## 🗄️ Schema Database
 
-## 🔧 Configurazione Database
+### Tabella Tasks
 
-Il progetto utilizza Supabase come backend. Le migrazioni del database si trovano nella cartella `supabase/migrations/`.
+La tabella `tasks` è il cuore del sistema e include i seguenti campi principali:
 
-### Setup Supabase
-1. Crea un nuovo progetto su [Supabase](https://supabase.com)
-2. Copia l'URL e la chiave API nel file `.env`
-3. Esegui le migrazioni dal dashboard Supabase
+- `id`: UUID (Primary Key)
+- `user_id`: UUID (Foreign Key to auth.users)
+- `title`: text (Titolo del task)
+- `description`: text (Descrizione dettagliata)
+- `status`: text (stato del task: 'pending', 'in_progress', 'completed')
+- `priority`: integer (livello di priorità)
+- `due_date`: timestamp (data di scadenza)
+- **`tags`**: **text[]** (Array di tag per organizzazione e filtering)
+  - Tipo: PostgreSQL array standard (`text[]`)
+  - Default: array vuoto `'{}'::text[]`
+  - Utilizzo: Per categorizzare e filtrare tasks in modo flessibile
+  - Esempi: `['work', 'urgent']`, `['personal', 'health']`
+- `created_at`: timestamp
+- `updated_at`: timestamp
 
-## 📱 Integrazione Google Calendar
+### Row Level Security (RLS)
 
-Per abilitare la sincronizzazione con Google Calendar:
+Tutte le tabelle implementano RLS policies per garantire sicurezza:
 
-1. Segui la guida in `GOOGLE_CALENDAR_SETUP.md`
-2. Configura le credenziali OAuth nel file `.env`
-3. Autorizza l'applicazione dal pannello impostazioni
+- **SELECT**: Gli utenti possono visualizzare solo i propri tasks (incluso campo `tags`)
+- **INSERT**: Gli utenti possono creare tasks solo per se stessi
+- **UPDATE**: Gli utenti possono modificare solo i propri tasks (incluso campo `tags`)
+- **DELETE**: Gli utenti possono eliminare solo i propri tasks
 
-## 🏗️ Architettura del Progetto
+Le policies RLS sono state aggiornate nella migration `20251009131700_add_tags_to_tasks.sql` per assicurare piena compatibilità e visibilità del campo tags.
 
-```
-src/
-├── components/          # Componenti React riutilizzabili
-├── pages/              # Pagine principali dell'applicazione
-├── hooks/              # Custom hooks React
-├── utils/              # Utility e helper functions
-├── types/              # Definizioni TypeScript
-├── services/           # Servizi per API esterne
-└── integrations/       # Integrazioni con servizi esterni
-```
+### Migration Database
 
-### Componenti Principali
-- **TaskManager**: Gestione completa delle attività
-- **InventorySystem**: Sistema gamificato di oggetti e achievement
-- **RoutineManager**: Gestione routine quotidiane
-- **CharacterSheet**: Profilo utente e progressi
-- **MentalInbox**: Cattura rapida di pensieri e idee
+Le migration sono in `supabase/migrations/` e includono:
 
-## 🧠 Ottimizzazioni ADHD
+1. `20250115000000_add_google_calendar_fields.sql` - Integrazione Google Calendar
+2. `20250720101120-43df3953-9555-42ee-825d-4ac661ed2ee2.sql` - Schema iniziale tasks
+3. `20250723130225-322a3b43-da33-4c7b-b96b-56071082cde2.sql` - Updates vari
+4. `20250725062638-abc58715-53de-4dce-979f-a9a35754e95e.sql` - Routine e pattern
+5. `20250910090041_042c3ff9-a5b5-4948-b420-24d533d67f97.sql` - Gamification
+6. **`20251009131700_add_tags_to_tasks.sql`** - **Aggiunta colonna tags con RLS updates**
 
-Il progetto è specificamente progettato per supportare persone con ADHD attraverso:
+## 🧠 Principi ADHD-Friendly
 
-- **Riduzione del Carico Cognitivo**: Interface semplici e intuitive
+L'applicazione è progettata con principi specifici per ADHD:
+
 - **Feedback Immediato**: Notifiche e ricompense istantanee
 - **Flessibilità**: Adattamento ai diversi stili cognitivi
 - **Gamificazione**: Elementi di gioco per mantenere l'engagement
@@ -116,6 +130,7 @@ Il progetto è specificamente progettato per supportare persone con ADHD attrave
 ## 🤖 Chatbot Locale
 
 Il progetto include un chatbot locale per assistenza e supporto:
+
 - Risposte contestuali basate sui dati utente
 - Suggerimenti personalizzati per task e routine
 - Supporto emotivo e motivazionale
@@ -148,6 +163,7 @@ Questo progetto è distribuito sotto licenza MIT. Vedi il file `LICENSE` per mag
 ## 🆘 Supporto
 
 Per supporto e domande:
+
 - Apri una issue su GitHub
 - Consulta la documentazione nella cartella `docs/`
 - Controlla i file di progresso: `PROGRESS_ADHD_OPTIMIZATION.md` e `PROGRESS_COGNITIVE_OPTIMIZATION.md`
