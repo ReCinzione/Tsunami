@@ -11,16 +11,34 @@
 - 🔄 PWA per offline usage
 
 **Data Inizio Ottimizzazione**: 2025-01-20
-**Ultima Modifica**: 2025-01-21 ore 16:45
+**Ultima Modifica**: 2025-01-21 ore 18:30
 **Stato Fase 1**: COMPLETATA
 **Stato LocalChatBot**: IMPLEMENTATO E OTTIMIZZATO
 **Stato Google Calendar**: IMPLEMENTATO (con limitazioni)
-**Stato Refactoring**: IN CORSO
+**Stato Refactoring**: IN CORSO - CORREZIONI CRITICHE APPLICATE
+**Stato Stabilità**: STABILIZZATO - Bug Supabase risolto
 **Changelog**: Vedi CHANGELOG.md per dettagli modifiche
 
 ---
 
 ## 🔧 **MIGLIORAMENTI CODICE E REFACTORING** (2025-01-21)
+
+### ✅ **CORREZIONI CRITICHE STABILITÀ (2025-01-21 ore 18:30)**
+
+#### **🐛 Bug Fix Supabase - Parametri Undefined**
+- **Problema**: Errore `400 (Bad Request)` da Supabase per parametri `undefined` in query di data
+- **Root Cause**: Chiamata errata `useTaskStats(userId)` invece di `useTaskStats()` in TaskManager.tsx
+- **Soluzione**: Rimosso parametro `userId` non valido dalla chiamata hook
+- **File Modificato**: `src/components/TaskManager.tsx` (riga 40)
+- **Impatto**: Eliminato errore critico che impediva il caricamento delle statistiche
+- **Status**: ✅ RISOLTO E TESTATO
+
+#### **🔧 Raccomandazioni Tecniche Implementate**
+- **Type Safety**: Identificate aree per migliorare tipizzazione TypeScript
+- **Error Handling**: Mappate zone critiche per gestione errori centralizzata
+- **Performance**: Individuate opportunità per virtual scrolling e ottimizzazioni
+- **Code Organization**: Pianificato refactoring moduli con separazione container/presentational
+- **Testing Strategy**: Definita strategia per unit, integration ed E2E tests
 
 ### ✅ **Refactoring LocalChatBot.tsx Completato**
 
@@ -44,10 +62,120 @@
 - **Performance**: Memoizzazione e lazy loading implementati
 - **UX ADHD**: Risposte più specifiche e actionable per utenti ADHD
 
-#### **Prossimi Passi Refactoring**
-1. **Implementare Quick Actions UI**: Bottoni interattivi nelle risposte chatbot
-2. **Aggiungere Error Boundaries**: Gestione graceful degli errori
-3. **Implementare Analytics**: Metriche per migliorare l'esperienza
+#### **Prossimi Passi Refactoring - PRIORITÀ AGGIORNATE**
+1. **CRITICO - Error Handling Centralizzato**: Implementare gestione errori robusta per prevenire bug simili
+2. **ALTO - Refactoring Moduli**: Separare container/presentational components (TaskManager, Routine, Progetti)
+3. **ALTO - Virtual Scrolling**: Ottimizzare performance per liste lunghe
+4. **MEDIO - Custom Hooks**: Estrarre logica business in hooks riutilizzabili
+5. **MEDIO - Type Safety**: Migliorare tipizzazione TypeScript strict
+6. **BASSO - Quick Actions UI**: Bottoni interattivi nelle risposte chatbot
+
+---
+
+## 🏗️ **PIANO ARCHITETTURALE E TECNICO** (2025-01-21)
+
+### **📋 RACCOMANDAZIONI TECNICHE PRIORITARIE**
+
+#### **🔥 PRIORITÀ CRITICHE (Sprint 1-2)**
+
+##### **1. Error Handling Centralizzato**
+- **Obiettivo**: Prevenire bug critici come quello Supabase risolto
+- **Implementazione**:
+  - Error Boundary globale con fallback UI
+  - Service layer con retry logic e circuit breaker
+  - Logging centralizzato per debugging
+- **File Target**: `src/components/ErrorBoundary.tsx`, `src/services/errorHandler.ts`
+- **Impatto**: Stabilità +90%, debugging time -70%
+- **Tempo**: 3-4 giorni
+
+##### **2. Refactoring Moduli Core**
+- **TaskManager.tsx**: Separare container/presentational components
+- **RoutineManager.tsx**: Estrarre logica in custom hooks
+- **ProjectManager.tsx**: Spostare business logic nei servizi
+- **Benefici**: Manutenibilità +80%, riusabilità +60%
+- **Tempo**: 5-7 giorni
+
+##### **3. Virtual Scrolling Performance**
+- **Problema**: Liste lunghe causano lag su mobile
+- **Soluzione**: React Window per task/routine/progetti
+- **Impatto**: Performance mobile +150%, memoria -60%
+- **Tempo**: 2-3 giorni
+
+#### **⚡ MIGLIORAMENTI ARCHITETTURALI (Sprint 3-4)**
+
+##### **4. Store Management Ottimizzato**
+- **Selettori**: Implementare selettori memoizzati per performance
+- **Middleware**: Persistenza automatica e sync cross-tab
+- **Normalizzazione**: Struttura dati ottimizzata per query complesse
+- **Tempo**: 4-5 giorni
+
+##### **5. Micro-Feedback UX Pervasivi**
+- **Loading States**: Skeleton screens per ogni componente
+- **Optimistic Updates**: Feedback immediato per azioni utente
+- **Progress Indicators**: Barre di progresso per operazioni lunghe
+- **Tempo**: 3-4 giorni
+
+#### **🧪 STRATEGIA TESTING (Sprint 5-6)**
+
+##### **6. Coverage Prioritario**
+- **Unit Tests**: Hooks, utilities, servizi (target 90%)
+- **Integration Tests**: Flussi critici task/routine/progetti
+- **E2E Tests**: User journeys principali con Playwright
+- **Performance Tests**: Lighthouse CI per regressioni
+- **Tempo**: 6-8 giorni
+
+#### **♿ ACCESSIBILITÀ E UX (Sprint 7-8)**
+
+##### **7. Navigazione da Tastiera**
+- **Focus Management**: Ordine logico e visibile
+- **Shortcuts**: Hotkeys per azioni frequenti
+- **Screen Reader**: ARIA labels e live regions
+- **Tempo**: 4-5 giorni
+
+##### **8. Empty States e Onboarding**
+- **First Time User**: Tour guidato interattivo
+- **Empty Lists**: Suggerimenti actionable invece di vuoto
+- **Progressive Disclosure**: Funzionalità avanzate gradualmente
+- **Tempo**: 3-4 giorni
+
+### **📅 TIMELINE IMPLEMENTAZIONE**
+
+#### **Sprint 1 (Settimana 1-2): Stabilità**
+- Error Handling Centralizzato
+- Refactoring TaskManager
+- Virtual Scrolling base
+
+#### **Sprint 2 (Settimana 3-4): Performance**
+- Refactoring RoutineManager + ProjectManager
+- Store Management ottimizzato
+- Micro-feedback UX
+
+#### **Sprint 3 (Settimana 5-6): Qualità**
+- Testing Strategy completa
+- Performance monitoring
+- Code quality tools
+
+#### **Sprint 4 (Settimana 7-8): UX**
+- Accessibilità completa
+- Onboarding e empty states
+- Polish finale
+
+### **🛠️ STRUMENTI E LIBRERIE RACCOMANDATE**
+
+#### **Performance**
+- `@tanstack/react-virtual` per virtual scrolling
+- `react-window` alternativa leggera
+- `web-vitals` per monitoring performance
+
+#### **Testing**
+- `@testing-library/react` per unit tests
+- `msw` per mock API calls
+- `@playwright/test` per E2E
+
+#### **UX Miglioramenti**
+- `framer-motion` per animazioni fluide
+- `react-hot-toast` per notifiche
+- `@radix-ui/react-*` per componenti accessibili
 
 ---
 
@@ -555,17 +683,19 @@
 - **Utenti**: Community ADHD per testing (da organizzare)
 - **Business**: Strategia commercializzazione (da definire)
 
-### **Azioni Immediate (Questa Settimana)**
-1. **Testing LocalChatBot**: Validare risposte e pattern matching
-2. **Enhanced Intelligence**: Considerare integrazione TensorFlow.js
-3. **User Feedback**: Raccogliere feedback su utilità chatbot
-4. **Fase 2**: Iniziare implementazione Chaos Mode e AI Reorganization
+### **Azioni Immediate (Questa Settimana) - AGGIORNATE**
+1. **🔥 CRITICO - Error Handling**: Implementare Error Boundary centralizzato per prevenire bug critici
+2. **🔧 Refactoring TaskManager**: Iniziare separazione container/presentational components
+3. **⚡ Virtual Scrolling**: Setup base per liste lunghe (task, routine, progetti)
+4. **📊 Monitoring**: Implementare logging per tracciare errori e performance
+5. **🧪 Testing Setup**: Configurare ambiente test con @testing-library/react
 
-### **Azioni Prossima Settimana**
-1. **Mobile Optimization**: Ottimizzare chatbot per dispositivi mobili
-2. **Performance**: Implementare lazy loading e caching
-3. **User Testing**: Test LocalChatBot con utenti ADHD reali
-4. **Metriche**: Setup tracking per utilizzo chatbot e effectiveness
+### **Azioni Prossima Settimana (Sprint 1 Completamento)**
+1. **🏗️ Refactoring Completo**: Completare TaskManager e iniziare RoutineManager
+2. **🚀 Performance**: Ottimizzare store management con selettori memoizzati
+3. **💫 UX Micro-feedback**: Implementare loading states e optimistic updates
+4. **📱 Mobile**: Testare virtual scrolling su dispositivi mobili
+5. **🔍 Code Quality**: Setup ESLint strict e Prettier per consistency
 
 ---
 

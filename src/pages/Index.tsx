@@ -91,9 +91,7 @@ const AppContent = () => {
     
     try {
       const today = new Date();
-      const todayString = today.getFullYear() + '-' + 
-        String(today.getMonth() + 1).padStart(2, '0') + '-' + 
-        String(today.getDate()).padStart(2, '0');
+      const todayString = today.toISOString().split('T')[0];
       
       const { data, error } = await supabase
         .from('daily_moods')
@@ -170,9 +168,7 @@ const AppContent = () => {
 
     try {
       const today = new Date();
-      const todayString = today.getFullYear() + '-' + 
-        String(today.getMonth() + 1).padStart(2, '0') + '-' + 
-        String(today.getDate()).padStart(2, '0');
+      const todayString = today.toISOString().split('T')[0];
       
       const { error } = await supabase
         .from('daily_moods')

@@ -13,14 +13,14 @@ export interface Task {
   created_at?: Date;
   updated_at?: Date;
   completed_at?: Date;
-  estimated_duration?: number; // in minutes
+  // estimated_duration removed - not in database schema
   actual_duration?: number; // in minutes
-  difficulty_level?: 1 | 2 | 3 | 4 | 5;
+  // difficulty_level removed
   tags?: string[];
   parent_task_id?: string;
   subtasks?: Task[];
   context_switching_cost?: 'low' | 'medium' | 'high';
-  requires_deep_focus?: boolean;
+  // requires_deep_focus?: boolean; // Removed - not in database schema
   can_be_interrupted?: boolean;
 }
 
@@ -175,11 +175,11 @@ export interface TaskFilter {
     end: Date;
   };
   tags?: string[];
-  difficulty_level?: number[];
+  // difficulty_level removed
 }
 
 export interface TaskSort {
-  field: 'due_date' | 'created_at' | 'xp_reward' | 'energy_required' | 'difficulty_level';
+  field: 'due_date' | 'created_at' | 'xp_reward' | 'energy_required';
   direction: 'asc' | 'desc';
 }
 
