@@ -4,6 +4,7 @@ import { Task, TaskFormData, TaskMutationCallbacks } from '../types';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { useErrorHandler } from '@/hooks/common/useErrorHandler';
+import { supabase } from '@/integrations/supabase/client';
 import { useState } from 'react';
 
 interface UseTaskMutationsReturn {
@@ -173,7 +174,10 @@ export const useTaskMutations = (): UseTaskMutationsReturn => {
   // Mutazione per completare task
   const completeTaskMutation = useMutation({
     mutationFn: async (id: string) => {
-      return taskService.completeTask(id);
+      console.log('🔄 completeTaskMutation: Chiamando taskService.completeTask per task:', id);
+      const result = await taskService.completeTask(id);
+      console.log('✅ completeTaskMutation: Risultato da taskService:', result);
+      return result;
     },
     onMutate: async (id) => {
       // Optimistic update
@@ -193,6 +197,7 @@ export const useTaskMutations = (): UseTaskMutationsReturn => {
       return { previousTasks };
     },
     onSuccess: ({ task, xpGained }, taskId) => {
+      console.log('🎉 completeTaskMutation onSuccess: Task completata con successo', { task, xpGained, taskId });
       invalidateTaskQueries();
       
       // Mostra notifica di completamento con XP
@@ -206,6 +211,7 @@ export const useTaskMutations = (): UseTaskMutationsReturn => {
       checkForLevelUp(xpGained);
     },
     onError: (error, variables, context) => {
+      console.error('❌ completeTaskMutation onError: Errore nel completamento task', { error, variables, context });
       // Rollback optimistic update
       if (context?.previousTasks) {
         queryClient.setQueryData(['tasks', user?.id], context.previousTasks);
@@ -220,11 +226,19 @@ export const useTaskMutations = (): UseTaskMutationsReturn => {
   // Funzione per controllare il level up
   const checkForLevelUp = async (xpGained: number) => {
     try {
-      // Recupera il profilo aggiornato per controllare il livello
-      const { data: profile } = await queryClient.fetchQuery({
-        queryKey: ['profiles', user?.id],
-        staleTime: 0 // Forza il refresh
-      });
+      if (!user?.id) return;
+      
+      // Recupera il profilo aggiornato direttamente da Supabase
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+
+      if (error) {
+        console.error('Errore nel recupero profilo per level up:', error);
+        return;
+      }
 
       if (profile) {
         const currentLevel = calculateLevelFromXP(profile.total_xp - xpGained);
@@ -318,3 +332,27 @@ export const useTaskMutations = (): UseTaskMutationsReturn => {
 /**
  * Hook semplificato per operazioni rapide sulle task
  */
+export const useQuickTaskActions = () => {
+  const { completeTask, deleteTask } = useTaskMutations();
+  
+  const quickComplete = (taskId: string, taskTitle: string) => {
+    completeTask.mutate(taskId, {
+      onSuccess: () => {
+        // Feedback aggiuntivo per completamento rapido
+        console.log(`Task "${taskTitle}" completata rapidamente`);
+      }
+    });
+  };
+
+  const quickDelete = (taskId: string, taskTitle: string) => {
+    if (window.confirm(`Sei sicuro di voler eliminare "${taskTitle}"?`)) {
+      deleteTask.mutate(taskId);
+    }
+  };
+
+  return {
+    quickComplete,
+    quickDelete,
+    isLoading: completeTask.loading || deleteTask.loading
+  };
+};

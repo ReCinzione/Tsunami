@@ -54,6 +54,14 @@ export const TaskListContainer: React.FC<TaskListContainerProps> = ({
     ...initialFilters
   });
   
+  // Aggiorna i filtri quando cambia showCompleted
+  React.useEffect(() => {
+    setFilters(prev => ({
+      ...prev,
+      status: showCompleted ? ['completed'] : ['pending', 'in_progress']
+    }));
+  }, [showCompleted]);
+  
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
@@ -64,8 +72,8 @@ export const TaskListContainer: React.FC<TaskListContainerProps> = ({
 
   // Hooks per dati e mutazioni
   const { 
-    data: allTasks = [], 
-    isLoading, 
+    tasks: allTasks = [], 
+    loading: isLoading, 
     error,
     refetch 
   } = focusMode ? useFocusTasks() : useTasks(filters);
@@ -93,15 +101,24 @@ export const TaskListContainer: React.FC<TaskListContainerProps> = ({
 
   // Filtra e ordina le task
   const filteredTasks = useMemo(() => {
+    console.log('🔧 TaskListContainer - allTasks:', allTasks?.length || 0, 'maxTasks:', maxTasks, 'showCompleted:', showCompleted);
     let tasks = [...allTasks];
+
+    // Filtra per stato se necessario (doppio controllo)
+    if (showCompleted) {
+      tasks = tasks.filter(task => task.status === 'completed');
+    } else {
+      tasks = tasks.filter(task => task.status !== 'completed');
+    }
 
     // Applica limite se specificato
     if (maxTasks && tasks.length > maxTasks) {
       tasks = tasks.slice(0, maxTasks);
     }
 
+    console.log('📋 TaskListContainer - filteredTasks result:', tasks?.length || 0);
     return tasks;
-  }, [allTasks, maxTasks]);
+  }, [allTasks, maxTasks, showCompleted]);
 
   // Callbacks per azioni sulle task
   const handleTaskClick = useCallback((task: Task) => {
@@ -109,11 +126,14 @@ export const TaskListContainer: React.FC<TaskListContainerProps> = ({
     onTaskSelect?.(task);
   }, [onTaskSelect]);
 
-  const handleTaskComplete = useCallback(async (taskId: string) => {
+  const handleTaskComplete = useCallback(async (taskId: string, newStatus?: boolean) => {
+    console.log('handleTaskComplete chiamato con:', taskId, 'newStatus:', newStatus);
     try {
       await completeTask.mutateAsync(taskId);
+      console.log('completeTask.mutateAsync completato');
       onTaskComplete?.(); // Chiama il callback se fornito
     } catch (error) {
+      console.error('Errore in handleTaskComplete:', error);
       // Errore già gestito nel hook
     }
   }, [completeTask, onTaskComplete]);

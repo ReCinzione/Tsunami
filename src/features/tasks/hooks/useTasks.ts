@@ -49,6 +49,7 @@ export const useTasks = (options: UseTasksOptions = {}): UseTasksReturn => {
       if (!user?.id) {
         throw new Error('Utente non autenticato');
       }
+      console.log('🔄 useTasks queryFn - user.id:', user.id, 'filters:', filters);
       return taskService.getTasks(user.id, filters);
     },
     enabled: enabled && !!user?.id,
@@ -64,6 +65,9 @@ export const useTasks = (options: UseTasksOptions = {}): UseTasksReturn => {
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000)
   });
 
+  // Debug log per il risultato finale
+  console.log('📊 useTasks result - tasks:', tasks?.length || 0, 'loading:', loading, 'error:', error);
+  
   return {
     tasks,
     loading,
@@ -144,6 +148,9 @@ export const useUpcomingTasks = (days: number = 7): UseTasksReturn => {
     retry: 2
   });
 
+  // Debug log per il risultato finale
+  console.log('📊 useTasks result - tasks:', tasks?.length || 0, 'loading:', loading, 'error:', error);
+  
   return {
     tasks,
     loading,
@@ -181,6 +188,9 @@ export const useRecommendedTasks = (
     retry: 2
   });
 
+  // Debug log per il risultato finale
+  console.log('📊 useTasks result - tasks:', tasks?.length || 0, 'loading:', loading, 'error:', error);
+  
   return {
     tasks,
     loading,

@@ -6,39 +6,51 @@ class TaskService {
    * Recupera le task dell'utente con filtri opzionali
    */
   async getTasks(userId: string, filters?: TaskFilters): Promise<Task[]> {
+    // Debug log per diagnosticare problemi di filtraggio
+    console.log('🔍 TaskService.getTasks - USERID:', userId, 'FILTERS:', filters);
+    
     let query = supabase
       .from('tasks')
       .select('*')
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
 
-    // Applica filtri
+    // Applica filtri con controlli migliorati
     if (filters?.status?.length) {
+      console.log('📊 Applicando filtro status:', filters.status);
       query = query.in('status', filters.status);
     }
 
     if (filters?.task_type?.length) {
+      console.log('📝 Applicando filtro task_type:', filters.task_type);
       query = query.in('task_type', filters.task_type);
     }
 
     if (filters?.energy_required?.length) {
+      console.log('⚡ Applicando filtro energy_required:', filters.energy_required);
       query = query.in('energy_required', filters.energy_required);
     }
 
     if (filters?.due_date_from) {
+      console.log('📅 Applicando filtro due_date_from:', filters.due_date_from);
       query = query.gte('due_date', filters.due_date_from);
     }
 
     if (filters?.due_date_to) {
+      console.log('📅 Applicando filtro due_date_to:', filters.due_date_to);
       query = query.lte('due_date', filters.due_date_to);
     }
 
     if (filters?.search) {
+      console.log('🔍 Applicando filtro search:', filters.search);
       query = query.or(`title.ilike.%${filters.search}%,description.ilike.%${filters.search}%`);
     }
 
-    if (filters?.tags?.length) {
-      query = query.overlaps('tags', filters.tags);
+    // Gestione migliorata del filtro tags
+    if (Array.isArray(filters?.tags) && filters.tags.length > 0 && filters.tags.some(t => t.trim() !== "")) {
+      const validTags = filters.tags.filter(t => t.trim() !== "");
+      console.log('🏷️ Applicando filtro tags:', validTags);
+      query = query.overlaps('tags', validTags);
     }
 
     // Deep focus filter removed - requires_deep_focus not in database schema
@@ -47,8 +59,13 @@ class TaskService {
     // }
 
     const { data, error } = await query;
+    
+    // Debug log per vedere il risultato della query
+    console.log('📋 TaskService.getTasks - RESULT DATA:', data, 'ERROR:', error);
+    console.log('📊 TaskService.getTasks - Numero task trovate:', data?.length || 0);
 
     if (error) {
+      console.error('❌ Errore nella query getTasks:', error);
       throw new Error(`Errore nel caricamento delle task: ${error.message}`);
     }
 

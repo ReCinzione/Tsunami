@@ -25,8 +25,15 @@ export const TaskListView = React.memo<TaskListViewProps>(({
   onCreateTask,
   onUpdateTask,
   onDeleteTask,
-  onCompleteTask,
-  onTaskClick
+  onTaskComplete,
+  onTaskClick,
+  onTaskEdit,
+  filters,
+  onFiltersChange,
+  onRefresh,
+  isLoading,
+  taskStats,
+  selectedTaskId
 }) => {
   // Rimosso showCreateForm - gestito dal container
   const [showFilters, setShowFilters] = React.useState(false);
@@ -35,24 +42,32 @@ export const TaskListView = React.memo<TaskListViewProps>(({
 
   // Filtra e ordina le task per la visualizzazione
   const displayTasks = useMemo(() => {
+    console.log('🎯 TaskListView - Input tasks:', tasks?.length || 0, 'searchQuery:', searchQuery, 'focusMode:', focusMode);
+    
     let filteredTasks = [...tasks];
+    console.log('📋 TaskListView - Filtri iniziali - tasks:', filteredTasks.length);
 
     // Applica ricerca testuale
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
+      const beforeSearch = filteredTasks.length;
       filteredTasks = filteredTasks.filter(task => 
         task.title.toLowerCase().includes(query) ||
         task.description?.toLowerCase().includes(query)
       );
+      console.log('🔍 TaskListView - Dopo ricerca testuale:', beforeSearch, '->', filteredTasks.length);
     }
 
     // In modalità focus, mostra solo le task prioritarie
     if (focusMode) {
+      const beforeFocus = filteredTasks.length;
       filteredTasks = filteredTasks
         .filter(task => task.status !== 'completed')
         .slice(0, focusTaskCount);
+      console.log('🎯 TaskListView - Dopo modalità focus:', beforeFocus, '->', filteredTasks.length);
     }
 
+    console.log('✅ TaskListView - Risultato finale displayTasks:', filteredTasks.length);
     return filteredTasks;
   }, [tasks, searchQuery, focusMode, focusTaskCount]);
 
@@ -226,11 +241,8 @@ export const TaskListView = React.memo<TaskListViewProps>(({
               key={task.id}
               task={task}
               onClick={onTaskClick}
-              onComplete={onCompleteTask}
-              onEdit={(task) => {
-                // Implementa edit inline o modal
-                console.log('Edit task:', task);
-              }}
+              onComplete={(taskId, newStatus) => onTaskComplete?.(taskId, newStatus)}
+              onEdit={onTaskEdit}
               onDelete={onDeleteTask}
               showDetails={!focusMode}
               focusMode={focusMode}
