@@ -1,6 +1,6 @@
 # 🌊 Tsunami - ADHD-Optimized Productivity App
 
-**Versione**: 2.0  
+**Versione**: 2.0.1  
 **Stato**: Produzione  
 **Ultimo Aggiornamento**: 21 Gennaio 2025  
 

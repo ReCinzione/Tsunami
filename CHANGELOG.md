@@ -5,6 +5,31 @@
 
 ---
 
+## [2.0.1] - 2025-01-21
+
+### 🐛 Bug Fixes
+
+#### ✅ Fixed
+- **CRITICO**: Risolto bug filtraggio task tra tab "Attivi" e "Completati"
+  - Problema di timing nella sincronizzazione filtri in `TaskListContainer.tsx`
+  - Correzione passaggio oggetto completo `{filters, enabled: true}` a `useTasks` hook
+  - Filtraggio ora funziona correttamente senza ritardi o stati inconsistenti
+- **CRITICO**: Risolto errore `Missing queryFn` durante controllo level up
+  - Aggiunta `queryFn` esplicita per recupero profilo utente in `useTaskMutations.tsx`
+  - Aggiunto import `supabase` mancante per query database
+  - Level up notification ora funziona senza errori dopo completamento task
+- **Debug**: Rimossi console.log temporanei aggiunti durante debugging
+- **Performance**: Ottimizzata gestione state e re-render dei componenti task
+
+#### 🔧 Technical Details
+- **File modificati**:
+  - `src/features/tasks/containers/TaskListContainer.tsx`: Fix timing filtri
+  - `src/features/tasks/hooks/useTaskMutations.tsx`: Fix queryFn level up
+  - `src/features/tasks/hooks/useTasks.ts`: Cleanup debug logs
+  - `src/features/tasks/services/taskService.ts`: Cleanup debug logs
+
+---
+
 ## [2.0.0] - 2025-01-21
 
 ### 🎉 Major Release - Produzione Ready
