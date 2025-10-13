@@ -59,24 +59,24 @@ export interface TaskListViewProps {
   error: Error | null;
   focusMode?: boolean;
   focusTaskCount?: number;
-  onCreateTask: (data: TaskFormData) => void;
+  filters?: TaskFilters;
+  onFiltersChange?: (filters: Record<string, any>) => void;
+  onCreateTask: () => void;
   onUpdateTask: (id: string, data: Partial<TaskFormData>) => void;
   onDeleteTask: (id: string) => void;
-  onTaskComplete: (id: string, newStatus?: boolean) => void;
+  onTaskComplete: (id: string) => void;
   onTaskClick?: (task: Task) => void;
   onTaskEdit?: (task: Task) => void;
-  filters?: TaskFilters;
-  onFiltersChange?: (filters: Partial<TaskFilters>) => void;
   onRefresh?: () => void;
   isLoading?: boolean;
-  taskStats?: TaskStats;
+  taskStats?: any;
   selectedTaskId?: string;
 }
 
 export interface TaskItemProps {
   task: Task;
   onClick?: (task: Task) => void;
-  onComplete: (id: string, newStatus?: boolean) => void;
+  onComplete: (id: string) => void;
   onEdit: (task: Task) => void;
   onDelete: (id: string) => void;
   showDetails?: boolean;
@@ -100,6 +100,8 @@ export interface TaskStats {
   completion_rate: number;
   avg_completion_time: number;
   total_xp_earned: number;
+  level: number;
+  streak: number;
 }
 
 export interface TaskIntervention {

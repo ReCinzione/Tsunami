@@ -66,9 +66,9 @@ export const TaskFilters: React.FC<TaskFiltersProps> = ({
       label: 'Energia Richiesta',
       icon: <Zap className="w-4 h-4" />,
       options: [
-        { value: 'low', label: 'Bassa', color: 'bg-green-100 text-green-800 border-green-200' },
-        { value: 'medium', label: 'Media', color: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
-        { value: 'high', label: 'Alta', color: 'bg-red-100 text-red-800 border-red-200' }
+        { value: 'bassa', label: 'Bassa', color: 'bg-green-100 text-green-800 border-green-200' },
+        { value: 'media', label: 'Media', color: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
+        { value: 'alta', label: 'Alta', color: 'bg-red-100 text-red-800 border-red-200' }
       ]
     },
     {

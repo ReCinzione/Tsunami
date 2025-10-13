@@ -2,6 +2,14 @@
 -- Created: 2025-01-21
 -- Purpose: Fix 404 error when assigning XP to user profiles
 
+-- Aggiungi campi per il supporto vocale alle tabelle esistenti
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS voice_created BOOLEAN DEFAULT FALSE;
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS voice_confidence DECIMAL(3,2);
+ALTER TABLE mental_inbox ADD COLUMN IF NOT EXISTS voice_confidence DECIMAL(3,2);
+
+-- Aggiungi colonna priority per gestire la priorità dei task
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS priority TEXT DEFAULT 'medium' CHECK (priority IN ('low', 'medium', 'high', 'urgent'));
+
 -- Create the add_xp_to_profile function
 CREATE OR REPLACE FUNCTION public.add_xp_to_profile(
   user_id uuid,

@@ -8,6 +8,7 @@ import MentalInbox from '@/components/MentalInbox';
 import RoutineManager from '@/components/RoutineManager';
 import ProjectManager from '@/components/ProjectManager';
 import { LocalChatBot } from '@/components/LocalChatBot';
+import VoiceInput from '@/components/VoiceInput';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Toaster } from '@/components/ui/toaster';
@@ -30,9 +31,10 @@ const AppContent = () => {
   const [showArchetypeTest, setShowArchetypeTest] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
   const [focusTaskCount, setFocusTaskCount] = useState(3);
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState('tasks');
   const [tasks, setTasks] = useState([]);
   const [energyLevel, setEnergyLevel] = useState(7);
+  const [showVoiceInput, setShowVoiceInput] = useState(false);
   const { toast } = useToast();
 
   const handleTaskCreated = () => {
@@ -415,7 +417,26 @@ const AppContent = () => {
                 <span className="text-2xl">🎭</span>
                 <span>Scheda Personaggio</span>
               </Button>
+              <Button
+                variant="outline"
+                onClick={() => setShowVoiceInput(!showVoiceInput)}
+                className="h-20 flex flex-col gap-2"
+              >
+                <span className="text-2xl">🎤</span>
+                <span>Comando Vocale</span>
+              </Button>
             </div>
+            
+            {/* Voice Input Component */}
+            {showVoiceInput && (
+              <div className="mt-6">
+                <VoiceInput 
+                  onTaskCreated={handleTaskCreated}
+                  onNoteCreated={handleTaskCreated}
+                  className="w-full"
+                />
+              </div>
+            )}
             
 
           </TabsContent>
@@ -691,7 +712,16 @@ const AppContent = () => {
           </TabsContent>
 
           <TabsContent value="mental-inbox" className="mt-6">
-            <MentalInbox onTaskCreated={handleTaskCreated} />
+            <div className="space-y-6">
+              <MentalInbox onTaskCreated={handleTaskCreated} />
+              
+              {/* Voice Input in Mental Inbox Tab */}
+              <VoiceInput 
+                onTaskCreated={handleTaskCreated}
+                onNoteCreated={handleTaskCreated}
+                className="w-full"
+              />
+            </div>
           </TabsContent>
 
           <TabsContent value="routine" className="mt-6">

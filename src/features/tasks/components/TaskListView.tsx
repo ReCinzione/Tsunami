@@ -38,36 +38,27 @@ export const TaskListView = React.memo<TaskListViewProps>(({
   // Rimosso showCreateForm - gestito dal container
   const [showFilters, setShowFilters] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState('');
-  const [selectedFilters, setSelectedFilters] = React.useState({});
 
   // Filtra e ordina le task per la visualizzazione
   const displayTasks = useMemo(() => {
-    console.log('🎯 TaskListView - Input tasks:', tasks?.length || 0, 'searchQuery:', searchQuery, 'focusMode:', focusMode);
-    
     let filteredTasks = [...tasks];
-    console.log('📋 TaskListView - Filtri iniziali - tasks:', filteredTasks.length);
 
-    // Applica ricerca testuale
+    // Applica ricerca testuale (solo ricerca locale, i filtri principali sono gestiti dal container)
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
-      const beforeSearch = filteredTasks.length;
       filteredTasks = filteredTasks.filter(task => 
         task.title.toLowerCase().includes(query) ||
         task.description?.toLowerCase().includes(query)
       );
-      console.log('🔍 TaskListView - Dopo ricerca testuale:', beforeSearch, '->', filteredTasks.length);
     }
 
     // In modalità focus, mostra solo le task prioritarie
     if (focusMode) {
-      const beforeFocus = filteredTasks.length;
       filteredTasks = filteredTasks
         .filter(task => task.status !== 'completed')
         .slice(0, focusTaskCount);
-      console.log('🎯 TaskListView - Dopo modalità focus:', beforeFocus, '->', filteredTasks.length);
     }
 
-    console.log('✅ TaskListView - Risultato finale displayTasks:', filteredTasks.length);
     return filteredTasks;
   }, [tasks, searchQuery, focusMode, focusTaskCount]);
 
@@ -202,8 +193,8 @@ export const TaskListView = React.memo<TaskListViewProps>(({
         {showFilters && !focusMode && (
           <CardContent className="pt-0">
             <TaskFilters
-              onFiltersChange={setSelectedFilters}
-              initialFilters={selectedFilters}
+              onFiltersChange={onFiltersChange}
+              initialFilters={filters || {}}
             />
           </CardContent>
         )}
@@ -230,7 +221,7 @@ export const TaskListView = React.memo<TaskListViewProps>(({
         ) : displayTasks.length === 0 ? (
           // Stato vuoto
           <EmptyTaskState 
-            hasFilters={searchQuery.trim().length > 0 || Object.keys(selectedFilters).length > 0}
+            hasFilters={searchQuery.trim().length > 0 || (filters && Object.keys(filters).some(key => filters[key] && (Array.isArray(filters[key]) ? filters[key].length > 0 : filters[key])))}
             focusMode={focusMode}
             onCreateTask={onCreateTask}
           />

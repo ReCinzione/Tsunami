@@ -38,19 +38,19 @@ export const useTasks = (options: UseTasksOptions = {}): UseTasksReturn => {
   ], [user?.id, filters]);
 
   const {
-    data: tasks = [],
+    data: upcomingTasks = [],
     isLoading: loading,
     error,
     refetch,
     isStale
   } = useQuery({
     queryKey,
-    queryFn: () => {
+    queryFn: async () => {
       if (!user?.id) {
         throw new Error('Utente non autenticato');
       }
-      console.log('🔄 useTasks queryFn - user.id:', user.id, 'filters:', filters);
-      return taskService.getTasks(user.id, filters);
+      
+      return await taskService.getTasks(user.id, filters);
     },
     enabled: enabled && !!user?.id,
     staleTime,
@@ -65,11 +65,8 @@ export const useTasks = (options: UseTasksOptions = {}): UseTasksReturn => {
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000)
   });
 
-  // Debug log per il risultato finale
-  console.log('📊 useTasks result - tasks:', tasks?.length || 0, 'loading:', loading, 'error:', error);
-  
   return {
-    tasks,
+    tasks: upcomingTasks,
     loading,
     error: error as Error | null,
     refetch,
@@ -130,7 +127,7 @@ export const useUpcomingTasks = (days: number = 7): UseTasksReturn => {
   const { user } = useAuth();
 
   const {
-    data: tasks = [],
+    data: upcomingTasks = [],
     isLoading: loading,
     error,
     refetch,
@@ -148,11 +145,8 @@ export const useUpcomingTasks = (days: number = 7): UseTasksReturn => {
     retry: 2
   });
 
-  // Debug log per il risultato finale
-  console.log('📊 useTasks result - tasks:', tasks?.length || 0, 'loading:', loading, 'error:', error);
-  
   return {
-    tasks,
+    tasks: upcomingTasks,
     loading,
     error: error as Error | null,
     refetch,
@@ -170,7 +164,7 @@ export const useRecommendedTasks = (
   const { user } = useAuth();
 
   const {
-    data: tasks = [],
+    data: upcomingTasks = [],
     isLoading: loading,
     error,
     refetch,
@@ -188,11 +182,8 @@ export const useRecommendedTasks = (
     retry: 2
   });
 
-  // Debug log per il risultato finale
-  console.log('📊 useTasks result - tasks:', tasks?.length || 0, 'loading:', loading, 'error:', error);
-  
   return {
-    tasks,
+    tasks: upcomingTasks,
     loading,
     error: error as Error | null,
     refetch,

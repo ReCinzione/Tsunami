@@ -50,10 +50,11 @@ interface TaskState {
 }
 
 const defaultFilters: TaskFilters = {
-  status: 'pending',
+  status: undefined, // Mostra tutte le task per default (deve essere array o undefined)
   search: '',
   task_type: undefined,
   energy_required: undefined,
+  tags: undefined,
   // requires_deep_focus: undefined, // Removed - not in database schema
   due_date_range: undefined,
   sort_by: 'due_date',
@@ -148,7 +149,7 @@ export const useTaskStore = create<TaskState>()()
             filteredTasks = filteredTasks.filter(task => 
               task.title.toLowerCase().includes(searchLower) ||
               task.description?.toLowerCase().includes(searchLower) ||
-              task.tags.some(tag => tag.toLowerCase().includes(searchLower))
+              (task.tags || []).some(tag => tag.toLowerCase().includes(searchLower))
             );
           }
 
@@ -175,6 +176,18 @@ export const useTaskStore = create<TaskState>()()
               if (!task.due_date) return false;
               const dueDate = new Date(task.due_date);
               return dueDate >= start && dueDate <= end;
+            });
+          }
+
+          // Filtra per tag
+          if (filters.tags && filters.tags.length > 0) {
+            filteredTasks = filteredTasks.filter(task => {
+              const taskTags = task.tags || [];
+              return filters.tags!.some(filterTag => 
+                taskTags.some(taskTag => 
+                  taskTag.toLowerCase().includes(filterTag.toLowerCase())
+                )
+              );
             });
           }
 

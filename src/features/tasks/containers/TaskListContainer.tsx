@@ -17,7 +17,7 @@ interface TaskListContainerProps {
   onTaskSelect?: (task: Task) => void;
   /** Limite massimo di task da mostrare */
   maxTasks?: number;
-  /** Mostra task completate */
+  /** Mostra solo task completate se true, solo attive se false */
   showCompleted?: boolean;
   /** ID utente */
   userId?: string;
@@ -36,31 +36,34 @@ export const TaskListContainer: React.FC<TaskListContainerProps> = ({
   initialFilters = {},
   onTaskSelect,
   maxTasks,
-  showCompleted = false,
+  showCompleted,
   userId,
   onTaskComplete,
   className
 }) => {
   // State locale per UI
-  const [filters, setFilters] = useState<TaskFilters>({
-    status: showCompleted ? ['completed'] : ['pending', 'in_progress'], // Filtra in base a showCompleted
-    search: '',
-    task_type: undefined,
-    energy_required: undefined,
-    // requires_deep_focus: undefined, // Removed - not in database schema
-    due_date_range: undefined,
-    sort_by: 'due_date',
-    sort_order: 'asc',
-    ...initialFilters
+  const [filters, setFilters] = useState<TaskFilters>(() => {
+    // Determina il filtro di stato basato su showCompleted
+    let statusFilter: string[] | undefined = undefined;
+    if (showCompleted === true) {
+      statusFilter = ['completed'];
+    } else if (showCompleted === false) {
+      statusFilter = ['pending'];
+    }
+    // Se showCompleted è undefined, mostra tutte le task
+    
+    return {
+      status: statusFilter,
+      search: '',
+      task_type: undefined,
+      energy_required: undefined,
+      // requires_deep_focus: undefined, // Removed - not in database schema
+      due_date_range: undefined,
+      sort_by: 'due_date',
+      sort_order: 'asc',
+      ...initialFilters
+    };
   });
-  
-  // Aggiorna i filtri quando cambia showCompleted
-  React.useEffect(() => {
-    setFilters(prev => ({
-      ...prev,
-      status: showCompleted ? ['completed'] : ['pending', 'in_progress']
-    }));
-  }, [showCompleted]);
   
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [showTaskForm, setShowTaskForm] = useState(false);
@@ -99,26 +102,17 @@ export const TaskListContainer: React.FC<TaskListContainerProps> = ({
     }
   }, [error, handleError, refetch]);
 
-  // Filtra e ordina le task
+  // Filtra e ordina le task (il filtraggio principale avviene nell'hook useTasks)
   const filteredTasks = useMemo(() => {
-    console.log('🔧 TaskListContainer - allTasks:', allTasks?.length || 0, 'maxTasks:', maxTasks, 'showCompleted:', showCompleted);
     let tasks = [...allTasks];
-
-    // Filtra per stato se necessario (doppio controllo)
-    if (showCompleted) {
-      tasks = tasks.filter(task => task.status === 'completed');
-    } else {
-      tasks = tasks.filter(task => task.status !== 'completed');
-    }
 
     // Applica limite se specificato
     if (maxTasks && tasks.length > maxTasks) {
       tasks = tasks.slice(0, maxTasks);
     }
 
-    console.log('📋 TaskListContainer - filteredTasks result:', tasks?.length || 0);
     return tasks;
-  }, [allTasks, maxTasks, showCompleted]);
+  }, [allTasks, maxTasks]);
 
   // Callbacks per azioni sulle task
   const handleTaskClick = useCallback((task: Task) => {
@@ -126,14 +120,12 @@ export const TaskListContainer: React.FC<TaskListContainerProps> = ({
     onTaskSelect?.(task);
   }, [onTaskSelect]);
 
-  const handleTaskComplete = useCallback(async (taskId: string, newStatus?: boolean) => {
-    console.log('handleTaskComplete chiamato con:', taskId, 'newStatus:', newStatus);
+  const handleTaskComplete = useCallback(async (taskId: string) => {
     try {
       await completeTask.mutateAsync(taskId);
-      console.log('completeTask.mutateAsync completato');
-      onTaskComplete?.(); // Chiama il callback se fornito
+      // Chiama il callback se fornito
+      onTaskComplete?.();
     } catch (error) {
-      console.error('Errore in handleTaskComplete:', error);
       // Errore già gestito nel hook
     }
   }, [completeTask, onTaskComplete]);
@@ -188,8 +180,50 @@ export const TaskListContainer: React.FC<TaskListContainerProps> = ({
     setEditingTask(null);
   }, []);
 
-  const handleFiltersChange = useCallback((newFilters: Partial<TaskFilters>) => {
-    setFilters(prev => ({ ...prev, ...newFilters }));
+  const handleFiltersChange = useCallback((newFilters: Record<string, any>) => {
+    // Converte i filtri dal formato del componente TaskFilters al formato TaskFilters
+    const convertedFilters: Partial<TaskFilters> = {};
+    
+    if (newFilters.status && newFilters.status.length > 0) {
+      convertedFilters.status = newFilters.status;
+    }
+    
+    if (newFilters.energy && newFilters.energy.length > 0) {
+      convertedFilters.energy_required = newFilters.energy;
+    }
+    
+    if (newFilters.tags && newFilters.tags.length > 0) {
+      convertedFilters.tags = newFilters.tags;
+    }
+    
+    if (newFilters.due && newFilters.due.length > 0) {
+      // Gestione filtri scadenza - convertiamo in date range
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      if (newFilters.due.includes('today')) {
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        convertedFilters.due_date_from = today.toISOString().split('T')[0];
+        convertedFilters.due_date_to = tomorrow.toISOString().split('T')[0];
+      } else if (newFilters.due.includes('overdue')) {
+        convertedFilters.due_date_to = today.toISOString().split('T')[0];
+      } else if (newFilters.due.includes('this_week')) {
+        const weekEnd = new Date(today);
+        weekEnd.setDate(weekEnd.getDate() + 7);
+        convertedFilters.due_date_from = today.toISOString().split('T')[0];
+        convertedFilters.due_date_to = weekEnd.toISOString().split('T')[0];
+      } else if (newFilters.due.includes('tomorrow')) {
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const dayAfter = new Date(tomorrow);
+        dayAfter.setDate(dayAfter.getDate() + 1);
+        convertedFilters.due_date_from = tomorrow.toISOString().split('T')[0];
+        convertedFilters.due_date_to = dayAfter.toISOString().split('T')[0];
+      }
+    }
+    
+    setFilters(prev => ({ ...prev, ...convertedFilters }));
   }, []);
 
   const handleRefresh = useCallback(() => {
@@ -205,7 +239,7 @@ export const TaskListContainer: React.FC<TaskListContainerProps> = ({
   const isAnyOperationLoading = isLoading || isAnyLoading;
 
   return (
-    <div className={className}>
+    <>
       <TaskListView
         tasks={filteredTasks}
         filters={filters}
@@ -220,6 +254,7 @@ export const TaskListContainer: React.FC<TaskListContainerProps> = ({
         focusMode={focusMode}
         taskStats={taskStats}
         selectedTaskId={selectedTask?.id}
+        className={className}
       />
 
       {/* Dialog per form task */}
@@ -243,7 +278,7 @@ export const TaskListContainer: React.FC<TaskListContainerProps> = ({
             isLoading={editingTask ? updateTask.loading : createTask.loading}
           />
         </DialogContent>
-        </Dialog>
-    </div>
+      </Dialog>
+    </>
   );
 };

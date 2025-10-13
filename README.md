@@ -408,6 +408,220 @@ npx husky add .husky/pre-commit "npx lint-staged"
 
 ---
 
+## 🎯 Best Practices
+
+### 🔒 Sicurezza
+```typescript
+// ✅ CORRETTO: Validazione input
+const createTask = async (title: string) => {
+  if (!title?.trim()) {
+    throw new Error('Titolo richiesto');
+  }
+  if (title.length > 500) {
+    throw new Error('Titolo troppo lungo');
+  }
+  // ... resto della logica
+};
+
+// ❌ SBAGLIATO: Input non validato
+const createTask = async (title: string) => {
+  const { data } = await supabase
+    .from('tasks')
+    .insert({ title }); // Vulnerabile a injection
+};
+```
+
+### ⚡ Performance
+```typescript
+// ✅ CORRETTO: Paginazione e filtri
+const { data: tasks } = await supabase
+  .from('tasks')
+  .select('id, title, completed')
+  .eq('user_id', userId)
+  .order('created_at', { ascending: false })
+  .range(0, 49); // Limita a 50 risultati
+
+// ❌ SBAGLIATO: Carica tutto
+const { data: tasks } = await supabase
+  .from('tasks')
+  .select('*'); // Carica tutti i campi di tutti gli utenti
+```
+
+### 🔄 State Management
+```typescript
+// ✅ CORRETTO: Ottimistic updates
+const toggleTask = useMutation({
+  mutationFn: async (taskId: string) => {
+    const { error } = await supabase
+      .from('tasks')
+      .update({ completed: !task.completed })
+      .eq('id', taskId);
+    if (error) throw error;
+  },
+  onMutate: async (taskId) => {
+    // Aggiorna UI immediatamente
+    queryClient.setQueryData(['tasks'], (old) => 
+      old?.map(t => t.id === taskId ? {...t, completed: !t.completed} : t)
+    );
+  },
+  onError: (err, taskId, context) => {
+    // Rollback in caso di errore
+    queryClient.setQueryData(['tasks'], context.previousTasks);
+  }
+});
+```
+
+### 🎨 UI/UX Guidelines
+- **Accessibilità**: Usa `aria-labels`, contrasto colori, navigazione keyboard
+- **Loading States**: Mostra sempre feedback durante operazioni async
+- **Error Boundaries**: Gestisci errori gracefully senza crash
+- **Mobile First**: Design responsive da mobile a desktop
+- **Performance**: Lazy loading, code splitting, image optimization
+
+---
+
+## 🚨 Troubleshooting
+
+### Problemi Comuni
+
+#### 🔐 "Task non visibili dopo login"
+```sql
+-- Verifica RLS policies
+SELECT schemaname, tablename, rowsecurity 
+FROM pg_tables 
+WHERE tablename = 'tasks';
+
+-- Dovrebbe restituire: rowsecurity = true
+```
+**Soluzione**: Vedi `TAGS_MIGRATION_INSTRUCTIONS.md`
+
+#### ⚡ "App lenta con molte task"
+```typescript
+// Implementa paginazione
+const TASKS_PER_PAGE = 20;
+const { data, fetchNextPage } = useInfiniteQuery({
+  queryKey: ['tasks'],
+  queryFn: ({ pageParam = 0 }) => 
+    supabase
+      .from('tasks')
+      .select('*')
+      .range(pageParam, pageParam + TASKS_PER_PAGE - 1)
+});
+```
+
+#### 🔄 "Errori di sincronizzazione"
+```typescript
+// Implementa retry logic
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: (failureCount, error) => {
+        if (error?.status === 404) return false;
+        return failureCount < 3;
+      },
+      staleTime: 5 * 60 * 1000, // 5 minuti
+    },
+  },
+});
+```
+
+#### 🎯 "Focus Mode non funziona"
+```typescript
+// Verifica localStorage
+const focusMode = localStorage.getItem('focusMode');
+if (focusMode === 'true') {
+  // Applica filtri UI
+  const visibleTasks = tasks.slice(0, focusLimit);
+}
+```
+
+### 🔧 Debug Tools
+
+```typescript
+// Abilita debug mode
+if (import.meta.env.DEV) {
+  window.supabase = supabase;
+  window.queryClient = queryClient;
+  
+  // Debug RLS
+  window.testRLS = async () => {
+    const { data, error } = await supabase
+      .from('tasks')
+      .select('*');
+    console.log('RLS Test:', { data, error });
+  };
+}
+```
+
+### 📊 Monitoring
+
+```typescript
+// Error tracking
+const errorHandler = (error: Error, errorInfo: any) => {
+  console.error('App Error:', error, errorInfo);
+  
+  // Invia a servizio monitoring (es. Sentry)
+  if (import.meta.env.PROD) {
+    Sentry.captureException(error, {
+      contexts: { errorInfo },
+      tags: { component: 'TaskManager' }
+    });
+  }
+};
+
+// Performance monitoring
+const measurePerformance = (name: string, fn: Function) => {
+  const start = performance.now();
+  const result = fn();
+  const end = performance.now();
+  
+  console.log(`${name} took ${end - start} milliseconds`);
+  return result;
+};
+```
+
+---
+
+## 🔗 Link Esterni Utili
+
+### 📚 Documentazione Tecnica
+- [Supabase RLS Guide](https://supabase.com/docs/guides/auth/row-level-security)
+- [React Query Best Practices](https://tkdodo.eu/blog/practical-react-query)
+- [TypeScript Handbook](https://www.typescriptlang.org/docs/)
+- [Tailwind CSS Components](https://tailwindui.com/components)
+- [Vite Performance Guide](https://vitejs.dev/guide/performance.html)
+
+### 🎨 Design & UX
+- [ADHD-Friendly Design Principles](https://www.additudemag.com/adhd-friendly-web-design/)
+- [Accessibility Guidelines (WCAG)](https://www.w3.org/WAI/WCAG21/quickref/)
+- [Color Contrast Checker](https://webaim.org/resources/contrastchecker/)
+- [Mobile-First Design](https://www.uxpin.com/studio/blog/mobile-first-design/)
+
+### 🧠 ADHD Research
+- [ADHD & Productivity Research](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6379245/)
+- [Gamification for ADHD](https://www.frontiersin.org/articles/10.3389/fpsyg.2019.01565/full)
+- [Executive Function Tools](https://www.understood.org/en/articles/executive-function-strategies-for-adults)
+
+### 🛠️ Development Tools
+- [Supabase CLI Reference](https://supabase.com/docs/reference/cli)
+- [React DevTools](https://chrome.google.com/webstore/detail/react-developer-tools/fmkadmapgofadopljbjfkapdkoienihi)
+- [Tailwind CSS IntelliSense](https://marketplace.visualstudio.com/items?itemName=bradlc.vscode-tailwindcss)
+- [TypeScript Error Translator](https://ts-error-translator.vercel.app/)
+
+### 🚀 Deployment & Hosting
+- [Vercel Deployment Guide](https://vercel.com/docs/concepts/deployments)
+- [Netlify React Guide](https://docs.netlify.com/frameworks/react/)
+- [Supabase Edge Functions](https://supabase.com/docs/guides/functions)
+- [GitHub Actions CI/CD](https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-nodejs)
+
+### 📈 Analytics & Monitoring
+- [Google Analytics 4](https://developers.google.com/analytics/devguides/collection/ga4)
+- [Sentry Error Tracking](https://docs.sentry.io/platforms/javascript/guides/react/)
+- [Vercel Analytics](https://vercel.com/docs/concepts/analytics)
+- [Web Vitals](https://web.dev/vitals/)
+
+---
+
 ## 📈 Roadmap
 
 ### 🚀 Versione 2.1 (Q2 2025)
@@ -440,10 +654,13 @@ npx husky add .husky/pre-commit "npx lint-staged"
 - [Tailwind CSS](https://tailwindcss.com/docs)
 - [shadcn/ui](https://ui.shadcn.com/)
 
-### Community
-- [Discord Server](https://discord.gg/tsunami-adhd)
-- [GitHub Discussions](https://github.com/your-username/tsunami/discussions)
-- [Twitter](https://twitter.com/tsunami_adhd)
+### Community & Support
+- [🎮 Discord Server](https://discord.gg/tsunami-adhd) - Chat in tempo reale
+- [💬 GitHub Discussions](https://github.com/your-username/tsunami/discussions) - Q&A e feature requests
+- [🐦 Twitter](https://twitter.com/tsunami_adhd) - Aggiornamenti e tips
+- [📺 YouTube Channel](https://youtube.com/@tsunami-adhd) - Tutorial e demo
+- [📝 Blog](https://blog.tsunami-adhd.com) - Articoli su ADHD e produttività
+- [🎯 Reddit Community](https://reddit.com/r/TsunamiADHD) - Discussioni community
 
 ---
 
