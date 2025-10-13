@@ -50,7 +50,10 @@ export const useTasks = (options: UseTasksOptions = {}): UseTasksReturn => {
         throw new Error('Utente non autenticato');
       }
       
-      return await taskService.getTasks(user.id, filters);
+      console.log('🔍 Fetching tasks with filters:', filters);
+      const tasks = await taskService.getTasks(user.id, filters);
+      console.log('📋 Tasks fetched:', tasks.length, 'tasks');
+      return tasks;
     },
     enabled: enabled && !!user?.id,
     staleTime,

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { TaskListView } from '../components/TaskListView';
 import { TaskForm } from '../components/TaskForm';
 import { useTasks, useFocusTasks, useTaskStats } from '../hooks/useTasks';
@@ -64,6 +64,27 @@ export const TaskListContainer: React.FC<TaskListContainerProps> = ({
       ...initialFilters
     };
   });
+
+  // Sincronizza lo stato dei filtri con la prop showCompleted
+  useEffect(() => {
+    console.log('🔄 showCompleted changed:', showCompleted);
+    let statusFilter: string[] | undefined = undefined;
+    if (showCompleted === true) {
+      statusFilter = ['completed'];
+    } else if (showCompleted === false) {
+      statusFilter = ['pending'];
+    }
+    // Se showCompleted è undefined, mostra tutte le task
+    
+    setFilters(prev => {
+      const newFilters = {
+        ...prev,
+        status: statusFilter
+      };
+      console.log('📊 Filters updated:', newFilters);
+      return newFilters;
+    });
+  }, [showCompleted]);
   
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [showTaskForm, setShowTaskForm] = useState(false);
@@ -79,7 +100,10 @@ export const TaskListContainer: React.FC<TaskListContainerProps> = ({
     loading: isLoading, 
     error,
     refetch 
-  } = focusMode ? useFocusTasks() : useTasks(filters);
+  } = focusMode ? useFocusTasks() : useTasks({ 
+    filters,
+    enabled: true // Forza il re-fetch quando filters cambia
+  });
   
   const { data: taskStats } = useTaskStats();
   

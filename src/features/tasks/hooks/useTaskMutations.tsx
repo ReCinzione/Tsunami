@@ -5,6 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { useErrorHandler } from '@/hooks/common/useErrorHandler';
 import { useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface UseTaskMutationsReturn {
   createTask: {
@@ -223,6 +224,21 @@ export const useTaskMutations = (): UseTaskMutationsReturn => {
       // Recupera il profilo aggiornato per controllare il livello
       const { data: profile } = await queryClient.fetchQuery({
         queryKey: ['profiles', user?.id],
+        queryFn: async () => {
+          if (!user?.id) throw new Error('User ID not available');
+          
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('user_id', user.id)
+            .single();
+            
+          if (error && error.code !== 'PGRST116') {
+            throw error;
+          }
+          
+          return data;
+        },
         staleTime: 0 // Forza il refresh
       });
 
