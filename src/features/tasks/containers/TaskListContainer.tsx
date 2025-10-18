@@ -17,6 +17,14 @@ interface TaskListContainerProps {
   onTaskSelect?: (task: Task) => void;
   /** Limite massimo di task da mostrare */
   maxTasks?: number;
+  /** Mostra task completate */
+  showCompleted?: boolean;
+  /** User ID per le query */
+  userId?: string;
+  /** Callback quando una task viene completata */
+  onTaskComplete?: () => void;
+  /** Classe CSS aggiuntiva */
+  className?: string;
 }
 
 /**
@@ -27,11 +35,15 @@ export const TaskListContainer: React.FC<TaskListContainerProps> = ({
   focusMode = false,
   initialFilters = {},
   onTaskSelect,
-  maxTasks
+  maxTasks,
+  showCompleted = false,
+  userId,
+  onTaskComplete,
+  className
 }) => {
   // State locale per UI
   const [filters, setFilters] = useState<TaskFilters>({
-    status: undefined, // Mostra tutte le task per default
+    status: showCompleted ? ['completed'] : ['pending', 'in_progress'], // Filtra in base a showCompleted
     search: '',
     task_type: undefined,
     energy_required: undefined,
@@ -56,7 +68,7 @@ export const TaskListContainer: React.FC<TaskListContainerProps> = ({
     loading: isLoading, 
     error,
     refetch 
-  } = focusMode ? useFocusTasks() : useTasks(filters);
+  } = focusMode ? useFocusTasks() : useTasks({ filters });
   
   const { data: taskStats } = useTaskStats();
   
@@ -189,18 +201,21 @@ export const TaskListContainer: React.FC<TaskListContainerProps> = ({
     <>
       <TaskListView
         tasks={filteredTasks}
+        loading={isAnyOperationLoading}
+        error={error}
         filters={filters}
         onFiltersChange={handleFiltersChange}
         onTaskClick={handleTaskClick}
         onTaskComplete={handleTaskComplete}
         onTaskEdit={handleTaskEdit}
-        onTaskDelete={handleTaskDelete}
+        onDeleteTask={handleTaskDelete}
         onCreateTask={handleCreateTask}
         onRefresh={handleRefresh}
         isLoading={isAnyOperationLoading}
         focusMode={focusMode}
         taskStats={taskStats}
         selectedTaskId={selectedTask?.id}
+        onUpdateTask={updateTask.mutateAsync}
       />
 
       {/* Dialog per form task */}
