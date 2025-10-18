@@ -59,9 +59,45 @@ Il **Context Engineering** è un approccio sistematico per:
    - Chatbot funziona correttamente
    - TaskStore sincronizzato
    - UI responsive e accessibile
+   - Esegui test context-driven (src/test/contextFlows.test.ts)
+
+✅ Verifica error handling:
+   - useErrorHandler centralizzato
+   - Messaggi user-friendly
+   - Logging strutturato
 ```
 
 ---
+
+## 🏗️ ARCHITETTURA STATE MANAGEMENT
+
+### Distinzione Context vs Store
+```
+✅ REACT CONTEXT (Cross-cutting, low-traffic)
+   ├── AuthProvider (App.tsx) - Autenticazione globale
+   ├── TooltipProvider - UI tooltips
+   └── QueryClientProvider - React Query cache
+
+✅ ZUSTAND STORES (High-frequency, performance-critical)
+   ├── useUIStore - Preferenze UI, focus mode, notifiche
+   ├── useTaskStore - Task data, filtri, view modes
+   └── Pattern: un solo provider Context per tipo
+
+❌ ANTI-PATTERNS DA EVITARE
+   ├── Nested provider dello stesso tipo (RISOLTO: rimosso AuthProvider da Index.tsx)
+   ├── Context per dati che cambiano frequentemente
+   ├── Store per dati cross-cutting stabili
+   ├── Manual try/catch senza error handler centralizzato
+   └── Azioni chatbot che non influenzano realmente lo stato
+```
+
+### Mobile-Ready Architecture
+```
+✅ Hooks condivisi (use-mobile.tsx, useAuth.tsx)
+✅ Componenti granulari e riutilizzabili
+✅ Store Zustand portabili su React Native
+✅ Feature flags per differenziazione mobile
+```
 
 ## 🔍 SISTEMA RAG (RETRIEVAL-AUGMENTED GENERATION)
 

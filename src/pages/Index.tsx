@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { AuthProvider, useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/hooks/useAuth';
 import { AuthPage } from '@/components/AuthPage';
 import { ArchetypeTest } from '@/components/ArchetypeTest';
 import { DailyMoodSelector } from '@/components/DailyMoodSelector';
@@ -13,6 +13,7 @@ import { QuickActionButtons } from '@/components/QuickActionButtons';
 import { getContextualQuickActions } from '@/utils/quickActions';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useErrorHandler } from '@/hooks/useErrorHandler';
 import { Toaster } from '@/components/ui/toaster';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -36,12 +37,17 @@ const AppContent = () => {
   // Usa focus mode dallo store invece dello stato locale
   const focusMode = useUIStore(state => state.focusMode);
   const setFocusMode = useUIStore(state => state.setFocusMode);
+  
+  // Integrazione con TaskStore per filtri chatbot
+  const setTaskFilters = useTaskStore(state => state.setFilters);
+  const resetTaskFilters = useTaskStore(state => state.resetFilters);
   const [focusTaskCount, setFocusTaskCount] = useState(3);
   const [activeTab, setActiveTab] = useState('tasks');
   const [tasks, setTasks] = useState([]);
   const [energyLevel, setEnergyLevel] = useState(7);
   const [showVoiceInput, setShowVoiceInput] = useState(false);
   const { toast } = useToast();
+  const { handleError } = useErrorHandler();
 
   const handleTaskCreated = () => {
     setRefreshTasks(prev => prev + 1);
@@ -84,10 +90,10 @@ const AppContent = () => {
 
       setProfile(data);
     } catch (error: any) {
-      toast({
-        title: "Errore",
-        description: "Impossibile caricare il profilo",
-        variant: "destructive"
+      handleError(error, {
+        component: 'Index',
+        action: 'load_profile',
+        userId: user?.id
       });
     } finally {
       setProfileLoading(false);
@@ -485,22 +491,26 @@ const AppContent = () => {
                 case 'filter_low_energy_tasks':
                 case 'show_low_energy_tasks':
                   // Filtra effettivamente i task a bassa energia
+                  setTaskFilters({ energy_required: ['molto_bassa', 'bassa'] });
                   setActiveTab('tasks');
-                  // Potresti aggiungere un filtro specifico qui se necessario
                   toast({
                     title: "🌱 Task a Bassa Energia",
-                    description: `Trovati ${params?.tasks?.length || 0} task adatti al tuo livello di energia`,
+                    description: `Filtro applicato per task a bassa energia`,
                   });
                   break;
                 case 'suggest_high_energy_tasks':
                 case 'show_high_priority_tasks':
+                  // Filtra task ad alta energia/priorità
+                  setTaskFilters({ energy_required: ['alta', 'molto_alta'] });
                   setActiveTab('tasks');
                   toast({
                     title: "🚀 Task ad Alta Energia",
-                    description: `${params?.tasks?.length || 0} task impegnativi disponibili`,
+                    description: `Filtro applicato per task impegnativi`,
                   });
                   break;
                 case 'organize_tasks_by_priority':
+                  // Reset filtri e ordina per priorità
+                  resetTaskFilters();
                   setActiveTab('tasks');
                   toast({
                     title: "📋 Organizzazione Task",
@@ -912,10 +922,10 @@ const AppContent = () => {
 
 const Index = () => {
   return (
-    <AuthProvider>
+    <>
       <AppContent />
       <Toaster />
-    </AuthProvider>
+    </>
   );
 };
 
