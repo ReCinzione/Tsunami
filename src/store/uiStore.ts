@@ -115,7 +115,7 @@ const defaultPreferences: UIPreferences = {
   compactMode: false
 };
 
-export const useUIStore = create<UIState>()((
+export const useUIStore = create<UIState>()(
   devtools(
     persist(
       (set, get) => ({

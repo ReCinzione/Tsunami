@@ -61,7 +61,7 @@ const defaultFilters: TaskFilters = {
   sort_order: 'asc'
 };
 
-export const useTaskStore = create<TaskState>()()
+export const useTaskStore = create<TaskState>()(
   devtools(
     persist(
       (set, get) => ({
