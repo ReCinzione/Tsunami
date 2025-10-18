@@ -338,7 +338,7 @@ export const useUIStore = create<UIState>()(
       name: 'UIStore'
     }
   )
-))
+);
 
 // Selettori per ottimizzare le performance
 export const useUISelectors = () => {

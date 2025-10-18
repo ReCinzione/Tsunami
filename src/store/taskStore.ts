@@ -261,7 +261,8 @@ export const useTaskStore = create<TaskState>()(
     {
       name: 'TaskStore'
     }
-  );
+  )
+);
 
 // Selettori per ottimizzare le performance
 export const useTaskSelectors = () => {
