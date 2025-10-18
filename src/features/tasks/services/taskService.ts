@@ -6,8 +6,12 @@ class TaskService {
    * Recupera le task dell'utente con filtri opzionali
    */
   async getTasks(userId: string, filters?: TaskFilters): Promise<Task[]> {
-    console.log('🔧 TaskService.getTasks called with filters:', filters);
-    
+    console.log('🔍 TaskService.getTasks chiamato:', {
+      userId,
+      filters,
+      timestamp: new Date().toISOString()
+    });
+
     let query = supabase
       .from('tasks')
       .select('*')
@@ -50,13 +54,16 @@ class TaskService {
 
     const { data, error } = await query;
 
-    if (error) {
-      throw new Error(`Errore nel caricamento delle task: ${error.message}`);
-    }
+    console.log('📊 TaskService.getTasks risultato:', {
+      tasksCount: data?.length || 0,
+      error: error?.message,
+      firstTask: data?.[0]?.title,
+      timestamp: new Date().toISOString()
+    });
 
-    console.log('💾 TaskService.getTasks result:', data?.length || 0, 'tasks found');
-    if (data && data.length > 0) {
-      console.log('📊 Task statuses:', data.map(t => t.status));
+    if (error) {
+      console.error('❌ Errore nel caricamento delle task:', error);
+      throw new Error(`Errore nel caricamento delle task: ${error.message}`);
     }
 
     return data || [];

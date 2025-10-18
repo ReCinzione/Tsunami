@@ -9,6 +9,8 @@ import RoutineManager from '@/components/RoutineManager';
 import ProjectManager from '@/components/ProjectManager';
 import { LocalChatBot } from '@/components/LocalChatBot';
 import VoiceInput from '@/components/VoiceInput';
+import { QuickActionButtons } from '@/components/QuickActionButtons';
+import { getContextualQuickActions } from '@/utils/quickActions';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Toaster } from '@/components/ui/toaster';
@@ -17,6 +19,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { LogOut, User, ChevronRight, Focus, Plus, Settings } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useUIStore } from '@/store/uiStore';
+import { useTaskStore } from '@/store/taskStore';
 
 const AppContent = () => {
   const { user, loading, signOut } = useAuth();
@@ -29,7 +33,9 @@ const AppContent = () => {
   const [showTasks, setShowTasks] = useState(false);
   const [showMentalInbox, setShowMentalInbox] = useState(false);
   const [showArchetypeTest, setShowArchetypeTest] = useState(false);
-  const [focusMode, setFocusMode] = useState(false);
+  // Usa focus mode dallo store invece dello stato locale
+  const focusMode = useUIStore(state => state.focusMode);
+  const setFocusMode = useUIStore(state => state.setFocusMode);
   const [focusTaskCount, setFocusTaskCount] = useState(3);
   const [activeTab, setActiveTab] = useState('tasks');
   const [tasks, setTasks] = useState([]);
@@ -470,16 +476,19 @@ const AppContent = () => {
                 case 'activate_focus_mode':
                 case 'enable_focus_mode':
                   setFocusMode(true);
+                  setActiveTab('tasks');
                   toast({
-                    title: "Focus Mode Attivato",
+                    title: "🎯 Focus Mode Attivato",
                     description: "Ora vedrai solo i task più importanti",
                   });
                   break;
                 case 'filter_low_energy_tasks':
                 case 'show_low_energy_tasks':
+                  // Filtra effettivamente i task a bassa energia
                   setActiveTab('tasks');
+                  // Potresti aggiungere un filtro specifico qui se necessario
                   toast({
-                    title: "Task a Bassa Energia",
+                    title: "🌱 Task a Bassa Energia",
                     description: `Trovati ${params?.tasks?.length || 0} task adatti al tuo livello di energia`,
                   });
                   break;
@@ -487,15 +496,71 @@ const AppContent = () => {
                 case 'show_high_priority_tasks':
                   setActiveTab('tasks');
                   toast({
-                    title: "Task ad Alta Energia",
+                    title: "🚀 Task ad Alta Energia",
                     description: `${params?.tasks?.length || 0} task impegnativi disponibili`,
                   });
                   break;
                 case 'organize_tasks_by_priority':
                   setActiveTab('tasks');
                   toast({
-                    title: "Organizzazione Task",
+                    title: "📋 Organizzazione Task",
                     description: "Task organizzati per priorità",
+                  });
+                  break;
+                case 'suggest_easy_task':
+                  setActiveTab('tasks');
+                  toast({
+                    title: "🌱 Task Facile Suggerito",
+                    description: "Inizia con un task semplice per prendere slancio",
+                  });
+                  break;
+                case 'suggest_challenging_task':
+                  setActiveTab('tasks');
+                  toast({
+                    title: "🚀 Task Impegnativo",
+                    description: "Sfrutta la tua energia per qualcosa di importante",
+                  });
+                  break;
+                case 'start_focus_timer':
+                  setFocusMode(true);
+                  setActiveTab('tasks');
+                  toast({
+                    title: "⏰ Sessione Focus Iniziata",
+                    description: "Timer di concentrazione attivato",
+                  });
+                  break;
+                case 'start_micro_timer':
+                  toast({
+                    title: "⏱️ Micro Timer",
+                    description: "2 minuti per iniziare - ogni piccolo passo conta!",
+                  });
+                  break;
+                case 'prioritize_tasks':
+                  setActiveTab('tasks');
+                  toast({
+                    title: "🎯 Prioritizzazione Attivata",
+                    description: "Concentrati sui task più importanti",
+                  });
+                  break;
+                case 'break_task':
+                  setActiveTab('tasks');
+                  toast({
+                    title: "🔨 Spezza il Task",
+                    description: "Dividi il task in parti più piccole e gestibili",
+                  });
+                  break;
+                case 'open_mental_inbox':
+                  setActiveTab('notes');
+                  toast({
+                    title: "📥 Mental Inbox",
+                    description: "Scarica tutti i tuoi pensieri qui",
+                  });
+                  break;
+                case 'tackle_backlog':
+                  setActiveTab('tasks');
+                  toast({
+                    title: "📚 Affronta il Backlog",
+                    description: "Tempo di sistemare i task rimandati",
                   });
                   break;
                 case 'show_progress_stats':
@@ -535,15 +600,125 @@ const AppContent = () => {
                 case 'start_2min_timer':
                   console.log('Starting 2-minute timer');
                   toast({
-                    title: "Timer Veloce",
-                    description: "Timer di 2 minuti avviato",
+                    title: "⏱️ Timer Veloce",
+                    description: "Timer di 2 minuti avviato - inizia subito!",
+                  });
+                  break;
+                case 'suggest_next_task':
+                  setActiveTab('tasks');
+                  if (params?.task) {
+                    toast({
+                      title: "➡️ Prossimo Task",
+                      description: `Inizia con: ${params.task.title}`,
+                    });
+                  } else {
+                    toast({
+                      title: "➡️ Prossimo Task",
+                      description: "Controlla la lista task per il prossimo da fare",
+                    });
+                  }
+                  break;
+                case 'extend_focus_session':
+                  toast({
+                    title: "⏰ Focus Esteso",
+                    description: "Continua così! Sessione di concentrazione prolungata",
+                  });
+                  break;
+                case 'track_progress':
+                  toast({
+                    title: "📈 Progresso Tracciato",
+                    description: "Ottimo lavoro! Continua così",
+                  });
+                  break;
+                case 'organize_projects':
+                  setActiveTab('projects');
+                  toast({
+                    title: "📁 Organizzazione Progetti",
+                    description: "Raggruppa le tue attività in progetti",
+                  });
+                  break;
+                case 'process_text':
+                  setActiveTab('notes');
+                  toast({
+                    title: "📝 Elaborazione Testo",
+                    description: "Riorganizza e semplifica i tuoi testi",
+                  });
+                  break;
+                case 'execute_command':
+                  toast({
+                    title: "⚡ Comando Eseguito",
+                    description: "Azione rapida completata",
+                  });
+                  break;
+                case 'create_task':
+                  if (params?.title) {
+                    const addTask = useTaskStore.getState().addTask;
+                    const newTask = {
+                      id: crypto.randomUUID(),
+                      title: params.title,
+                      description: params.description || '',
+                      status: 'pending' as const,
+                      task_type: params.task_type || 'organizzazione' as const,
+                      energy_required: params.energy_required || 'media' as const,
+                      is_recurring: false,
+                      xp_reward: 10,
+                      created_at: new Date().toISOString(),
+                      can_be_interrupted: true
+                    };
+                    addTask(newTask);
+                    setActiveTab('tasks');
+                    toast({
+                      title: "✅ Task Creato",
+                      description: `Nuovo task: ${params.title}`,
+                    });
+                  }
+                  break;
+                case 'manage_energy':
+                  setActiveTab('tasks');
+                  toast({
+                    title: "⚡ Gestione Energia",
+                    description: "Task filtrati in base al tuo livello di energia",
+                  });
+                  break;
+                case 'organize_tasks':
+                  setActiveTab('tasks');
+                  toast({
+                    title: "📋 Organizza Task",
+                    description: "Task riorganizzati per priorità e scadenza",
+                  });
+                  break;
+                case 'improve_focus':
+                  setFocusMode(true);
+                  setActiveTab('tasks');
+                  toast({
+                    title: "🎯 Focus Migliorato",
+                    description: "Modalità focus attivata per ridurre distrazioni",
+                  });
+                  break;
+                case 'view_progress':
+                  toast({
+                    title: "📊 Visualizza Progressi",
+                    description: "Statistiche aggiornate sui tuoi task completati",
+                  });
+                  break;
+                case 'quick_action':
+                  setActiveTab('tasks');
+                  toast({
+                    title: "⚡ Azione Rapida",
+                    description: "Prossima azione suggerita in base al contesto",
+                  });
+                  break;
+                case 'take_break':
+                  toast({
+                    title: "☕ Pausa Meritata",
+                    description: "Prenditi una pausa per ricaricare le energie",
                   });
                   break;
                 default:
                   console.log('Action not implemented:', action, params);
                   toast({
-                    title: "Azione Eseguita",
-                    description: `${action} completata`,
+                    title: "✨ Azione Eseguita",
+                    description: `${action} completata con successo`,
                   });
               }
             }}

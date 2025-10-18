@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { MessageCircle, Zap, Focus, Timer, Brain } from 'lucide-react';
+import { MessageCircle, Zap, Focus, Timer, Brain, ChevronDown } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 // Import new utility functions
@@ -270,6 +270,13 @@ export const LocalChatBot: React.FC<LocalChatBotProps> = ({
     dominantEmotions: string[];
     suggestedActions: string[];
   }>({ startTime: new Date(), messageCount: 0, dominantEmotions: [], suggestedActions: [] });
+  
+  // Nuovi stati per la chat testuale
+  const [chatMessages, setChatMessages] = useState<Array<{id: string, text: string, sender: 'user' | 'bot', timestamp: Date}>>([]);
+  const [inputText, setInputText] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
+  const [conversationContext, setConversationContext] = useState<{lastIntent?: string, awaitingResponse?: boolean}>({});
+  const [showQuickActions, setShowQuickActions] = useState(true);
 
   const { toast } = useToast();
   const { logChatbotInteraction } = usePatternMining();
@@ -304,11 +311,25 @@ export const LocalChatBot: React.FC<LocalChatBotProps> = ({
     }
   };
 
-  // Inizializzazione con quick actions contestuali
+  // Inizializzazione con quick actions contestuali e messaggio di benvenuto
   useEffect(() => {
     const quickActions = getContextualQuickActions(adhdContext);
     setCurrentQuickActions(quickActions);
     loadProjects();
+    
+    // Aggiungi messaggio di benvenuto se è la prima volta
+    if (chatMessages.length === 0) {
+      const welcomeMessage = {
+        id: 'welcome-' + Date.now(),
+        text: `Ciao! 👋 Sono il tuo assistente ADHD completamente rinnovato!\n\n🎯 Ora puoi scrivermi direttamente:\n• "Crea task studiare matematica"\n• "Sono stanco, cosa posso fare?"\n• "Suddividi questa task in step"\n• "Come procedo con il progetto?"\n\n✨ Prova a scrivermi qualcosa!`,
+        sender: 'bot' as const,
+        timestamp: new Date()
+      };
+      
+      setTimeout(() => {
+        setChatMessages([welcomeMessage]);
+      }, 500);
+    }
   }, [userId, adhdContext]);
 
   // Aggiorna le quick actions quando cambiano task o contesto
@@ -316,6 +337,20 @@ export const LocalChatBot: React.FC<LocalChatBotProps> = ({
     const quickActions = getContextualQuickActions(adhdContext);
     setCurrentQuickActions(quickActions);
   }, [adhdContext, tasks]);
+
+  // Previeni chiusura accidentale del chatbot durante l'interazione
+  useEffect(() => {
+    // Mantieni il chatbot aperto se ci sono messaggi recenti
+    if (chatMessages.length > 1) {
+      const lastMessage = chatMessages[chatMessages.length - 1];
+      const timeSinceLastMessage = Date.now() - lastMessage.timestamp.getTime();
+      
+      // Se l'ultimo messaggio è recente (meno di 30 secondi), mantieni aperto
+      if (timeSinceLastMessage < 30000 && !isOpen) {
+        setIsOpen(true);
+      }
+    }
+  }, [chatMessages, isOpen]);
 
 
 
@@ -1608,9 +1643,287 @@ export const LocalChatBot: React.FC<LocalChatBotProps> = ({
      return simplified.trim();
    };
 
+  // Nuove funzioni per la chat testuale
+  const handleSendMessage = async () => {
+    if (!inputText.trim()) return;
+    
+    // Assicurati che il chatbot rimanga aperto durante l'interazione
+    if (!isOpen) {
+      setIsOpen(true);
+    }
+    
+    const userMessage = {
+      id: Date.now().toString(),
+      text: inputText.trim(),
+      sender: 'user' as const,
+      timestamp: new Date()
+    };
+    
+    setChatMessages(prev => [...prev, userMessage]);
+    setInputText('');
+    setIsTyping(true);
+    
+    // Aggiorna contatore messaggi
+    setSessionInsights(prev => ({
+      ...prev,
+      messageCount: prev.messageCount + 1
+    }));
+    
+    // Analizza intent e genera risposta
+    setTimeout(async () => {
+      const botResponse = await generateBotResponse(userMessage.text);
+      const botMessage = {
+        id: (Date.now() + 1).toString(),
+        text: botResponse.text,
+        sender: 'bot' as const,
+        timestamp: new Date()
+      };
+      
+      setChatMessages(prev => [...prev, botMessage]);
+      setIsTyping(false);
+      
+      // Esegui azioni se necessario
+      if (botResponse.action && onActionSuggested) {
+        onActionSuggested(botResponse.action.type, botResponse.action.data);
+      }
+      
+      // Aggiorna quick actions se necessario
+      if (botResponse.updateQuickActions) {
+        const newQuickActions = getContextualQuickActions(adhdContext);
+        setCurrentQuickActions(newQuickActions);
+      }
+    }, 1000 + Math.random() * 1000); // Simula tempo di "pensiero"
+  };
+  
+  const generateBotResponse = async (userInput: string): Promise<{
+    text: string;
+    action?: { type: string; data: any };
+    updateQuickActions?: boolean;
+  }> => {
+    const intent = detectIntent(userInput);
+    const context = {
+      ...adhdContext,
+      tasks,
+      projects,
+      userBehavior,
+      conversationHistory: chatMessages
+    };
+    
+    // Aggiorna contesto conversazione
+    setConversationContext({ lastIntent: intent, awaitingResponse: false });
+    
+    switch (intent) {
+      case 'task_creation':
+        return handleTaskCreation(userInput, context);
+      case 'task_breakdown':
+        return handleTaskBreakdown(userInput, context);
+      case 'energy_management':
+        return handleEnergyManagement(userInput, context);
+      case 'motivation_boost':
+        return handleMotivationBoost(userInput, context);
+      case 'progress_check':
+        return handleProgressCheck(userInput, context);
+      case 'overwhelm':
+        return handleOverwhelm(userInput, context);
+      case 'focus':
+        return handleFocusHelp(userInput, context);
+      default:
+        return handleGeneralQuery(userInput, context);
+    }
+  };
+  
+  const detectIntent = (input: string): string => {
+    const lowerInput = input.toLowerCase();
+    
+    // Pattern per creazione task
+    if (/aggiungi|crea|nuovo.*task|devo.*fare|ho.*da.*fare|task.*per/i.test(input)) {
+      return 'task_creation';
+    }
+    
+    // Pattern per suddivisione task
+    if (/suddividi|spezza|dividi|micro.*task|step|passi|come.*faccio/i.test(input)) {
+      return 'task_breakdown';
+    }
+    
+    // Pattern per gestione energia
+    if (/energia|stanco|carico|motivato|forza|spossato/i.test(input)) {
+      return 'energy_management';
+    }
+    
+    // Pattern per motivazione
+    if (/motivazione|scoraggiato|non.*ce.*la.*faccio|arrendo|inutile/i.test(input)) {
+      return 'motivation_boost';
+    }
+    
+    // Pattern per controllo progressi
+    if (/progressi|come.*sto|risultati|bilancio|fatto.*oggi/i.test(input)) {
+      return 'progress_check';
+    }
+    
+    // Usa i pattern esistenti per altri intent
+    for (const [intentName, pattern] of Object.entries(INTENT_PATTERNS)) {
+      if (pattern.test(input)) {
+        return intentName;
+      }
+    }
+    
+    return 'general';
+  };
+  
+  const handleTaskCreation = async (input: string, context: any) => {
+    // Estrai il titolo della task dall'input
+    const taskTitle = extractTaskTitle(input);
+    
+    return {
+      text: `Perfetto! Ho capito che vuoi creare la task "${taskTitle}". \n\n🎯 Vuoi che la organizzi subito o preferisci prima suddividerla in micro-task?`,
+      action: {
+        type: 'create_task',
+        data: { title: taskTitle, context: 'chat_creation' }
+      },
+      updateQuickActions: true
+    };
+  };
+  
+  const handleTaskBreakdown = async (input: string, context: any) => {
+    const taskToBreak = findTaskInInput(input, context.tasks) || 'la task che hai menzionato';
+    
+    return {
+      text: `Ottima idea! Spezzare ${taskToBreak} in micro-task renderà tutto più gestibile. \n\n✨ Ecco come possiamo procedere:\n• Step 1: Definire l'obiettivo finale\n• Step 2: Identificare le azioni concrete\n• Step 3: Stimare il tempo per ogni step\n\n🚀 Iniziamo dal primo step?`,
+      action: {
+        type: 'breakdown_task',
+        data: { task: taskToBreak }
+      }
+    };
+  };
+  
+  const handleEnergyManagement = async (input: string, context: any) => {
+    const energyLevel = context.energyLevel || 5;
+    const isLowEnergy = /stanco|spossato|senza.*energia|scarico/i.test(input);
+    const isHighEnergy = /carico|motivato|energia.*alta|pieno.*energia/i.test(input);
+    
+    if (isLowEnergy || energyLevel <= 3) {
+      const lowEnergyTasks = context.tasks?.filter((t: any) => 
+        t.energy_required === 'molto_bassa' || t.energy_required === 'bassa'
+      ) || [];
+      
+      return {
+        text: `Capisco, l'energia è bassa oggi. 🔋\n\n💡 Ho trovato ${lowEnergyTasks.length} task perfette per il tuo livello energetico attuale. Sono tutte leggere e ti daranno soddisfazione senza sfiniriti!\n\n🌟 Vuoi che te ne mostri una per iniziare dolcemente?`,
+        action: {
+          type: 'filter_low_energy_tasks',
+          data: { tasks: lowEnergyTasks }
+        }
+      };
+    } else if (isHighEnergy || energyLevel >= 7) {
+      return {
+        text: `Fantastico! Sento l'energia alta! ⚡\n\n🔥 È il momento perfetto per affrontare le task più impegnative. La tua energia è al top e puoi fare grandi cose!\n\n🎯 Quale progetto importante vuoi portare avanti oggi?`,
+        action: {
+          type: 'suggest_high_energy_tasks',
+          data: { energyLevel }
+        }
+      };
+    }
+    
+    return {
+      text: `La tua energia sembra equilibrata! 🌟\n\nPerfetto per task di media intensità. Vuoi che ti suggerisca qualcosa di produttivo ma non troppo impegnativo?`
+    };
+  };
+  
+  const handleMotivationBoost = async (input: string, context: any) => {
+    const motivationalMessages = [
+      "🌟 Ehi, lo so che è dura, ma sei più forte di quanto pensi! Ogni piccolo passo conta.",
+      "💪 Ricorda: non devi essere perfetto, devi solo iniziare. Un micro-task alla volta!",
+      "🎯 Hai già superato momenti difficili prima d'ora. Questa volta non sarà diverso!",
+      "✨ Il fatto che tu sia qui a chiedere aiuto dimostra già la tua determinazione. Sei sulla strada giusta!"
+    ];
+    
+    const randomMessage = motivationalMessages[Math.floor(Math.random() * motivationalMessages.length)];
+    
+    return {
+      text: `${randomMessage}\n\n🚀 Che ne dici se iniziamo con qualcosa di piccolissimo? Anche 5 minuti possono fare la differenza!`,
+      action: {
+        type: 'motivation_boost',
+        data: { type: 'encouragement' }
+      }
+    };
+  };
+  
+  const handleProgressCheck = async (input: string, context: any) => {
+    const completedToday = context.tasks?.filter((t: any) => 
+      t.completed_at && new Date(t.completed_at).toDateString() === new Date().toDateString()
+    ).length || 0;
+    
+    const totalTasks = context.tasks?.length || 0;
+    
+    return {
+      text: `📊 Ecco il tuo bilancio di oggi:\n\n✅ Task completate: ${completedToday}\n📝 Task totali: ${totalTasks}\n\n${completedToday > 0 ? '🎉 Ottimo lavoro! Ogni task completata è una vittoria!' : '💪 Oggi può essere il giorno giusto per iniziare! Quale task ti ispira di più?'}`,
+      action: {
+        type: 'show_progress',
+        data: { completed: completedToday, total: totalTasks }
+      }
+    };
+  };
+  
+  const handleOverwhelm = async (input: string, context: any) => {
+    return {
+      text: `Respira. 🌬️ Lo so che sembra tutto troppo, ma sei al sicuro.\n\n🎯 Facciamo così: dimmi UNA cosa che ti preoccupa di più in questo momento. Solo una. Affrontiamola insieme, passo dopo passo.\n\n💡 Ricorda: non devi fare tutto oggi. Devi solo fare il prossimo piccolo passo.`,
+      action: {
+        type: 'handle_overwhelm',
+        data: { strategy: 'one_thing_focus' }
+      }
+    };
+  };
+  
+  const handleFocusHelp = async (input: string, context: any) => {
+    return {
+      text: `🎯 Capisco, la concentrazione è una sfida! \n\n💡 Proviamo la tecnica del "Focus Laser":\n• Scegli UNA task\n• Timer 15 minuti\n• Elimina distrazioni\n• Solo quella task, nient'altro\n\n🚀 Quale task vuoi provare con questa tecnica?`,
+      action: {
+        type: 'enable_focus_mode',
+        data: { technique: 'laser_focus' }
+      }
+    };
+  };
+  
+  const handleGeneralQuery = async (input: string, context: any) => {
+    const responses = [
+      "Interessante! Dimmi di più, così posso aiutarti meglio. 🤔",
+      "Capisco. Come posso supportarti in questo? 💪",
+      "Ok, vedo. Vuoi che ti dia qualche suggerimento pratico? ✨",
+      "Comprendo la situazione. Affrontiamola insieme! 🎯"
+    ];
+    
+    return {
+      text: responses[Math.floor(Math.random() * responses.length)]
+    };
+  };
+  
+  // Funzioni di utilità
+  const extractTaskTitle = (input: string): string => {
+    // Rimuovi parole comuni e estrai il titolo
+    const cleaned = input
+      .replace(/aggiungi|crea|nuovo|task|devo|fare|ho da/gi, '')
+      .trim();
+    return cleaned || 'Nuova task';
+  };
+  
+  const findTaskInInput = (input: string, tasks: any[]): string | null => {
+    if (!tasks) return null;
+    
+    for (const task of tasks) {
+      if (input.toLowerCase().includes(task.title.toLowerCase())) {
+        return task.title;
+      }
+    }
+    return null;
+  };
+
   // Gestione click su quick actions - Esegue azioni concrete
   const handleQuickActionClick = async (action: QuickAction) => {
     try {
+      // Assicurati che il chatbot rimanga aperto durante l'interazione
+      if (!isOpen) {
+        setIsOpen(true);
+      }
+      
       // Log dell'interazione del chatbot
       logChatbotInteraction({
         actionType: action.action,
@@ -1752,7 +2065,7 @@ export const LocalChatBot: React.FC<LocalChatBotProps> = ({
   }
 
   return (
-    <Card className="fixed bottom-6 right-6 z-50 w-96 h-[500px] shadow-2xl border-2 border-primary/20">
+    <Card className="fixed bottom-6 right-6 z-50 w-96 h-[600px] shadow-2xl border-2 border-primary/20">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -1762,14 +2075,25 @@ export const LocalChatBot: React.FC<LocalChatBotProps> = ({
               Locale
             </Badge>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setIsOpen(false)}
-            className="h-8 w-8 p-0"
-          >
-            ×
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowQuickActions(!showQuickActions)}
+              className="h-8 w-8 p-0"
+              title={showQuickActions ? "Nascondi azioni rapide" : "Mostra azioni rapide"}
+            >
+              {showQuickActions ? <MessageCircle className="w-4 h-4" /> : <Zap className="w-4 h-4" />}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsOpen(false)}
+              className="h-8 w-8 p-0"
+            >
+              ×
+            </Button>
+          </div>
         </div>
         
         {/* Indicatori di contesto */}
@@ -1795,41 +2119,130 @@ export const LocalChatBot: React.FC<LocalChatBotProps> = ({
         </div>
       </CardHeader>
       
-      <CardContent className="p-4 flex flex-col h-[400px]">
-        {/* Risultato ultima azione */}
-        {lastActionResult && (
-          <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-green-500 rounded-full" />
-              <p className="text-sm text-green-800">{lastActionResult}</p>
+      <CardContent className="p-4 flex flex-col h-[500px]">
+        {/* Area Chat */}
+        <div className="flex-1 flex flex-col">
+          {/* Messaggi Chat */}
+          <ScrollArea className="flex-1 mb-4 pr-2">
+            <div className="space-y-3">
+              {chatMessages.length === 0 && (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Brain className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm mb-2">Ciao! Sono il tuo assistente ADHD 🧠</p>
+                  <p className="text-xs">Scrivi qualsiasi cosa: "Crea task", "Sono stanco", "Come procedo?"...</p>
+                </div>
+              )}
+              
+              {chatMessages.map((message) => (
+                <div
+                  key={message.id}
+                  className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+                >
+                  <div
+                    className={`max-w-[80%] p-3 rounded-lg text-sm break-words ${
+                      message.sender === 'user'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted text-muted-foreground'
+                    }`}
+                  >
+                    <div className="whitespace-pre-wrap break-words overflow-wrap-anywhere">{message.text}</div>
+                    <div className="text-xs opacity-70 mt-1">
+                      {message.timestamp.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}
+                    </div>
+                  </div>
+                </div>
+              ))}
+              
+              {isTyping && (
+                <div className="flex justify-start">
+                  <div className="bg-muted text-muted-foreground p-3 rounded-lg text-sm">
+                    <div className="flex items-center gap-1">
+                      <div className="w-2 h-2 bg-current rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                      <div className="w-2 h-2 bg-current rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                      <div className="w-2 h-2 bg-current rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </ScrollArea>
+          
+          {/* Input Chat */}
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+              placeholder="Scrivi qui... (es: 'Crea task studiare', 'Sono stanco', 'Come procedo?')"
+              className="flex-1 px-3 py-2 text-sm border border-input rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 break-words"
+              disabled={isTyping}
+            />
+            <Button
+              onClick={handleSendMessage}
+              disabled={!inputText.trim() || isTyping}
+              size="sm"
+              className="px-3"
+            >
+              <MessageCircle className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+        
+        {/* Quick Actions (collassabili) */}
+        {showQuickActions && (
+          <div className="mt-4 pt-4 border-t">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-medium text-muted-foreground">
+                Azioni rapide:
+              </h3>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowQuickActions(false)}
+                className="h-6 w-6 p-0 text-muted-foreground"
+              >
+                <ChevronDown className="w-3 h-3" />
+              </Button>
+            </div>
+            
+            <div className="max-h-32 overflow-y-auto">
+              {currentQuickActions.length > 0 ? (
+                <div className="grid grid-cols-2 gap-2">
+                  {currentQuickActions.slice(0, 4).map((action, index) => (
+                    <Button
+                      key={index}
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleQuickActionClick(action)}
+                      className="text-xs h-8 justify-start"
+                    >
+                      <span className="mr-1">{action.icon}</span>
+                      {action.label}
+                    </Button>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground text-center py-2">
+                  Nessuna azione rapida disponibile
+                </p>
+              )}
             </div>
           </div>
         )}
         
-        {/* Azioni disponibili */}
-        <div className="flex-1 overflow-hidden">
-          <h3 className="text-sm font-medium mb-3 text-muted-foreground">
-            Azioni disponibili:
-          </h3>
-          
-          <ScrollArea className="h-full pr-2">
-            {currentQuickActions.length > 0 ? (
-              <QuickActionButtons
-                actions={currentQuickActions}
-                onActionClick={handleQuickActionClick}
-                onShowTextInput={() => {}}
-              />
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                <Brain className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                <p className="text-sm">Nessuna azione disponibile al momento</p>
-              </div>
-            )}
-          </ScrollArea>
-        </div>
+        {/* Risultato ultima azione */}
+        {lastActionResult && (
+          <div className="mt-3 p-2 bg-green-50 border border-green-200 rounded-lg">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 bg-green-500 rounded-full" />
+              <p className="text-xs text-green-800">{lastActionResult}</p>
+            </div>
+          </div>
+        )}
         
         {/* Info locale */}
-        <div className="mt-4 pt-4 border-t">
+        <div className="mt-2 pt-2 border-t">
           <p className="text-xs text-muted-foreground text-center">
             🔒 Sistema completamente locale - Nessun dato inviato online
           </p>

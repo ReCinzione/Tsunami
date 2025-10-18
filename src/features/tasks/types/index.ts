@@ -59,18 +59,11 @@ export interface TaskListViewProps {
   error: Error | null;
   focusMode?: boolean;
   focusTaskCount?: number;
-  filters?: TaskFilters;
-  onFiltersChange?: (filters: Record<string, any>) => void;
-  onCreateTask: () => void;
+  onCreateTask: (data: TaskFormData) => void;
   onUpdateTask: (id: string, data: Partial<TaskFormData>) => void;
   onDeleteTask: (id: string) => void;
-  onTaskComplete: (id: string) => void;
+  onCompleteTask: (id: string) => void;
   onTaskClick?: (task: Task) => void;
-  onTaskEdit?: (task: Task) => void;
-  onRefresh?: () => void;
-  isLoading?: boolean;
-  taskStats?: any;
-  selectedTaskId?: string;
 }
 
 export interface TaskItemProps {

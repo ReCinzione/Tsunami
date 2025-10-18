@@ -38,7 +38,7 @@ export const useTasks = (options: UseTasksOptions = {}): UseTasksReturn => {
   ], [user?.id, filters]);
 
   const {
-    data: upcomingTasks = [],
+    data: tasks = [],
     isLoading: loading,
     error,
     refetch,
@@ -46,14 +46,27 @@ export const useTasks = (options: UseTasksOptions = {}): UseTasksReturn => {
   } = useQuery({
     queryKey,
     queryFn: async () => {
+      console.log('🚀 useTasks - Inizio fetch task:', {
+        userId: user?.id,
+        filters,
+        enabled,
+        timestamp: new Date().toISOString()
+      });
+      
       if (!user?.id) {
+        console.error('❌ useTasks - Utente non autenticato');
         throw new Error('Utente non autenticato');
       }
       
-      console.log('🔍 Fetching tasks with filters:', filters);
-      const tasks = await taskService.getTasks(user.id, filters);
-      console.log('📋 Tasks fetched:', tasks.length, 'tasks');
-      return tasks;
+      const result = await taskService.getTasks(user.id, filters);
+      
+      console.log('✅ useTasks - Task caricate:', {
+        count: result.length,
+        firstTask: result[0]?.title,
+        timestamp: new Date().toISOString()
+      });
+      
+      return result;
     },
     enabled: enabled && !!user?.id,
     staleTime,
@@ -69,7 +82,7 @@ export const useTasks = (options: UseTasksOptions = {}): UseTasksReturn => {
   });
 
   return {
-    tasks: upcomingTasks,
+    tasks,
     loading,
     error: error as Error | null,
     refetch,
@@ -130,7 +143,7 @@ export const useUpcomingTasks = (days: number = 7): UseTasksReturn => {
   const { user } = useAuth();
 
   const {
-    data: upcomingTasks = [],
+    data: tasks = [],
     isLoading: loading,
     error,
     refetch,
@@ -149,7 +162,7 @@ export const useUpcomingTasks = (days: number = 7): UseTasksReturn => {
   });
 
   return {
-    tasks: upcomingTasks,
+    tasks,
     loading,
     error: error as Error | null,
     refetch,
@@ -167,7 +180,7 @@ export const useRecommendedTasks = (
   const { user } = useAuth();
 
   const {
-    data: upcomingTasks = [],
+    data: tasks = [],
     isLoading: loading,
     error,
     refetch,
@@ -186,7 +199,7 @@ export const useRecommendedTasks = (
   });
 
   return {
-    tasks: upcomingTasks,
+    tasks,
     loading,
     error: error as Error | null,
     refetch,

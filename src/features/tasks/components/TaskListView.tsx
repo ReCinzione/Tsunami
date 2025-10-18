@@ -41,6 +41,14 @@ export const TaskListView = React.memo<TaskListViewProps>(({
 
   // Filtra e ordina le task per la visualizzazione
   const displayTasks = useMemo(() => {
+    console.log('🎨 TaskListView - Inizio rendering task:', {
+      tasksCount: tasks.length,
+      searchQuery,
+      focusMode,
+      loading,
+      timestamp: new Date().toISOString()
+    });
+
     let filteredTasks = [...tasks];
 
     // Applica ricerca testuale (solo ricerca locale, i filtri principali sono gestiti dal container)
