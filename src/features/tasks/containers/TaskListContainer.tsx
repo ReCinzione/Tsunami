@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { TaskListView } from '../components/TaskListView';
 import { TaskForm } from '../components/TaskForm';
 import { useTasks, useFocusTasks, useTaskStats } from '../hooks/useTasks';
@@ -31,7 +31,10 @@ interface TaskListContainerProps {
  * Container che gestisce la logica di business per la lista delle task
  * Separa la logica di stato/fetch dalla presentazione
  */
-export const TaskListContainer: React.FC<TaskListContainerProps> = ({
+export const TaskListContainer = forwardRef<
+  { handleCreateTask: () => void },
+  TaskListContainerProps
+>(({
   focusMode = false,
   initialFilters = {},
   onTaskSelect,
@@ -40,7 +43,8 @@ export const TaskListContainer: React.FC<TaskListContainerProps> = ({
   userId,
   onTaskComplete,
   className
-}) => {
+}, ref) => {
+
   // State locale per UI
   const [filters, setFilters] = useState<TaskFilters>({
     status: showCompleted ? ['completed'] : ['pending', 'in_progress'], // Filtra in base a showCompleted
@@ -149,6 +153,11 @@ export const TaskListContainer: React.FC<TaskListContainerProps> = ({
     setShowTaskForm(true);
   }, []);
 
+  // Espone la funzione handleCreateTask al componente padre
+  useImperativeHandle(ref, () => ({
+    handleCreateTask
+  }), [handleCreateTask]);
+
   const handleFormSubmit = useCallback(async (formData: TaskFormData) => {
     try {
       if (editingTask) {
@@ -242,4 +251,6 @@ export const TaskListContainer: React.FC<TaskListContainerProps> = ({
       </Dialog>
     </>
   );
-};
+});
+
+TaskListContainer.displayName = 'TaskListContainer';

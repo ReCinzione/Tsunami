@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { TaskListContainer } from '../features/tasks/containers/TaskListContainer';
 import { useFocusMode, FocusMode, FocusKeep } from './common/FocusMode';
 import { useUIStore } from '../store/uiStore';
@@ -15,7 +15,8 @@ import {
   Zap, 
   CheckCircle2,
   Clock,
-  TrendingUp
+  TrendingUp,
+  Plus
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { StatsSkeleton } from './common/Skeleton';
@@ -119,6 +120,7 @@ export const TaskManager: React.FC<TaskManagerProps> = ({
   onProfileUpdate,
   className
 }) => {
+  const taskListRef = useRef<{ handleCreateTask: () => void } | null>(null);
   const { 
     isActive: isFocusModeActive, 
     toggleFocusMode, 
@@ -164,6 +166,21 @@ export const TaskManager: React.FC<TaskManagerProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Bottone Crea Task */}
+          <Button
+            onClick={() => {
+              if (taskListRef.current?.handleCreateTask) {
+                taskListRef.current.handleCreateTask();
+              }
+            }}
+            variant="default"
+            size="sm"
+            className="flex items-center gap-2 bg-primary hover:bg-primary/90"
+          >
+            <Plus className="w-4 h-4" />
+            <span className="hidden sm:inline">Nuova Task</span>
+          </Button>
+          
           {/* Bottone Focus - solo in header */}
           <div className="hidden md:block">
             {!isFocusModeActive && (
@@ -267,6 +284,7 @@ export const TaskManager: React.FC<TaskManagerProps> = ({
 
           <FocusKeep highlight={isFocusModeActive}>
             <TaskListContainer
+              ref={taskListRef}
               userId={userId}
               showCompleted={false}
               focusMode={isFocusModeActive}

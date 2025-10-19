@@ -490,14 +490,7 @@ const MentalInbox = ({ onTaskCreated }: MentalInboxProps) => {
           <ImageToTaskOCR onTaskCreated={onTaskCreated} />
         </TabsContent>
       </Tabs>
-      
-      {/* Bottone microfono fisso per note vocali */}
-      <VoiceInput 
-        onTaskCreated={onTaskCreated}
-        className="fixed bottom-4 right-4 z-50"
-        buttonOnly={true}
-        tooltip="Aggiungi nota usando la voce"
-      />
+
     </div>
   );
 };

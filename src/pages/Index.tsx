@@ -307,15 +307,7 @@ const AppContent = () => {
               </div>
             )}
           </div>
-          <Button
-            size="sm"
-            onClick={() => setActiveTab('mental-inbox')}
-            className="gap-2 bg-primary/10 text-primary hover:bg-primary/20"
-            variant="ghost"
-          >
-            <Plus className="w-4 h-4" />
-            Quick Add
-          </Button>
+
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
