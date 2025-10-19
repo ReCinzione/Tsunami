@@ -83,19 +83,19 @@ function QuickStats({ userId, className }: QuickStatsProps) {
   ];
 
   return (
-    <div className={cn("grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6", className)}>
+    <div className={cn("grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4 mb-6", className)}>
       {statCards.map((stat, index) => (
-        <Card key={index} className={cn("transition-all hover:shadow-md", stat.color)}>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">
+        <Card key={index} className={cn("transition-all hover:shadow-md w-full", stat.color)}>
+          <CardContent className="p-2 md:p-4">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs md:text-sm font-medium text-muted-foreground break-words">
                   {stat.title}
                 </p>
-                <p className="text-2xl font-bold">
+                <p className="text-lg md:text-2xl font-bold">
                   {stat.value}
                 </p>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground break-words">
                   {stat.description}
                 </p>
               </div>
@@ -148,13 +148,8 @@ export const TaskManager: React.FC<TaskManagerProps> = ({
 
   const renderTaskContent = () => (
     <div className="space-y-6">
-      {/* Statistiche rapide */}
-      <FocusKeep highlight={isFocusModeActive}>
-        <QuickStats userId={userId} />
-      </FocusKeep>
-
-      {/* Controlli modalità focus */}
-      <div className="flex items-center justify-between">
+      {/* Header con controlli */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <h2 className="text-2xl font-bold tracking-tight">
             I tuoi Task
@@ -169,48 +164,107 @@ export const TaskManager: React.FC<TaskManagerProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
-          {!isFocusModeActive && (
+          {/* Bottone Focus - solo in header */}
+          <div className="hidden md:block">
+            {!isFocusModeActive && (
+              <Button
+                onClick={() => startFocusSession(25)}
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-2"
+              >
+                <Focus className="w-4 h-4" />
+                Focus 25min
+              </Button>
+            )}
+          </div>
+          
+          <div className="relative group">
             <Button
-              onClick={() => startFocusSession(25)}
-              variant="outline"
+              onClick={() => setDistractionMode(!distractionMode)}
+              variant={distractionMode ? "default" : "outline"}
               size="sm"
               className="flex items-center gap-2"
             >
-              <Focus className="w-4 h-4" />
-              Focus 25min
+              <Settings className="w-4 h-4" />
+              {distractionMode ? "Modalità Semplice" : "Modalità Avanzata"}
             </Button>
-          )}
-          
-          <Button
-            onClick={() => setDistractionMode(!distractionMode)}
-            variant={distractionMode ? "default" : "outline"}
-            size="sm"
-            className="flex items-center gap-2"
-          >
-            <Settings className="w-4 h-4" />
-            {distractionMode ? "Modalità Semplice" : "Modalità Avanzata"}
-          </Button>
+            
+            {/* Tooltip con descrizioni */}
+            <div className="absolute bottom-full left-0 mb-2 w-72 md:w-80 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50">
+              <div className="space-y-2">
+                <div>
+                  <strong>Modalità Semplice:</strong> Mostra solo la lista dei tuoi task e la funzione aggiungi, nascondendo tutte le analisi e le funzioni avanzate.
+                </div>
+                <div>
+                  <strong>Modalità Avanzata:</strong> Sblocca tutte le funzioni di analisi, i timer, la gestione focus, insight e filtri dettagliati.
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Tabs per diverse visualizzazioni */}
-      <Tabs value={currentView} onValueChange={setCurrentView} className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="active" className="flex items-center gap-2">
+      <Tabs value={currentView || "active"} onValueChange={(value) => {
+        console.log('Tab clicked:', value);
+        console.log('Current view before:', currentView);
+        setCurrentView(value);
+        console.log('Current view after:', value);
+      }} className="w-full">
+        <TabsList className={cn(
+          "grid w-full gap-1 h-auto p-1",
+          distractionMode ? "grid-cols-2" : "grid-cols-2 md:grid-cols-3"
+        )}>
+          <TabsTrigger value="active" className="flex items-center gap-2 text-xs md:text-sm">
             <Target className="w-4 h-4" />
-            Attivi
+            <span className="hidden sm:inline">Task Attivi</span>
+            <span className="sm:hidden">Attivi</span>
           </TabsTrigger>
-          <TabsTrigger value="completed" className="flex items-center gap-2">
+          <TabsTrigger 
+            value="completed" 
+            className="flex items-center gap-2 text-xs md:text-sm"
+            onClick={() => {
+              console.log('Completati tab trigger clicked');
+              console.log('Current view:', currentView);
+            }}
+          >
             <CheckCircle2 className="w-4 h-4" />
-            Completati
+            <span className="hidden sm:inline">Completati</span>
+            <span className="sm:hidden">Fatti</span>
           </TabsTrigger>
-          <TabsTrigger value="analytics" className="flex items-center gap-2">
-            <BarChart3 className="w-4 h-4" />
-            Analisi
-          </TabsTrigger>
+          {!distractionMode && (
+            <TabsTrigger value="analytics" className="hidden md:flex items-center gap-2 text-xs md:text-sm">
+              <BarChart3 className="w-4 h-4" />
+              Analisi
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="active" className="mt-6">
+          {/* Modalità Focus - Solo visualizzazione stato su mobile */}
+          {isFocusModeActive && (
+            <div className="bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg p-4 mb-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Target className="w-5 h-5 text-purple-600" />
+                  <span className="font-medium text-purple-800">Modalità Focus Attiva</span>
+                </div>
+                <Button
+                  onClick={toggleFocusMode}
+                  variant="outline"
+                  size="sm"
+                  className="border-purple-300 text-purple-700 hover:bg-purple-100"
+                >
+                  Disattiva
+                </Button>
+              </div>
+              <p className="text-sm text-purple-600">
+                Concentrati solo sulle {focusTaskCount} task più importanti
+              </p>
+            </div>
+          )}
+
           <FocusKeep highlight={isFocusModeActive}>
             <TaskListContainer
               userId={userId}
@@ -231,6 +285,13 @@ export const TaskManager: React.FC<TaskManagerProps> = ({
             onTaskComplete={onProfileUpdate}
             className="min-h-[400px]"
           />
+          
+          {/* Statistiche rapide - dopo la lista task completate */}
+          {!distractionMode && (
+            <div className="mt-6">
+              <QuickStats userId={userId} />
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="analytics" className="mt-6">

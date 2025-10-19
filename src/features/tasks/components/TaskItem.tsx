@@ -157,7 +157,7 @@ export const TaskItem = React.memo<TaskItemProps>(({
   return (
     <Card
       className={cn(
-        "transition-all duration-200 cursor-pointer",
+        "w-full rounded-lg shadow-sm p-2 mb-2 flex flex-col md:flex-row items-center group transition-all duration-200 hover:shadow-md cursor-pointer",
         styles.card,
         isCompleting && "scale-[0.98] opacity-50",
         focusMode && "shadow-md border-2"
@@ -167,10 +167,10 @@ export const TaskItem = React.memo<TaskItemProps>(({
       onClick={() => onClick?.(task)}
     >
       <CardContent className={cn(
-        "p-4",
+        "p-2 w-full",
         focusMode && "p-6"
       )}>
-        <div className="flex items-start gap-3">
+        <div className="flex items-start gap-3 w-full">
           {/* Checkbox di completamento */}
           <div className="flex-shrink-0 mt-0.5">
             <Checkbox
@@ -185,35 +185,43 @@ export const TaskItem = React.memo<TaskItemProps>(({
           </div>
 
           {/* Contenuto principale */}
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 w-full">
             {/* Titolo e badge */}
-            <div className="flex items-start justify-between gap-2 mb-2">
-              <h3 className={cn(
-                "font-medium text-sm leading-tight",
-                styles.title,
-                focusMode && "text-base font-semibold"
-              )}>
-                {task.title}
-              </h3>
-              
-              {showDetails && (
-                <div className="flex items-center gap-1 flex-shrink-0">
-                  {getEnergyBadge()}
+            <div className="flex flex-col gap-2">
+              <div className="flex gap-2 items-center w-full">
+                {/* Icona priorità/media */}
+                <div className="flex items-center gap-1">
+                  <Target className="h-3 w-3" />
+                  <span className="text-xs font-medium">{task.xp_reward || 10} XP</span>
                 </div>
-              )}
+                
+                <h3 className={cn(
+                  "font-medium text-sm leading-tight flex-1 break-words",
+                  styles.title,
+                  focusMode && "text-base font-semibold"
+                )}>
+                  {task.title}
+                </h3>
+                
+                {showDetails && (
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    {getEnergyBadge()}
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Descrizione (se presente e showDetails) */}
             {showDetails && task.description && (
-              <p className="text-xs text-gray-600 mb-2 line-clamp-2">
+              <p className="text-xs text-gray-600 mb-2 line-clamp-2 break-words">
                 {task.description}
               </p>
             )}
 
             {/* Metadata row */}
             {showDetails && (
-              <div className="flex items-center justify-between text-xs text-gray-500">
-                <div className="flex items-center gap-3">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 text-xs text-gray-500">
+                <div className="flex flex-wrap items-center gap-3">
                   {/* Data scadenza */}
                   {formatDueDate()}
                   
@@ -235,23 +243,25 @@ export const TaskItem = React.memo<TaskItemProps>(({
                 </div>
 
                 {/* Azioni rapide */}
-                {showActions && !isCompleted && (
-                  <div className="flex items-center gap-1">
+                {showActions && (
+                  <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                    {!isCompleted && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-base p-2 rounded-md bg-blue-50 w-fit h-fit hover:bg-blue-100"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onEdit?.(task);
+                        }}
+                      >
+                        <Edit className="h-3 w-3" />
+                      </Button>
+                    )}
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-6 w-6 p-0 hover:bg-blue-100"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onEdit?.(task);
-                      }}
-                    >
-                      <Edit className="h-3 w-3" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 w-6 p-0 hover:bg-red-100"
+                      className="text-base p-2 rounded-md bg-red-50 w-fit h-fit hover:bg-red-100 text-red-600 hover:text-red-700"
                       onClick={(e) => {
                         e.stopPropagation();
                         onDelete?.(task.id);

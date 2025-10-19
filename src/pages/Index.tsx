@@ -454,16 +454,7 @@ const AppContent = () => {
           </TabsContent>
           
 
-          {/* Floating Quick Add Button */}
-          <div className="fixed bottom-6 left-6 z-50">
-            <Button
-              size="lg"
-              onClick={() => setActiveTab('mental-inbox')}
-              className="rounded-full w-14 h-14 shadow-lg hover:shadow-xl transition-all duration-200 bg-primary hover:bg-primary/90"
-            >
-              <Plus className="w-6 h-6" />
-            </Button>
-          </div>
+
 
           {/* Local ChatBot */}
           <LocalChatBot

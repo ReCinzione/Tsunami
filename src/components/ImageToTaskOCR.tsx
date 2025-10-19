@@ -157,17 +157,52 @@ const ImageToTaskOCR: React.FC<ImageToTaskOCRProps> = ({ onTaskCreated }) => {
     }
   };
 
+  const uploadImageToStorage = async (file: File): Promise<string | null> => {
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user?.id}/${Date.now()}.${fileExt}`;
+      
+      const { data, error } = await supabase.storage
+        .from('task-images')
+        .upload(fileName, file);
+
+      if (error) {
+        console.error('Storage upload error:', error);
+        return null;
+      }
+
+      return fileName;
+    } catch (error) {
+      console.error('Upload error:', error);
+      return null;
+    }
+  };
+
   const saveAsTask = async () => {
     if (!extractedText.trim() || !user) return;
 
     try {
+      let imageUrl = null;
+      
+      // Upload image to Supabase Storage if available
+      if (image) {
+        const uploadedPath = await uploadImageToStorage(image);
+        if (uploadedPath) {
+          const { data } = supabase.storage
+            .from('task-images')
+            .getPublicUrl(uploadedPath);
+          imageUrl = data.publicUrl;
+        }
+      }
+
       const { error } = await supabase
         .from('tasks')
         .insert({
           user_id: user.id,
           title: extractedText.substring(0, 100), // First 100 chars as title
           description: extractedText,
-          status: 'pending'
+          status: 'pending',
+          image_url: imageUrl
         });
 
       if (error) throw error;
@@ -177,12 +212,13 @@ const ImageToTaskOCR: React.FC<ImageToTaskOCRProps> = ({ onTaskCreated }) => {
       
       toast({
         title: "Task creato",
-        description: "Il testo è stato salvato come nuovo task."
+        description: imageUrl ? "Task creato con immagine allegata." : "Il testo è stato salvato come nuovo task."
       });
     } catch (error) {
+      console.error('Error creating task:', error);
       toast({
         title: "Errore",
-        description: "Errore durante la creazione del task.",
+        description: "Errore durante la creazione del task. Riprova.",
         variant: "destructive"
       });
     }

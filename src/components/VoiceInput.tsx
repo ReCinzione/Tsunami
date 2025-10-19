@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Mic, MicOff, Volume2, VolumeX, Loader2 } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
 import { useVoiceRecognition } from '@/hooks/useVoiceRecognition';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,11 +12,13 @@ interface VoiceInputProps {
   onTaskCreated?: () => void;
   onNoteCreated?: () => void;
   className?: string;
+  buttonOnly?: boolean;
+  tooltip?: string;
 }
 
 
 
-const VoiceInput: React.FC<VoiceInputProps> = ({ onTaskCreated, onNoteCreated, className }) => {
+const VoiceInput: React.FC<VoiceInputProps> = ({ onTaskCreated, onNoteCreated, className, buttonOnly = false, tooltip }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
   
@@ -180,7 +183,7 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onTaskCreated, onNoteCreated, c
       .insert({
         user_id: userId,
         content: text,
-        content_type: 'voice_note',
+        content_type: 'voice',
         voice_confidence: confidence,
         is_processed: false
       });
@@ -194,6 +197,26 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onTaskCreated, onNoteCreated, c
   };
 
   if (!isSupported) {
+    if (buttonOnly) {
+      return (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                disabled
+                size="lg"
+                className={`rounded-full w-14 h-14 shadow-lg ${className}`}
+              >
+                <VolumeX className="w-6 h-6" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Comando vocale non supportato</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    }
     return (
       <Card className={className}>
         <CardHeader>
@@ -207,6 +230,35 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onTaskCreated, onNoteCreated, c
           </CardDescription>
         </CardHeader>
       </Card>
+    );
+  }
+
+  if (buttonOnly) {
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              onClick={isListening ? stopListening : handleStartListening}
+              disabled={isProcessing}
+              size="lg"
+              variant={isListening ? "destructive" : "default"}
+              className={`rounded-full w-14 h-14 shadow-lg hover:shadow-xl transition-all duration-200 ${className}`}
+            >
+              {isProcessing ? (
+                <Loader2 className="w-6 h-6 animate-spin" />
+              ) : isListening ? (
+                <MicOff className="w-6 h-6" />
+              ) : (
+                <Mic className="w-6 h-6" />
+              )}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>{tooltip || "Comando vocale"}</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
     );
   }
 

@@ -104,8 +104,8 @@ export const TaskListView = React.memo<TaskListViewProps>(({
 
   return (
     <div className={cn(
-      "w-full space-y-4 transition-all duration-300",
-      focusMode && "max-w-4xl mx-auto"
+      "w-full space-y-4 transition-all duration-300 relative",
+      focusMode ? "w-full px-0" : "max-w-none"
     )}>
       {/* Header con modalità focus */}
       {focusMode && (
@@ -116,31 +116,33 @@ export const TaskListView = React.memo<TaskListViewProps>(({
         </div>
       )}
 
-      {/* Statistiche rapide */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mb-4">
-        <div className="text-center p-2 bg-gray-50 rounded-lg">
-          <div className="text-lg font-semibold text-gray-900">{stats.total}</div>
-          <div className="text-xs text-gray-600">Totali</div>
-        </div>
-        <div className="text-center p-2 bg-green-50 rounded-lg">
-          <div className="text-lg font-semibold text-green-700">{stats.completed}</div>
-          <div className="text-xs text-green-600">Completate</div>
-        </div>
-        <div className="text-center p-2 bg-yellow-50 rounded-lg">
-          <div className="text-lg font-semibold text-yellow-700">{stats.pending}</div>
-          <div className="text-xs text-yellow-600">In attesa</div>
-        </div>
-        <div className="text-center p-2 bg-blue-50 rounded-lg">
-          <div className="text-lg font-semibold text-blue-700">{stats.inProgress}</div>
-          <div className="text-xs text-blue-600">In corso</div>
-        </div>
-        {stats.overdue > 0 && (
-          <div className="text-center p-2 bg-red-50 rounded-lg">
-            <div className="text-lg font-semibold text-red-700">{stats.overdue}</div>
-            <div className="text-xs text-red-600">In ritardo</div>
+      {/* Statistiche rapide - nascoste in modalità focus */}
+      {!focusMode && (
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mb-4">
+          <div className="text-center p-2 bg-gray-50 rounded-lg">
+            <div className="text-lg font-semibold text-gray-900">{stats.total}</div>
+            <div className="text-xs text-gray-600">Totali</div>
           </div>
-        )}
-      </div>
+          <div className="text-center p-2 bg-green-50 rounded-lg">
+            <div className="text-lg font-semibold text-green-700">{stats.completed}</div>
+            <div className="text-xs text-green-600">Completate</div>
+          </div>
+          <div className="text-center p-2 bg-yellow-50 rounded-lg">
+            <div className="text-lg font-semibold text-yellow-700">{stats.pending}</div>
+            <div className="text-xs text-yellow-600">In attesa</div>
+          </div>
+          <div className="text-center p-2 bg-blue-50 rounded-lg">
+            <div className="text-lg font-semibold text-blue-700">{stats.inProgress}</div>
+            <div className="text-xs text-blue-600">In corso</div>
+          </div>
+          {stats.overdue > 0 && (
+            <div className="text-center p-2 bg-red-50 rounded-lg">
+              <div className="text-lg font-semibold text-red-700">{stats.overdue}</div>
+              <div className="text-xs text-red-600">In ritardo</div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Barra degli strumenti */}
       <Card>
@@ -160,26 +162,27 @@ export const TaskListView = React.memo<TaskListViewProps>(({
               )}
             </CardTitle>
             
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
               {!focusMode && (
                 <>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => setShowFilters(!showFilters)}
+                    className="w-full sm:w-auto"
                   >
                     <Filter className="h-4 w-4 mr-1" />
                     Filtri
                   </Button>
                   
-                  <div className="relative">
+                  <div className="relative w-full sm:w-auto">
                     <Search className="h-4 w-4 absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" />
                     <input
                       type="text"
                       placeholder="Cerca task..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-8 pr-3 py-1 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full pl-8 pr-3 py-1 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
                 </>
@@ -188,7 +191,7 @@ export const TaskListView = React.memo<TaskListViewProps>(({
               <Button
                 onClick={onCreateTask}
                 size="sm"
-                className="bg-blue-600 hover:bg-blue-700"
+                className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto hidden sm:flex"
               >
                 <Plus className="h-4 w-4 mr-1" />
                 Nuova Task
@@ -209,7 +212,7 @@ export const TaskListView = React.memo<TaskListViewProps>(({
       </Card>
 
       {/* Lista task */}
-      <div className="space-y-3">
+      <div className="space-y-3 pb-20 sm:pb-6">
         {loading ? (
           // Skeleton loading
           Array.from({ length: 3 }).map((_, index) => (
@@ -249,6 +252,8 @@ export const TaskListView = React.memo<TaskListViewProps>(({
           ))
         )}
       </div>
+      
+
 
       {/* Suggerimento per modalità focus */}
       {!focusMode && displayTasks.length > 5 && (

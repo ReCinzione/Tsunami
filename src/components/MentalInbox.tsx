@@ -5,7 +5,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Brain, CheckCircle, Plus, ArrowRight, Trash2, ChevronDown, Lightbulb, Zap, Clock, Target } from 'lucide-react';
+import { Brain, CheckCircle, Plus, ArrowRight, Trash2, ChevronDown, Lightbulb, Zap, Clock, Target, Mic } from 'lucide-react';
+import VoiceInput from './VoiceInput';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import ImageToTaskOCR from './ImageToTaskOCR';
@@ -58,7 +59,7 @@ const MentalInbox = ({ onTaskCreated }: MentalInboxProps) => {
     }
   };
 
-  const addNote = async () => {
+  const addNote = async (voiceConfidence?: number) => {
     if (!newNote.trim()) return;
 
     setIsLoading(true);
@@ -71,7 +72,8 @@ const MentalInbox = ({ onTaskCreated }: MentalInboxProps) => {
         .insert({
           user_id: user.id,
           content: newNote.trim(),
-          content_type: 'text'
+          content_type: voiceConfidence ? 'voice' : 'text',
+          voice_confidence: voiceConfidence
         });
 
       if (error) throw error;
@@ -350,8 +352,15 @@ const MentalInbox = ({ onTaskCreated }: MentalInboxProps) => {
                 const confidence = suggestions.confidence;
                 
                 return (
-                  <div key={item.id} className="p-3 border rounded-lg bg-muted/30 space-y-3">
-                    <p className="text-sm">{item.content}</p>
+                  <div key={item.id} className="relative p-3 border rounded-lg bg-muted/30 space-y-3">
+                    <button 
+                      onClick={() => deleteNote(item)}
+                      className="absolute right-2 top-2 w-6 h-6 rounded-full bg-red-100 text-red-600 hover:bg-red-200 flex items-center justify-center transition-colors"
+                      aria-label="Elimina nota"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                    <p className="text-sm pr-8">{item.content}</p>
                     
                     {/* Smart Suggestions Preview */}
                     <Collapsible>
@@ -396,11 +405,27 @@ const MentalInbox = ({ onTaskCreated }: MentalInboxProps) => {
                       </CollapsibleContent>
                     </Collapsible>
                     
-                    <div className="flex items-center gap-2">
+                    {/* Mostra confidenza vocale se disponibile */}
+                    {item.voice_confidence && (
+                      <div className="mt-2 p-2 bg-blue-50 rounded-md">
+                        <div className="flex items-center gap-2 text-sm text-blue-700">
+                          <span>Fiducia riconoscimento:</span>
+                          <div className="flex-1 bg-blue-200 rounded-full h-2">
+                            <div 
+                              className="bg-blue-600 h-2 rounded-full transition-all" 
+                              style={{ width: `${Math.round(item.voice_confidence * 100)}%` }}
+                            />
+                          </div>
+                          <span className="font-medium">{Math.round(item.voice_confidence * 100)}%</span>
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                       <Button
                         size="sm"
                         onClick={() => convertToTask(item)}
-                        className="gap-1"
+                        className="gap-1 flex-1 sm:flex-none"
                       >
                         <ArrowRight className="w-3 h-3" />
                         Converti in Task
@@ -409,19 +434,10 @@ const MentalInbox = ({ onTaskCreated }: MentalInboxProps) => {
                         size="sm"
                         variant="outline"
                         onClick={() => markAsProcessed(item)}
-                        className="gap-1"
+                        className="gap-1 flex-1 sm:flex-none"
                       >
                         <CheckCircle className="w-3 h-3" />
                         Processa
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => deleteNote(item)}
-                        className="gap-1 text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                        Elimina
                       </Button>
                     </div>
                   </div>
@@ -474,6 +490,14 @@ const MentalInbox = ({ onTaskCreated }: MentalInboxProps) => {
           <ImageToTaskOCR onTaskCreated={onTaskCreated} />
         </TabsContent>
       </Tabs>
+      
+      {/* Bottone microfono fisso per note vocali */}
+      <VoiceInput 
+        onTaskCreated={onTaskCreated}
+        className="fixed bottom-4 right-4 z-50"
+        buttonOnly={true}
+        tooltip="Aggiungi nota usando la voce"
+      />
     </div>
   );
 };

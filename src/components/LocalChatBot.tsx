@@ -2065,8 +2065,8 @@ export const LocalChatBot: React.FC<LocalChatBotProps> = ({
   }
 
   return (
-    <Card className="fixed bottom-6 right-6 z-50 w-96 h-[600px] shadow-2xl border-2 border-primary/20">
-      <CardHeader className="pb-3">
+    <Card className="fixed bottom-6 right-6 z-50 w-full max-w-md h-[600px] shadow-2xl border-2 border-primary/20 sm:w-96">
+      <CardHeader className="pb-3 p-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Brain className="w-5 h-5 text-primary" />
@@ -2119,12 +2119,12 @@ export const LocalChatBot: React.FC<LocalChatBotProps> = ({
         </div>
       </CardHeader>
       
-      <CardContent className="p-4 flex flex-col h-[500px]">
+      <CardContent className="p-2 flex flex-col h-[500px]">
         {/* Area Chat */}
         <div className="flex-1 flex flex-col">
           {/* Messaggi Chat */}
           <ScrollArea className="flex-1 mb-4 pr-2">
-            <div className="space-y-3">
+            <div className="flex flex-col gap-2 items-start w-full overflow-auto">
               {chatMessages.length === 0 && (
                 <div className="text-center py-8 text-muted-foreground">
                   <Brain className="w-8 h-8 mx-auto mb-2 opacity-50" />
@@ -2136,7 +2136,7 @@ export const LocalChatBot: React.FC<LocalChatBotProps> = ({
               {chatMessages.map((message) => (
                 <div
                   key={message.id}
-                  className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+                  className={`flex w-full ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
                   <div
                     className={`max-w-[80%] p-3 rounded-lg text-sm break-words ${
@@ -2168,21 +2168,21 @@ export const LocalChatBot: React.FC<LocalChatBotProps> = ({
           </ScrollArea>
           
           {/* Input Chat */}
-          <div className="flex gap-2">
+          <div className="flex gap-2 w-full">
             <input
               type="text"
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-              placeholder="Scrivi qui... (es: 'Crea task studiare', 'Sono stanco', 'Come procedo?')"
-              className="flex-1 px-3 py-2 text-sm border border-input rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 break-words"
+              placeholder="Scrivi un comando..."
+              className="w-full px-3 py-2 text-sm border border-input rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 break-words"
               disabled={isTyping}
             />
             <Button
               onClick={handleSendMessage}
               disabled={!inputText.trim() || isTyping}
               size="sm"
-              className="px-3"
+              className="px-3 flex-shrink-0"
             >
               <MessageCircle className="w-4 h-4" />
             </Button>

@@ -79,6 +79,7 @@ const RoutineManager: React.FC<RoutineManagerProps> = ({ userId }) => {
   const [routineItems, setRoutineItems] = useState<{ [key: string]: RoutineItem[] }>({});
   const [routineGoals, setRoutineGoals] = useState<{ [key: string]: RoutineGoal[] }>({});
   const [loading, setLoading] = useState(false);
+  const [showTodayOnly, setShowTodayOnly] = useState(true);
   
   // Pattern Mining Integration
   const {
@@ -105,6 +106,30 @@ const RoutineManager: React.FC<RoutineManagerProps> = ({ userId }) => {
   const [showSpecificDays, setShowSpecificDays] = useState(false);
 
 
+
+  // Filter routines based on current day
+  const getFilteredRoutines = () => {
+    if (!showTodayOnly) return routines;
+    
+    const today = new Date();
+    const currentDay = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
+    const currentDate = today.getDate();
+    
+    return routines.filter(routine => {
+      if (!routine.is_active) return false;
+      
+      switch (routine.type) {
+        case 'daily':
+          return true;
+        case 'weekly':
+          return routine.days_of_week?.includes(currentDay.toString()) || false;
+        case 'monthly':
+          return routine.day_of_month === currentDate;
+        default:
+          return true;
+      }
+    });
+  };
 
   // Load data from database
   useEffect(() => {
@@ -567,7 +592,7 @@ const RoutineManager: React.FC<RoutineManagerProps> = ({ userId }) => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold">Le tue Routine</h2>
           <p className="text-muted-foreground">Organizza le tue abitudini quotidiane, settimanali e mensili</p>
@@ -580,7 +605,7 @@ const RoutineManager: React.FC<RoutineManagerProps> = ({ userId }) => {
           setIsEditing(open && isEditing);
         }}>
           <DialogTrigger asChild>
-            <Button className="gap-2" onClick={() => setIsCreating(true)}>
+            <Button className="gap-2 w-full sm:w-auto" onClick={() => setIsCreating(true)}>
               <Plus className="w-4 h-4" />
               Nuova Routine
             </Button>
@@ -826,6 +851,25 @@ const RoutineManager: React.FC<RoutineManagerProps> = ({ userId }) => {
         />
       )}
 
+      {/* Filter Controls */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6">
+        <div className="flex items-center gap-2">
+          <h3 className="text-lg font-semibold">
+            {showTodayOnly ? "Routine di oggi" : "Tutte le routine"}
+          </h3>
+          <Badge variant="outline">
+            {showTodayOnly ? getFilteredRoutines().length : routines.length}
+          </Badge>
+        </div>
+        <Button
+          variant="link"
+          onClick={() => setShowTodayOnly(!showTodayOnly)}
+          className="text-sm text-blue-600 hover:text-blue-800 p-0 h-auto justify-start sm:justify-center w-full sm:w-auto"
+        >
+          {showTodayOnly ? "Mostra tutte le routine" : "Mostra solo oggi"}
+        </Button>
+      </div>
+
       {/* Routines List */}
       {routines.length === 0 ? (
         <Card>
@@ -842,40 +886,46 @@ const RoutineManager: React.FC<RoutineManagerProps> = ({ userId }) => {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-6">
-          {routines.map(routine => (
-            <Card key={routine.id} className={`${routine.is_active ? '' : 'opacity-60'}`}>
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-2xl">{getCategoryEmoji(routine.category)}</span>
-                      <CardTitle className="text-xl">{routine.name}</CardTitle>
-                      <Badge variant={routine.is_active ? "default" : "secondary"}>
-                        {routine.is_active ? "Attiva" : "In pausa"}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <Clock className="w-4 h-4" />
-                        {getRoutineSchedule(routine)}
+        <div className="w-full overflow-x-hidden">
+          <div className="grid gap-4">
+            {getFilteredRoutines().map(routine => (
+              <Card key={routine.id} className={`w-full p-2 rounded-lg shadow-sm mb-2 flex flex-col ${routine.is_active ? '' : 'opacity-60'}`}>
+              <CardHeader className="pb-3 p-2">
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-2 flex-wrap">
+                        <span className="text-2xl">{getCategoryEmoji(routine.category)}</span>
+                        <CardTitle className="text-lg sm:text-xl break-words">{routine.name}</CardTitle>
+                        <Badge variant={routine.is_active ? "default" : "secondary"} className="shrink-0">
+                          {routine.is_active ? "Attiva" : "In pausa"}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Clock className="w-4 h-4 shrink-0" />
+                        <span className="truncate">{getRoutineSchedule(routine)}</span>
                       </div>
                     </div>
                   </div>
-                  <div className="flex gap-2">
+                  
+                  {/* Action buttons - sempre visibili */}
+                  <div className="flex flex-wrap gap-2">
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => {
                         startEditRoutine(routine);
                       }}
+                      className="text-base p-2 rounded-md bg-blue-50 w-fit h-fit flex-1 sm:flex-none min-w-0"
                     >
-                      <Edit className="w-4 h-4" />
+                      <Edit className="w-4 h-4 mr-1" />
+                      <span className="hidden sm:inline">Modifica</span>
                     </Button>
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => toggleRoutineActive(routine.id, routine.is_active)}
+                      className="text-base p-2 rounded-md bg-green-50 w-fit h-fit flex-1 sm:flex-none min-w-0"
                     >
                       {routine.is_active ? "Pausa" : "Attiva"}
                     </Button>
@@ -883,9 +933,10 @@ const RoutineManager: React.FC<RoutineManagerProps> = ({ userId }) => {
                       variant="outline"
                       size="sm"
                       onClick={() => deleteRoutine(routine.id)}
-                      className="text-destructive hover:text-destructive"
+                      className="text-base p-2 rounded-md bg-red-50 w-fit h-fit text-red-600 hover:text-red-700 flex-1 sm:flex-none min-w-0"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <Trash2 className="w-4 h-4 mr-1" />
+                      <span className="hidden sm:inline">Elimina</span>
                     </Button>
                   </div>
                 </div>
@@ -946,8 +997,9 @@ const RoutineManager: React.FC<RoutineManagerProps> = ({ userId }) => {
                   </TabsContent>
                 </Tabs>
               </CardContent>
-            </Card>
-          ))}
+              </Card>
+            ))}
+          </div>
         </div>
       )}
     </div>

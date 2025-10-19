@@ -136,10 +136,10 @@ export const TaskForm: React.FC<TaskFormProps> = ({
   const isFormValid = !errors.title && formData.title.trim();
 
   return (
-    <Card className="w-full max-w-2xl mx-auto">
-      <CardHeader className="pb-4">
+    <Card className="w-full max-w-sm md:max-w-md mx-auto p-2 md:p-4 rounded-lg">
+      <CardHeader className="pb-2 md:pb-4 relative">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-xl font-semibold">
+          <CardTitle className="text-lg md:text-xl font-semibold pr-8">
             {task ? 'Modifica Task' : 'Nuova Task'}
           </CardTitle>
           
@@ -147,7 +147,8 @@ export const TaskForm: React.FC<TaskFormProps> = ({
             variant="ghost"
             size="sm"
             onClick={onCancel}
-            className="h-8 w-8 p-0"
+            className="absolute right-1 md:right-3 top-1 md:top-3 w-8 h-8 p-0"
+            aria-label="Chiudi"
           >
             <X className="h-4 w-4" />
           </Button>
@@ -155,25 +156,28 @@ export const TaskForm: React.FC<TaskFormProps> = ({
         
         {/* Template rapidi */}
         {!task && (
-          <div className="flex flex-wrap gap-2 mt-3">
-            <span className="text-sm text-gray-600 mr-2">Template rapidi:</span>
-            {quickTemplates.map((template, index) => (
-              <Button
-                key={index}
-                variant="outline"
-                size="sm"
-                onClick={() => applyTemplate(template)}
-                className="text-xs h-7"
-              >
-                {template.name}
-              </Button>
-            ))}
+          <div className="mb-4 md:mb-6">
+            <Label className="text-xs md:text-sm font-medium mb-2 block">Template rapidi</Label>
+            <div className="flex gap-1 md:gap-2 overflow-x-auto flex-nowrap pb-2">
+              {quickTemplates.map((template, index) => (
+                <Button
+                  key={index}
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => applyTemplate(template)}
+                  className="text-xs whitespace-nowrap flex-shrink-0 px-2 md:px-3"
+                >
+                  {template.name}
+                </Button>
+              ))}
+            </div>
           </div>
         )}
       </CardHeader>
 
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-6">
+      <CardContent className="p-2 md:p-6">
+        <form onSubmit={handleSubmit} className="space-y-4 md:space-y-6">
           {/* Titolo */}
           <div className="space-y-2">
             <Label htmlFor="title" className="text-sm font-medium">
@@ -185,16 +189,16 @@ export const TaskForm: React.FC<TaskFormProps> = ({
               onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
               placeholder="Cosa devi fare?"
               className={cn(
-                "transition-colors",
-                errors.title && "border-red-300 focus:border-red-500"
+                "w-full transition-colors",
+                errors.title && "border-red-500 focus:border-red-500"
               )}
               maxLength={100}
             />
             {errors.title && (
-              <div className="flex items-center gap-1 text-red-600 text-xs">
-                <AlertCircle className="h-3 w-3" />
+              <p className="text-sm text-red-600 flex items-center gap-1">
+                <AlertCircle className="w-3 h-3" />
                 {errors.title}
-              </div>
+              </p>
             )}
             <div className="text-xs text-gray-500 text-right">
               {formData.title.length}/100
@@ -228,15 +232,15 @@ export const TaskForm: React.FC<TaskFormProps> = ({
             </div>
           </div>
 
-          {/* Tipo e Energia - Layout a due colonne */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Tipo e Energia - Layout responsive */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
             <div className="space-y-2">
-              <Label className="text-sm font-medium">Tipo di Task</Label>
+              <Label className="text-xs md:text-sm font-medium">Tipo di task</Label>
               <Select
                 value={formData.task_type}
                 onValueChange={(value) => setFormData(prev => ({ ...prev, task_type: value as any }))}
               >
-                <SelectTrigger>
+                <SelectTrigger className="w-full text-xs md:text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -250,20 +254,20 @@ export const TaskForm: React.FC<TaskFormProps> = ({
             </div>
 
             <div className="space-y-2">
-              <Label className="text-sm font-medium">Energia Richiesta</Label>
+              <Label className="text-xs md:text-sm font-medium">Energia richiesta</Label>
               <Select
                 value={formData.energy_required}
                 onValueChange={(value) => setFormData(prev => ({ ...prev, energy_required: value as any }))}
               >
-                <SelectTrigger>
+                <SelectTrigger className="w-full text-xs md:text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="molto_bassa">💤 Molto Bassa</SelectItem>
-                  <SelectItem value="bassa">🌱 Bassa</SelectItem>
-                  <SelectItem value="media">⚡ Media</SelectItem>
-                  <SelectItem value="alta">🔥 Alta</SelectItem>
-                  <SelectItem value="molto_alta">🚀 Molto Alta</SelectItem>
+                  <SelectItem value="molto_bassa">🟢 Molto Bassa</SelectItem>
+                  <SelectItem value="bassa">🟡 Bassa</SelectItem>
+                  <SelectItem value="media">🟠 Media</SelectItem>
+                  <SelectItem value="alta">🔴 Alta</SelectItem>
+                  <SelectItem value="molto_alta">🟣 Molto Alta</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -438,12 +442,12 @@ export const TaskForm: React.FC<TaskFormProps> = ({
           </div>
 
           {/* Azioni */}
-          <div className="flex gap-3 pt-4">
+          <div className="flex flex-col md:flex-row gap-2 md:gap-3 pt-3 md:pt-4">
             <Button
               type="button"
               variant="outline"
               onClick={onCancel}
-              className="flex-1"
+              className="flex-1 text-sm"
               disabled={isLoading}
             >
               Annulla
@@ -452,7 +456,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({
             <Button
               type="submit"
               disabled={!isFormValid || isLoading}
-              className="flex-1 flex items-center gap-2"
+              className="flex-1 flex items-center justify-center gap-2 text-sm"
             >
               {isLoading ? (
                 <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
@@ -463,7 +467,8 @@ export const TaskForm: React.FC<TaskFormProps> = ({
                   ) : (
                     <Save className="h-4 w-4" />
                   )}
-                  {task ? 'Aggiorna Task' : 'Crea Task'}
+                  <span className="hidden sm:inline">{task ? 'Aggiorna Task' : 'Crea Task'}</span>
+                  <span className="sm:hidden">{task ? 'Aggiorna' : 'Crea'}</span>
                 </>
               )}
             </Button>

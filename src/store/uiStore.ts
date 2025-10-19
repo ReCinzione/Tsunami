@@ -33,6 +33,7 @@ interface UIState {
   // Navigation
   sidebarOpen: boolean;
   currentPage: string;
+  currentView: string;
   breadcrumbs: Array<{ label: string; path: string }>;
   
   // Modals and overlays
@@ -67,6 +68,7 @@ interface UIState {
   setPreferences: (preferences: Partial<UIPreferences>) => void;
   setSidebarOpen: (open: boolean) => void;
   setCurrentPage: (page: string) => void;
+  setCurrentView: (view: string) => void;
   setBreadcrumbs: (breadcrumbs: Array<{ label: string; path: string }>) => void;
   
   // Modal actions
@@ -123,6 +125,7 @@ export const useUIStore = create<UIState>()(
         preferences: defaultPreferences,
         sidebarOpen: true,
         currentPage: '/',
+        currentView: 'active',
         breadcrumbs: [],
         activeModal: null,
         modalData: null,
@@ -154,6 +157,8 @@ export const useUIStore = create<UIState>()(
         setSidebarOpen: (open) => set({ sidebarOpen: open }, false, 'setSidebarOpen'),
         
         setCurrentPage: (page) => set({ currentPage: page }, false, 'setCurrentPage'),
+        
+        setCurrentView: (view) => set({ currentView: view }, false, 'setCurrentView'),
         
         setBreadcrumbs: (breadcrumbs) => set({ breadcrumbs }, false, 'setBreadcrumbs'),
 
