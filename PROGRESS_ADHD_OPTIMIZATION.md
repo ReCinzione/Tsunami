@@ -11,9 +11,9 @@
 - 🔄 PWA per offline usage
 
 **Data Inizio Ottimizzazione**: 2025-01-20
-**Ultima Modifica**: 2025-01-21 ore 18:30
+**Ultima Modifica**: 2025-01-21 ore 21:15
 **Stato Fase 1**: COMPLETATA
-**Stato LocalChatBot**: IMPLEMENTATO E OTTIMIZZATO
+**Stato LocalChatBot**: IMPLEMENTATO E OTTIMIZZATO - PATTERN RICONOSCIMENTO MIGLIORATI
 **Stato Google Calendar**: IMPLEMENTATO (con limitazioni)
 **Stato Refactoring**: IN CORSO - CORREZIONI CRITICHE APPLICATE
 **Stato Stabilità**: STABILIZZATO - Bug Supabase risolto
@@ -22,6 +22,26 @@
 ---
 
 ## 🔧 **MIGLIORAMENTI CODICE E REFACTORING** (2025-01-21)
+
+### ✅ **MIGLIORAMENTI CHATBOT - PATTERN RICONOSCIMENTO (2025-01-21 ore 21:15)**
+
+#### **🤖 Fix Riconoscimento Richieste Task Creation**
+- **Problema**: Il chatbot non riconosceva richieste cortesi di creazione task (es. "potresti creare una task...")
+- **Root Cause**: Pattern regex in `detectIntent()` troppo limitato, non includeva forme cortesi
+- **Soluzione**: Aggiornato pattern per includere:
+  - `potresti.*creare` - forme cortesi
+  - `puoi.*creare` - richieste dirette
+  - `vorrei.*creare` - espressioni di desiderio
+  - `task.*che.*si.*chiami` - specificazione nome task
+- **File Modificato**: `src/components/LocalChatBot.tsx` (funzione `detectIntent`)
+- **Test Case**: "potresti creare una task per me che si chiami testare chatbot?" ora viene riconosciuto correttamente
+- **Impatto**: Migliorata UX per richieste naturali di creazione task
+- **Status**: ✅ RISOLTO E TESTATO
+
+#### **🎯 Ottimizzazioni Correlate**
+- **Saluti Contestuali**: Migliorati saluti basati su orario e umore utente
+- **Risposte Mock**: Ottimizzate risposte simulate per essere più specifiche e contestuali
+- **Pattern Matching**: Reso più robusto il sistema di riconoscimento intenti
 
 ### ✅ **CORREZIONI CRITICHE STABILITÀ (2025-01-21 ore 18:30)**
 
