@@ -15,6 +15,7 @@ import type { Task, UserBehaviorPattern } from '@/types/adhd';
 import QuickActionButtons from './QuickActionButtons';
 import { getContextualQuickActions, getQuickActionResponse } from '@/utils/quickActions';
 import { usePatternMining } from '@/hooks/usePatternMining';
+import { createAIService, isAISupported } from '@/lib/AIService';
 
 // Interfaces now imported from types files
 interface Project {
@@ -217,7 +218,7 @@ const INTENT_PATTERNS = {
   energy_high: /energia.*alt|caric|motivat|hyperfocus|produttiv|pieno.*energia|super.*caric|voglia.*fare|sono.*una.*scheggia|mi.*sento.*forte/i,
   motivation: /motivaz|scoragg|depress|triste|falliment|non ce la faccio|mi arrendo|inutile|non serve|perso.*speranza|non.*vale.*la.*pena|mi.*sento.*inutile/i,
   time_management: /tempo|scaden|ritard|organizz|pianific|non ho.*tempo|sempre.*ritardo|gestire.*tempo|calendario|programm|schedule|timing/i,
-  task_selection: /quale.*task|da dove.*cominci|cosa.*fare.*prima|priorit|non so.*inizia|quale.*scegli|cosa.*mi.*consigli|da.*dove.*parto/i,
+  task_selection: /quale.*task|da dove.*cominci|cosa.*fare.*prima|priorit|non so.*inizia|quale.*scegli|cosa.*mi.*consigli|da.*dove.*parto|(?:crea|aggiungi|fai|nuovo)\s*(?:una?\s*)?(?:task|attività)|voglio.*creare.*task/i,
   why_suggestion: /perch[eé]|come mai|motivo|ragione|spieg.*perch[eé]|perch[eé].*sugger|perch[eé].*questa|perch[eé].*quest|per.*quale.*motivo|perch[eé].*mi.*consig|perch[eé].*quella|perch[eé].*quello|spiegami|dimmi.*perch[eé]|giustifica|motiva.*scelta/i,
   app_help: /come funziona|come.*usa|come.*lavora|spieg.*app|cosa fa|tutorial|guida|istruzioni|help|aiuto.*app|come.*si.*usa/i,
   understanding_check: /mi capisci|mi senti|funzioni|ci sei|mi comprendi|mi ascolti|ricevi|mi.*stai.*seguendo|hai.*capito/i,
@@ -277,6 +278,14 @@ export const LocalChatBot: React.FC<LocalChatBotProps> = ({
   const [isTyping, setIsTyping] = useState(false);
   const [conversationContext, setConversationContext] = useState<{lastIntent?: string, awaitingResponse?: boolean}>({});
   const [showQuickActions, setShowQuickActions] = useState(true);
+  
+  // Stati per AI Service
+  const [aiService, setAiService] = useState<any>(null);
+  const [aiReady, setAiReady] = useState(false);
+  const [aiStatus, setAiStatus] = useState<string>('Inizializzazione...');
+  
+  // Ref per l'area di scroll
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   const { toast } = useToast();
   const { logChatbotInteraction } = usePatternMining();
@@ -311,25 +320,92 @@ export const LocalChatBot: React.FC<LocalChatBotProps> = ({
     }
   };
 
+  // Effetto per auto-scroll ai nuovi messaggi
+  useEffect(() => {
+    if (scrollAreaRef.current) {
+      const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
+      if (scrollContainer) {
+        scrollContainer.scrollTop = scrollContainer.scrollHeight;
+      }
+    }
+  }, [chatMessages]);
+  
   // Inizializzazione con quick actions contestuali e messaggio di benvenuto
   useEffect(() => {
-    const quickActions = getContextualQuickActions(adhdContext);
-    setCurrentQuickActions(quickActions);
-    loadProjects();
-    
-    // Aggiungi messaggio di benvenuto se è la prima volta
-    if (chatMessages.length === 0) {
-      const welcomeMessage = {
-        id: 'welcome-' + Date.now(),
-        text: `Ciao! 👋 Sono il tuo assistente ADHD completamente rinnovato!\n\n🎯 Ora puoi scrivermi direttamente:\n• "Crea task studiare matematica"\n• "Sono stanco, cosa posso fare?"\n• "Suddividi questa task in step"\n• "Come procedo con il progetto?"\n\n✨ Prova a scrivermi qualcosa!`,
-        sender: 'bot' as const,
-        timestamp: new Date()
-      };
+    const initializeComponents = async () => {
+      const quickActions = getContextualQuickActions(adhdContext);
+      setCurrentQuickActions(quickActions);
+      loadProjects();
       
-      setTimeout(() => {
-        setChatMessages([welcomeMessage]);
-      }, 500);
-    }
+      // Debug: Verifica supporto AI con logging dettagliato
+      console.log('🔍 Verifica supporto AI...');
+      console.log('🌐 Navigator disponibile:', typeof navigator !== 'undefined');
+      if (typeof navigator !== 'undefined') {
+        console.log('🎮 WebGPU disponibile:', 'gpu' in navigator);
+        console.log('🔧 Service Worker:', 'serviceWorker' in navigator);
+        console.log('💾 Storage API:', 'storage' in navigator);
+        console.log('📱 User Agent:', navigator.userAgent);
+      }
+      
+      const aiSupported = await isAISupported();
+      console.log('🤖 AI Supportato:', aiSupported);
+      
+      // Inizializza AI Service se supportato
+      if (aiSupported) {
+        try {
+          setAiStatus('Caricamento AI...');
+          console.log('🚀 Creazione AI Service...');
+          const service = await createAIService();
+          setAiService(service);
+          console.log('✅ AI Service creato con successo');
+          
+          // Carica il modello AI in background
+          const status = service.getStatus();
+          console.log('📊 Status AI Service:', status);
+          console.log('🔍 Status isLoaded:', status.isLoaded);
+          
+          if (!status.isLoaded) {
+            setAiStatus('Caricamento modello AI...');
+            console.log('🚀 Avvio caricamento modello AI...');
+            service.loadModel().then(() => {
+              setAiReady(true);
+              setAiStatus('AI pronto! 🤖');
+              console.log('✅ AI Service pronto! aiReady impostato a true');
+            }).catch(error => {
+              setAiReady(false);
+              setAiStatus('AI non disponibile');
+              console.warn('⚠️ Errore caricamento modello AI:', error);
+            });
+          } else {
+            setAiReady(true);
+            setAiStatus('AI pronto! 🤖');
+            console.log('✅ AI Service già caricato! aiReady impostato a true');
+          }
+        } catch (error) {
+          setAiStatus('AI non disponibile');
+          console.warn('⚠️ Fallback a risposte predefinite:', error);
+        }
+      } else {
+        setAiStatus('AI non supportato - Verifica console per dettagli');
+        console.warn('❌ AI non supportato in questo ambiente');
+      }
+      
+      // Aggiungi messaggio di benvenuto se è la prima volta
+      if (chatMessages.length === 0) {
+        const welcomeMessage = {
+          id: 'welcome-' + Date.now(),
+          text: `Ciao! 👋 Sono il tuo assistente ADHD completamente rinnovato!\n\n🎯 Ora puoi scrivermi direttamente:\n• "Crea task studiare matematica"\n• "Sono stanco, cosa posso fare?"\n• "Suddividi questa task in step"\n• "Come procedo con il progetto?"\n\n✨ Prova a scrivermi qualcosa!`,
+          sender: 'bot' as const,
+          timestamp: new Date()
+        };
+        
+        setTimeout(() => {
+          setChatMessages([welcomeMessage]);
+        }, 500);
+      }
+    };
+    
+    initializeComponents();
   }, [userId, adhdContext]);
 
   // Aggiorna le quick actions quando cambiano task o contesto
@@ -1340,8 +1416,31 @@ export const LocalChatBot: React.FC<LocalChatBotProps> = ({
       return handleProjectApproachSuggestion(message);
     }
     
-    // Se l'utente chiede task specifiche, suggerisci task concrete
+    // Se l'utente chiede task specifiche o vuole creare una task
     if (intent === 'task_selection' || /task|fare|lavoro|attivit|sugger|consig/i.test(message)) {
+      // Controlla se è una richiesta di creazione task
+      if (/(?:crea|aggiungi|fai|nuovo)\s*(?:una?\s*)?(?:task|attività)|voglio.*creare/i.test(message)) {
+        const taskTitle = extractTaskTitle(message);
+        
+        // Aggiungi il messaggio alla chat
+        const newMessage = {
+          id: Date.now().toString(),
+          text: `Perfetto! Ho capito che vuoi creare la task "${taskTitle}". \n\n🎯 Vuoi che la organizzi subito o preferisci prima suddividerla in micro-task?`,
+          sender: 'bot' as const,
+          timestamp: new Date()
+        };
+        
+        setChatMessages(prev => [...prev, newMessage]);
+        
+        // Suggerisci azione di creazione task
+        if (onActionSuggested) {
+          onActionSuggested('create_task', { title: taskTitle, context: 'chat_creation' });
+        }
+        
+        return `Perfetto! Ho capito che vuoi creare la task "${taskTitle}". \n\n🎯 Vuoi che la organizzi subito o preferisci prima suddividerla in micro-task?`;
+      }
+      
+      // Altrimenti suggerisci task esistenti
       let taskSuggestions = suggestSpecificTasks(intent, adhdContext?.energyLevel);
       
       // Migliora i suggerimenti con il contesto dell'umore se disponibile
@@ -1712,6 +1811,35 @@ export const LocalChatBot: React.FC<LocalChatBotProps> = ({
     // Aggiorna contesto conversazione
     setConversationContext({ lastIntent: intent, awaitingResponse: false });
     
+    // Prova prima con AI Service se disponibile
+    console.log('🔍 Controllo AI Service - aiService:', !!aiService, 'aiReady:', aiReady);
+    if (aiService && aiReady) {
+      console.log('✅ Usando AI Service per risposta');
+      try {
+        const aiResponse = await aiService.chatbot({
+          message: userInput,
+          context: {
+            adhdContext: context,
+            intent: intent,
+            timestamp: new Date().toISOString()
+          }
+        });
+        
+        return {
+          text: aiResponse.message,
+          action: aiResponse.actions && aiResponse.actions.length > 0 ? {
+            type: aiResponse.actions[0].action,
+            data: aiResponse.actions[0]
+          } : undefined,
+          updateQuickActions: true
+        };
+      } catch (aiError) {
+        console.warn('⚠️ AI Service error, fallback to predefined responses:', aiError);
+      }
+    }
+    
+    // Fallback a risposte predefinite
+    console.log('⚠️ Usando risposte predefinite - aiService:', !!aiService, 'aiReady:', aiReady);
     switch (intent) {
       case 'task_creation':
         return handleTaskCreation(userInput, context);
@@ -1727,6 +1855,8 @@ export const LocalChatBot: React.FC<LocalChatBotProps> = ({
         return handleOverwhelm(userInput, context);
       case 'focus':
         return handleFocusHelp(userInput, context);
+      case 'greeting':
+        return handleGreeting(userInput, context);
       default:
         return handleGeneralQuery(userInput, context);
     }
@@ -1736,7 +1866,7 @@ export const LocalChatBot: React.FC<LocalChatBotProps> = ({
     const lowerInput = input.toLowerCase();
     
     // Pattern per creazione task
-    if (/aggiungi|crea|nuovo.*task|devo.*fare|ho.*da.*fare|task.*per/i.test(input)) {
+    if (/(?:crea|aggiungi|fai|nuovo|potresti.*creare|puoi.*creare|vorrei.*creare)\s*(?:una?\s*)?(?:task|attività)|devo.*fare|ho.*da.*fare|task.*per|voglio.*creare|task.*che.*si.*chiami/i.test(input)) {
       return 'task_creation';
     }
     
@@ -1882,6 +2012,63 @@ export const LocalChatBot: React.FC<LocalChatBotProps> = ({
       }
     };
   };
+
+  const handleGreeting = async (input: string, context: any) => {
+    const currentHour = new Date().getHours();
+    const timeOfDay = currentHour < 12 ? 'mattina' : currentHour < 17 ? 'pomeriggio' : currentHour < 21 ? 'sera' : 'notte';
+    
+    // Risposte personalizzate basate su contesto e orario
+    const greetings = {
+      mattina: [
+        "Ciao! ☀️ Buongiorno! Come ti senti oggi? Pronto per affrontare la giornata?",
+        "Ehi, ciao! 🌅 Che energia hai stamattina? Vediamo cosa possiamo fare insieme!",
+        "Ciao! 😊 Buongiorno! Come iniziamo questa giornata nel modo migliore?"
+      ],
+      pomeriggio: [
+        "Ciao! 👋 Come va il pomeriggio? Come ti senti con l'energia?",
+        "Ehi, ciao! ☀️ Come procede la giornata? Posso aiutarti con qualcosa?",
+        "Ciao! 😊 Buon pomeriggio! Dimmi, come stai andando oggi?"
+      ],
+      sera: [
+        "Ciao! 🌆 Buonasera! Come è andata la giornata?",
+        "Ehi, ciao! 🌙 Come ti senti stasera? Vuoi fare il punto della giornata?",
+        "Ciao! 😊 Buonasera! Rilassiamoci un po', come posso aiutarti?"
+      ],
+      notte: [
+        "Ciao! 🌙 Ancora sveglio? Come posso aiutarti?",
+        "Ehi, ciao! ✨ Notte fonda... tutto ok? Dimmi come stai.",
+        "Ciao! 😊 Ciao nottambulo! Come posso supportarti?"
+      ]
+    };
+    
+    // Aggiungi contesto basato sull'umore se disponibile
+    let contextualAddition = "";
+    if (context.adhdContext?.todayMood?.mood) {
+      const mood = context.adhdContext.todayMood.mood;
+      switch (mood) {
+        case 'energico':
+          contextualAddition = " Vedo che oggi ti senti energico! 💪";
+          break;
+        case 'concentrato':
+          contextualAddition = " Ottimo che ti senti concentrato oggi! 🎯";
+          break;
+        case 'disorientato':
+          contextualAddition = " Vedo che oggi ti senti un po' disorientato, nessun problema! 🤗";
+          break;
+        case 'sopraffatto':
+          contextualAddition = " Capisco che oggi ti senti sopraffatto, sono qui per aiutarti! 💙";
+          break;
+      }
+    }
+    
+    const timeGreetings = greetings[timeOfDay as keyof typeof greetings];
+    const selectedGreeting = timeGreetings[Math.floor(Math.random() * timeGreetings.length)];
+    
+    return {
+      text: selectedGreeting + contextualAddition,
+      updateQuickActions: true
+    };
+  };
   
   const handleGeneralQuery = async (input: string, context: any) => {
     const responses = [
@@ -1898,11 +2085,24 @@ export const LocalChatBot: React.FC<LocalChatBotProps> = ({
   
   // Funzioni di utilità
   const extractTaskTitle = (input: string): string => {
-    // Rimuovi parole comuni e estrai il titolo
-    const cleaned = input
-      .replace(/aggiungi|crea|nuovo|task|devo|fare|ho da/gi, '')
-      .trim();
-    return cleaned || 'Nuova task';
+    // Pattern più intelligenti per estrarre il titolo della task
+    let title = input.trim();
+    
+    // Rimuovi pattern di comando all'inizio
+    title = title.replace(/^(crea|aggiungi|nuovo|fai|devo fare|ho da fare)\s*(una?\s*)?(task|attività)\s*(di|per|su)?\s*/gi, '');
+    
+    // Rimuovi articoli e preposizioni all'inizio
+    title = title.replace(/^(un|una|il|la|lo|gli|le|di|per|su|con|da)\s+/gi, '');
+    
+    // Se il titolo è troppo corto o vuoto, usa un default
+    if (!title || title.length < 2) {
+      return 'Nuova task';
+    }
+    
+    // Capitalizza la prima lettera
+    title = title.charAt(0).toUpperCase() + title.slice(1);
+    
+    return title;
   };
   
   const findTaskInInput = (input: string, tasks: any[]): string | null => {
@@ -2065,8 +2265,8 @@ export const LocalChatBot: React.FC<LocalChatBotProps> = ({
   }
 
   return (
-    <Card className="fixed bottom-6 right-6 z-50 w-full max-w-md h-[600px] shadow-2xl border-2 border-primary/20 sm:w-96">
-      <CardHeader className="pb-3 p-2">
+    <Card className="fixed bottom-6 right-6 z-50 w-full max-w-md h-[600px] shadow-2xl border-2 border-primary/20 sm:w-96 flex flex-col">
+      <CardHeader className="pb-2 p-3 flex-shrink-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Brain className="w-5 h-5 text-primary" />
@@ -2097,7 +2297,7 @@ export const LocalChatBot: React.FC<LocalChatBotProps> = ({
         </div>
         
         {/* Indicatori di contesto */}
-        <div className="flex gap-1 flex-wrap">
+        <div className="flex gap-1 flex-wrap mt-2">
           {adhdContext.focusMode && (
             <Badge variant="outline" className="text-xs">
               <Focus className="w-3 h-3 mr-1" />
@@ -2119,14 +2319,14 @@ export const LocalChatBot: React.FC<LocalChatBotProps> = ({
         </div>
       </CardHeader>
       
-      <CardContent className="p-2 flex flex-col h-[500px]">
+      <CardContent className="p-3 flex flex-col flex-1 min-h-0">
         {/* Area Chat */}
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col min-h-0">
           {/* Messaggi Chat */}
-          <ScrollArea className="flex-1 mb-4 pr-2">
-            <div className="flex flex-col gap-2 items-start w-full overflow-auto">
+          <ScrollArea ref={scrollAreaRef} className="flex-1 mb-3 h-0">
+            <div className="flex flex-col gap-3 p-1">
               {chatMessages.length === 0 && (
-                <div className="text-center py-8 text-muted-foreground">
+                <div className="text-center py-6 text-muted-foreground">
                   <Brain className="w-8 h-8 mx-auto mb-2 opacity-50" />
                   <p className="text-sm mb-2">Ciao! Sono il tuo assistente ADHD 🧠</p>
                   <p className="text-xs">Scrivi qualsiasi cosa: "Crea task", "Sono stanco", "Come procedo?"...</p>
@@ -2139,13 +2339,13 @@ export const LocalChatBot: React.FC<LocalChatBotProps> = ({
                   className={`flex w-full ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
                   <div
-                    className={`max-w-[80%] p-3 rounded-lg text-sm break-words ${
+                    className={`max-w-[85%] p-3 rounded-lg text-sm break-words shadow-sm ${
                       message.sender === 'user'
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-muted text-muted-foreground'
+                        ? 'bg-primary text-primary-foreground rounded-br-sm'
+                        : 'bg-muted text-muted-foreground rounded-bl-sm'
                     }`}
                   >
-                    <div className="whitespace-pre-wrap break-words overflow-wrap-anywhere">{message.text}</div>
+                    <div className="whitespace-pre-wrap break-words word-wrap">{message.text}</div>
                     <div className="text-xs opacity-70 mt-1">
                       {message.timestamp.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}
                     </div>
@@ -2155,7 +2355,7 @@ export const LocalChatBot: React.FC<LocalChatBotProps> = ({
               
               {isTyping && (
                 <div className="flex justify-start">
-                  <div className="bg-muted text-muted-foreground p-3 rounded-lg text-sm">
+                  <div className="bg-muted text-muted-foreground p-3 rounded-lg rounded-bl-sm text-sm shadow-sm">
                     <div className="flex items-center gap-1">
                       <div className="w-2 h-2 bg-current rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
                       <div className="w-2 h-2 bg-current rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
@@ -2168,14 +2368,14 @@ export const LocalChatBot: React.FC<LocalChatBotProps> = ({
           </ScrollArea>
           
           {/* Input Chat */}
-          <div className="flex gap-2 w-full">
+          <div className="flex gap-2 w-full flex-shrink-0">
             <input
               type="text"
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
               placeholder="Scrivi un comando..."
-              className="w-full px-3 py-2 text-sm border border-input rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 break-words"
+              className="flex-1 px-3 py-2 text-sm border border-input rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
               disabled={isTyping}
             />
             <Button
@@ -2191,7 +2391,7 @@ export const LocalChatBot: React.FC<LocalChatBotProps> = ({
         
         {/* Quick Actions (collassabili) */}
         {showQuickActions && (
-          <div className="mt-4 pt-4 border-t">
+          <div className="mt-3 pt-3 border-t flex-shrink-0">
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-sm font-medium text-muted-foreground">
                 Azioni rapide:
@@ -2206,7 +2406,7 @@ export const LocalChatBot: React.FC<LocalChatBotProps> = ({
               </Button>
             </div>
             
-            <div className="max-h-32 overflow-y-auto">
+            <div className="max-h-28 overflow-y-auto">
               {currentQuickActions.length > 0 ? (
                 <div className="grid grid-cols-2 gap-2">
                   {currentQuickActions.slice(0, 4).map((action, index) => (
@@ -2233,7 +2433,7 @@ export const LocalChatBot: React.FC<LocalChatBotProps> = ({
         
         {/* Risultato ultima azione */}
         {lastActionResult && (
-          <div className="mt-3 p-2 bg-green-50 border border-green-200 rounded-lg">
+          <div className="mt-3 p-2 bg-green-50 border border-green-200 rounded-lg flex-shrink-0">
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 bg-green-500 rounded-full" />
               <p className="text-xs text-green-800">{lastActionResult}</p>
@@ -2241,11 +2441,21 @@ export const LocalChatBot: React.FC<LocalChatBotProps> = ({
           </div>
         )}
         
-        {/* Info locale */}
-        <div className="mt-2 pt-2 border-t">
+        {/* Info locale e stato AI */}
+        <div className="mt-2 pt-2 border-t space-y-1 flex-shrink-0">
           <p className="text-xs text-muted-foreground text-center">
             🔒 Sistema completamente locale - Nessun dato inviato online
           </p>
+          <div className="flex items-center justify-center gap-2">
+            <div className={`w-2 h-2 rounded-full ${
+              aiReady ? 'bg-green-500' : 
+              aiService ? 'bg-yellow-500' : 
+              'bg-gray-400'
+            }`} />
+            <p className="text-xs text-muted-foreground">
+              {aiStatus}
+            </p>
+          </div>
         </div>
       </CardContent>
     </Card>
