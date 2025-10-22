@@ -26,7 +26,7 @@ interface PatternMiningState {
   error: string | null;
 }
 
-export const usePatternMining = (options: UsePatternMiningOptions = {}) => {
+export const usePatternMining = (userId: string, options: UsePatternMiningOptions = {}) => {
   const {
     enableAutomations = true,
     enableSuggestions = true,
@@ -376,6 +376,113 @@ export const usePatternMining = (options: UsePatternMiningOptions = {}) => {
     }
   }, []);
 
+  // Funzione per loggare le interazioni delle task
+  const logTaskInteraction = useCallback((actionType: string, context: any) => {
+    if (analyticsManagerRef.current) {
+      analyticsManagerRef.current.getEventLogger().logEvent({
+        type: actionType,
+        userId: analyticsManagerRef.current.getUserId(),
+        context: {
+          energyLevel: 3,
+          timeOfDay: getCurrentTimeOfDay(),
+          dayOfWeek: new Date().getDay(),
+          deviceType: detectDeviceType(),
+          ...context
+        },
+        metadata: context
+      });
+    }
+  }, []);
+
+  // Versione semplificata di generateSuggestions per compatibilità con TaskManager
+  const generateSuggestionsSimple = useCallback(async (context: {
+    recentAction?: string;
+    timestamp?: Date;
+    taskComplexity?: string;
+  }) => {
+    console.log('🔍 generateSuggestionsSimple called with context:', context);
+    console.log('🔧 automationManagerRef.current:', !!automationManagerRef.current);
+    console.log('📊 analyticsManagerRef.current:', !!analyticsManagerRef.current);
+    
+    if (!automationManagerRef.current || !analyticsManagerRef.current) {
+      console.log('⚠️ Managers not ready, generating mock suggestions');
+      // Genera suggerimenti mock per testing
+      const mockSuggestions: SmartSuggestion[] = [
+        {
+          id: 'mock-1',
+          type: 'task_optimization',
+          title: 'Ottimizza la tua produttività',
+          description: 'Considera di raggruppare task simili per aumentare l\'efficienza',
+          confidence: 0.8,
+          priority: 'medium',
+          category: 'productivity',
+          isActive: true,
+          createdAt: new Date(),
+          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+          actions: [{
+            type: 'group_tasks',
+            label: 'Raggruppa task simili',
+            parameters: {}
+          }],
+          metadata: {
+            source: 'pattern_analysis',
+            trigger: context.recentAction || 'component_mounted'
+          }
+        },
+        {
+          id: 'mock-2',
+          type: 'time_management',
+          title: 'Pianifica una pausa',
+          description: 'Dopo aver lavorato intensamente, una pausa di 10 minuti può migliorare la concentrazione',
+          confidence: 0.7,
+          priority: 'low',
+          category: 'wellness',
+          isActive: true,
+          createdAt: new Date(),
+          expiresAt: new Date(Date.now() + 12 * 60 * 60 * 1000),
+          actions: [{
+            type: 'schedule_break',
+            label: 'Pianifica pausa',
+            parameters: { duration: 10 }
+          }],
+          metadata: {
+            source: 'wellness_analysis',
+            trigger: context.recentAction || 'component_mounted'
+          }
+        }
+      ];
+      
+      console.log('✅ Mock suggestions generated:', mockSuggestions.length);
+      setSuggestions(mockSuggestions);
+      return mockSuggestions;
+    }
+
+    try {
+      console.log('🚀 Generating suggestions with full automation manager');
+      // Log dell'azione per il pattern mining
+      logTaskInteraction('suggestion_request', context);
+      
+      // Genera suggerimenti basati sul contesto semplificato
+      const automationContext: AutomationContext = {
+        currentTasks: [],
+        recentEvents: analyticsManagerRef.current.getEventLogger().getRecentEvents(50),
+        currentEnergyLevel: 'medium',
+        timeOfDay: getCurrentTimeOfDay(),
+        dayOfWeek: new Date().getDay(),
+        deviceType: detectDeviceType()
+      };
+
+      const result = await automationManagerRef.current.processAutomations(automationContext);
+      console.log('📋 Generated suggestions:', result.generatedSuggestions.length);
+      setSuggestions(result.generatedSuggestions);
+      
+      return result.generatedSuggestions;
+    } catch (error) {
+      console.error('❌ Failed to generate suggestions:', error);
+      return [];
+    }
+  }, [logTaskInteraction]);
+
   return {
     // State
     state,
@@ -386,12 +493,14 @@ export const usePatternMining = (options: UsePatternMiningOptions = {}) => {
     analytics,
     
     // Actions
-    generateSuggestions,
+    generateSuggestions: generateSuggestionsSimple,
     applySuggestion,
     dismissSuggestion,
     createAutomationRule,
     processPatterns: forceProcessing,
     logChatbotInteraction,
+    logTaskInteraction,
+    acceptSuggestion: applySuggestion,
     
     // Getters
     getActiveSuggestions,

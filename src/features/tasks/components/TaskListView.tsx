@@ -28,6 +28,7 @@ export const TaskListView = React.memo<TaskListViewProps>(({
   onTaskComplete,
   onTaskClick,
   onTaskEdit,
+  onTaskBreakdown,
   filters,
   onFiltersChange,
   onRefresh,
@@ -246,6 +247,7 @@ export const TaskListView = React.memo<TaskListViewProps>(({
               onComplete={(taskId, newStatus) => onTaskComplete?.(taskId, newStatus)}
               onEdit={onTaskEdit}
               onDelete={onDeleteTask}
+              onBreakdown={onTaskBreakdown}
               showDetails={!focusMode}
               focusMode={focusMode}
             />

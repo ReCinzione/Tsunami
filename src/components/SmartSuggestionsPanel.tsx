@@ -185,12 +185,22 @@ const SmartSuggestionsPanel: React.FC<SmartSuggestionsPanelProps> = ({
   const [visibleSuggestions, setVisibleSuggestions] = useState<SmartSuggestion[]>([]);
   const [showAll, setShowAll] = useState(false);
 
+  // Debug log
+  console.log('🎨 SmartSuggestionsPanel rendered with:', {
+    suggestionsCount: suggestions.length,
+    suggestions,
+    visibleSuggestionsCount: visibleSuggestions.length
+  });
+
   useEffect(() => {
+    console.log('🔄 SmartSuggestionsPanel useEffect triggered');
     // Filter active and non-expired suggestions
     const now = new Date();
     const activeSuggestions = suggestions
       .filter(s => s.isActive && s.expiresAt > now)
       .sort((a, b) => b.confidence - a.confidence);
+    
+    console.log('✅ Active suggestions after filtering:', activeSuggestions.length, activeSuggestions);
     
     setVisibleSuggestions(
       showAll ? activeSuggestions : activeSuggestions.slice(0, maxVisible)

@@ -256,7 +256,13 @@ export const SUGGESTION_TYPES = {
   ROUTINE_IMPROVEMENT: 'routine_improvement' as const,
   ENERGY_MANAGEMENT: 'energy_management' as const,
   TIME_BLOCKING: 'time_blocking' as const,
-  FOCUS_ENHANCEMENT: 'focus_enhancement' as const
+  FOCUS_ENHANCEMENT: 'focus_enhancement' as const,
+  AUTOMATION_TRIGGERED: 'automation_triggered' as const,
+  TASK_REORDERING: 'task_reordering' as const,
+  BREAK_REMINDER: 'break_reminder' as const,
+  ENERGY_OPTIMIZATION: 'energy_optimization' as const,
+  TASK_POSTPONEMENT: 'task_postponement' as const,
+  TIME_MANAGEMENT: 'time_management' as const
 };
 
 // Costanti per i tipi di notifica

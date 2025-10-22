@@ -23,6 +23,8 @@ interface TaskListContainerProps {
   userId?: string;
   /** Callback quando una task viene completata */
   onTaskComplete?: () => void;
+  /** Callback per il breakdown AI di una task */
+  onTaskBreakdown?: (task: Task) => void;
   /** Classe CSS aggiuntiva */
   className?: string;
 }
@@ -32,18 +34,22 @@ interface TaskListContainerProps {
  * Separa la logica di stato/fetch dalla presentazione
  */
 export const TaskListContainer = forwardRef<
-  { handleCreateTask: () => void },
+  { handleCreateTask: () => void; handleRefresh: () => void },
   TaskListContainerProps
->(({
-  focusMode = false,
-  initialFilters = {},
-  onTaskSelect,
-  maxTasks,
-  showCompleted = false,
-  userId,
-  onTaskComplete,
-  className
-}, ref) => {
+>((
+  {
+    focusMode = false,
+    initialFilters = {},
+    onTaskSelect,
+    maxTasks,
+    showCompleted = false,
+    userId,
+    onTaskComplete,
+    onTaskBreakdown,
+    className
+  },
+  ref
+) => {
 
   // State locale per UI
   const [filters, setFilters] = useState<TaskFilters>({
@@ -218,6 +224,7 @@ export const TaskListContainer = forwardRef<
         onTaskComplete={handleTaskComplete}
         onTaskEdit={handleTaskEdit}
         onDeleteTask={handleTaskDelete}
+        onTaskBreakdown={onTaskBreakdown}
         onCreateTask={handleCreateTask}
         onRefresh={handleRefresh}
         isLoading={isAnyOperationLoading}

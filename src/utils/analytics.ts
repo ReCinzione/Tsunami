@@ -316,6 +316,7 @@ class EventLogger {
 
 // Classe principale per analytics (estesa)
 export class AnalyticsManager {
+  private static instance: AnalyticsManager;
   private events: AnalyticsEvent[] = [];
   private sessionId: string;
   private userId?: string;
@@ -326,6 +327,13 @@ export class AnalyticsManager {
     this.sessionId = this.generateSessionId();
     this.eventLogger = new EventLogger();
     this.loadSettings();
+  }
+
+  public static getInstance(): AnalyticsManager {
+    if (!AnalyticsManager.instance) {
+      AnalyticsManager.instance = new AnalyticsManager();
+    }
+    return AnalyticsManager.instance;
   }
 
   private generateSessionId(): string {

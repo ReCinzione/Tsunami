@@ -64,6 +64,15 @@ export interface TaskListViewProps {
   onDeleteTask: (id: string) => void;
   onCompleteTask: (id: string) => void;
   onTaskClick?: (task: Task) => void;
+  onTaskBreakdown?: (task: Task) => void;
+  onTaskComplete?: (taskId: string, newStatus: string) => void;
+  onTaskEdit?: (task: Task) => void;
+  filters?: TaskFilters;
+  onFiltersChange?: (filters: TaskFilters) => void;
+  onRefresh?: () => void;
+  isLoading?: boolean;
+  taskStats?: TaskStats;
+  selectedTaskId?: string;
 }
 
 export interface TaskItemProps {
@@ -72,6 +81,7 @@ export interface TaskItemProps {
   onComplete: (id: string) => void;
   onEdit: (task: Task) => void;
   onDelete: (id: string) => void;
+  onBreakdown?: (task: Task) => void;
   showDetails?: boolean;
   focusMode?: boolean;
 }

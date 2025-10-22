@@ -1,5 +1,6 @@
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '../../../integrations/supabase/client';
 import { Task, TaskFormData, TaskFilters, TaskStats } from '../types';
+import { AnalyticsManager } from '../../../utils/analytics';
 
 class TaskService {
   /**
@@ -70,6 +71,47 @@ class TaskService {
   }
 
   /**
+   * Recupera le subtask di una task principale
+   */
+  async getSubtasks(parentTaskId: string): Promise<Task[]> {
+    const { data, error } = await supabase
+      .from('tasks')
+      .select('*')
+      .eq('parent_task_id', parentTaskId)
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      throw new Error(`Errore nel recupero delle subtask: ${error.message}`);
+    }
+
+    return data || [];
+  }
+
+  /**
+   * Recupera una task con le sue subtask
+   */
+  async getTaskWithSubtasks(taskId: string): Promise<Task & { subtasks?: Task[] }> {
+    // Recupera la task principale
+    const { data: mainTask, error: mainError } = await supabase
+      .from('tasks')
+      .select('*')
+      .eq('id', taskId)
+      .single();
+
+    if (mainError || !mainTask) {
+      throw new Error('Task non trovata');
+    }
+
+    // Recupera le subtask se esistono
+    const subtasks = await this.getSubtasks(taskId);
+
+    return {
+      ...mainTask,
+      subtasks: subtasks.length > 0 ? subtasks : undefined
+    };
+  }
+
+  /**
    * Crea una nuova task
    */
   async createTask(userId: string, taskData: TaskFormData): Promise<Task> {
@@ -77,7 +119,6 @@ class TaskService {
     
     // Extract only the fields that exist in the database schema
     const {
-      parent_task_id, // Remove parent_task_id - not in database schema
       context_switching_cost, // Remove context_switching_cost - not in database schema
       can_be_interrupted, // Remove can_be_interrupted - not in database schema
       actual_duration, // Remove actual_duration - not in database schema
@@ -98,6 +139,21 @@ class TaskService {
 
     if (error) {
       throw new Error(`Errore nella creazione della task: ${error.message}`);
+    }
+
+    // Track task creation for pattern mining
+    try {
+      const analytics = AnalyticsManager.getInstance();
+      analytics.trackTaskInteraction({
+        taskId: data.id,
+        action: 'created',
+        taskType: data.task_type,
+        energyRequired: data.energy_required,
+        xpReward: data.xp_reward,
+        userId: userId
+      });
+    } catch (analyticsError) {
+      console.warn('Failed to track task creation:', analyticsError);
     }
 
     return data;
@@ -131,24 +187,10 @@ class TaskService {
   }
 
   /**
-   * Completa una task e assegna XP
+   * Completa una task e assegna XP con protezione contro race condition
    */
   async completeTask(taskId: string): Promise<{ task: Task; xpGained: number }> {
-    const { data: task, error: taskError } = await supabase
-      .from('tasks')
-      .select('*')
-      .eq('id', taskId)
-      .single();
-
-    if (taskError || !task) {
-      throw new Error('Task non trovata');
-    }
-
-    if (task.status === 'completed') {
-      throw new Error('Task già completata');
-    }
-
-    // Aggiorna task come completata
+    // Aggiorna task come completata solo se non è già completata (atomic operation)
     const { data: updatedTask, error: updateError } = await supabase
       .from('tasks')
       .update({
@@ -156,16 +198,42 @@ class TaskService {
         completed_at: new Date().toISOString()
       })
       .eq('id', taskId)
+      .neq('status', 'completed') // Condizione atomica per prevenire doppi completamenti
       .select()
       .single();
 
     if (updateError) {
+      if (updateError.code === 'PGRST116') {
+        // Nessuna riga aggiornata - task già completata
+        throw new Error('Task già completata');
+      }
       throw new Error(`Errore nel completamento della task: ${updateError.message}`);
     }
 
-    // Assegna XP al profilo utente
-    const xpGained = task.xp_reward;
-    await this.awardXP(task.user_id, xpGained);
+    if (!updatedTask) {
+      throw new Error('Task già completata o non trovata');
+    }
+
+    // Track task completion for pattern mining
+    try {
+      const analytics = AnalyticsManager.getInstance();
+      analytics.trackTaskInteraction({
+        taskId: updatedTask.id,
+        action: 'completed',
+        taskType: updatedTask.task_type,
+        energyRequired: updatedTask.energy_required,
+        xpReward: updatedTask.xp_reward,
+        userId: updatedTask.user_id
+      });
+    } catch (analyticsError) {
+      console.warn('Failed to track task completion:', analyticsError);
+    }
+
+    // Assegna XP al profilo utente solo se il completamento è avvenuto con successo
+    const xpGained = updatedTask.xp_reward || 0;
+    if (xpGained > 0) {
+      await this.awardXP(updatedTask.user_id, xpGained);
+    }
 
     return { task: updatedTask, xpGained };
   }
@@ -428,6 +496,122 @@ class TaskService {
     }
 
     return data || [];
+  }
+
+  /**
+   * Ottieni le ultime task completate per contesto AI
+   */
+  async getRecentCompletedTasks(userId: string, limit: number = 3): Promise<Task[]> {
+    const { data, error } = await supabase
+      .from('tasks')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('status', 'completed')
+      .not('completed_at', 'is', null)
+      .order('completed_at', { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      console.error('Errore nel caricamento delle task recenti:', error);
+      return [];
+    }
+
+    return data || [];
+  }
+
+  /**
+   * Ottieni informazioni del progetto di una task (placeholder)
+   */
+  async getTaskProject(taskId: string): Promise<any> {
+    // TODO: Implementare quando avremo la tabella progetti
+    // Per ora restituiamo un oggetto placeholder
+    return {
+      id: 'default',
+      name: 'Progetto Generale',
+      description: 'Progetto di default per task non categorizzate'
+    };
+  }
+
+  /**
+   * Ottieni preferenze utente per contesto AI (placeholder)
+   */
+  async getUserPreferences(userId: string): Promise<any> {
+    // TODO: Implementare quando avremo la tabella user_preferences
+    // Per ora restituiamo preferenze di default ADHD-friendly
+    return {
+      preferredSessionDuration: 25, // Pomodoro
+      preferredBreakDuration: 5,
+      energyPeakHours: ['09:00', '11:00', '15:00', '17:00'],
+      workingStyle: 'short_bursts',
+      distractionLevel: 'medium',
+      motivationTriggers: ['gamification', 'progress_tracking', 'micro_rewards']
+    };
+  }
+
+  /**
+   * Ottieni archetipo utente per contesto AI (placeholder)
+   */
+  async getUserArchetype(userId: string): Promise<string> {
+    // TODO: Implementare quando avremo la tabella user_archetypes
+    // Per ora restituiamo un archetipo di default
+    return 'Visionario';
+  }
+
+  /**
+   * Ottieni pattern comportamentali utente per contesto AI (placeholder)
+   */
+  async getUserPatterns(userId: string): Promise<any> {
+    // TODO: Implementare analisi pattern comportamentali
+    // Per ora restituiamo pattern di default
+    return {
+      mostProductiveTimeSlots: ['09:00-11:00', '15:00-17:00'],
+      averageTaskDuration: 30,
+      completionRate: 0.75,
+      preferredTaskTypes: ['azione', 'organizzazione'],
+      energyDistribution: {
+        bassa: 0.4,
+        media: 0.4,
+        alta: 0.2
+      }
+    };
+  }
+
+  /**
+   * Costruisci contesto esteso per AI breakdown
+   */
+  async buildAIContext(userId: string, selectedTask: Task): Promise<any> {
+    try {
+      const [recentTasks, projectInfo, userPreferences, userArchetype, userPatterns] = await Promise.all([
+        this.getRecentCompletedTasks(userId, 3),
+        this.getTaskProject(selectedTask.id),
+        this.getUserPreferences(userId),
+        this.getUserArchetype(userId),
+        this.getUserPatterns(userId)
+      ]);
+
+      return {
+        task: selectedTask,
+        taskType: selectedTask.task_type,
+        energyLevel: selectedTask.energy_required,
+        deadline: selectedTask.due_date,
+        project: projectInfo,
+        userHistory: recentTasks,
+        preferences: userPreferences,
+        archetype: userArchetype,
+        workPatterns: userPatterns,
+        currentTime: new Date().toISOString()
+      };
+    } catch (error) {
+      console.error('Errore nella costruzione del contesto AI:', error);
+      // Restituisci contesto minimo in caso di errore
+      return {
+        task: selectedTask,
+        taskType: selectedTask.task_type,
+        energyLevel: selectedTask.energy_required,
+        deadline: selectedTask.due_date,
+        currentTime: new Date().toISOString()
+      };
+    }
   }
 }
 

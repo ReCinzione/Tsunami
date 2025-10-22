@@ -3,6 +3,8 @@ import { TaskListContainer } from '../features/tasks/containers/TaskListContaine
 import { useFocusMode, FocusMode, FocusKeep } from './common/FocusMode';
 import { useUIStore } from '../store/uiStore';
 import { useTaskStats } from '../features/tasks/hooks/useTasks';
+import { usePatternMining } from '../hooks/usePatternMining';
+import { SmartSuggestionsPanel } from './SmartSuggestionsPanel';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -24,6 +26,9 @@ import { cn } from '../lib/utils';
 import { StatsSkeleton } from './common/Skeleton';
 import { ErrorBoundary } from './common/ErrorBoundary';
 import { createAIService, isAISupported } from '../lib/AIService';
+import { AIBreakdownModal } from './AIBreakdownModal';
+import { taskService } from '../features/tasks/services/taskService';
+import type { MicroTask } from '../types/ai';
 
 interface TaskManagerProps {
   userId: string;
@@ -114,12 +119,19 @@ function QuickStats({ userId, className }: QuickStatsProps) {
   );
 }
 
-// Componente per AI Breakdown
-function AIBreakdownButton() {
+// Componente per il breakdown AI delle task
+interface AIBreakdownButtonProps {
+  userId: string;
+  onTaskCreated?: () => void;
+  className?: string;
+}
+
+function AIBreakdownButton({ userId, onTaskCreated, className }: AIBreakdownButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [taskDescription, setTaskDescription] = useState('');
   const [showInput, setShowInput] = useState(false);
-  const [aiSupported, setAiSupported] = useState(false);
+  const [aiSupported, setAiSupported] = useState<boolean | null>(null);
+  const [isAILoading, setIsAILoading] = useState(false);
 
   React.useEffect(() => {
     isAISupported().then(setAiSupported);
@@ -154,12 +166,39 @@ function AIBreakdownButton() {
       
       console.log('🎯 AI Breakdown Result:', response);
       
-      // TODO: Integrate with task creation system
-      // For now, just show in console
-      alert(`AI ha suddiviso la task in ${response.microTasks.length} micro-task!\n\nControlla la console per i dettagli.`);
+      // Crea la task principale
+      const { taskService } = await import('../features/tasks/services/taskService');
+      
+      const mainTask = await taskService.createTask(userId, {
+        title: taskDescription,
+        description: `Task suddivisa in ${response.microTasks.length} micro-task`,
+        task_type: 'organizzazione',
+        energy_required: 'media',
+        xp_reward: response.microTasks.reduce((sum, mt) => sum + Math.ceil(mt.duration / 5), 0)
+      });
+      
+      // Crea le subtask
+      const subtasks = await Promise.all(
+        response.microTasks.map((microTask, index) => 
+          taskService.createTask(userId, {
+            title: microTask.title,
+            description: microTask.description || '',
+            task_type: 'azione',
+            energy_required: microTask.energy === 'basso' ? 'bassa' : 
+                           microTask.energy === 'alto' ? 'alta' : 'media',
+            xp_reward: Math.ceil(microTask.duration / 5), // 1 XP ogni 5 minuti
+            parent_task_id: mainTask.id
+          })
+        )
+      );
+      
+      alert(`✅ Task creata con successo!\n\n📋 Task principale: "${taskDescription}"\n🔨 ${response.microTasks.length} micro-task generate\n\nPuoi trovarle nella lista delle task.`);
       
       setTaskDescription('');
       setShowInput(false);
+      
+      // Refresh della lista task
+      onTaskCreated?.();
       
     } catch (error) {
       console.error('❌ AI Breakdown Error:', error);
@@ -261,12 +300,185 @@ export const TaskManager: React.FC<TaskManagerProps> = ({
     setCurrentView
   } = useUIStore();
 
+  // Pattern Mining and Smart Suggestions
+  const {
+    suggestions,
+    isProcessing,
+    logTaskInteraction,
+    generateSuggestions,
+    acceptSuggestion,
+    dismissSuggestion
+  } = usePatternMining(userId);
+
+  // Debug log per suggestions
+  React.useEffect(() => {
+    console.log('🎯 TaskManager - suggestions updated:', suggestions.length, suggestions);
+  }, [suggestions]);
+
+  // AI Breakdown state
+  const [aiSupported, setAiSupported] = useState<boolean | null>(null);
+  const [breakdownModal, setBreakdownModal] = useState<{
+    isOpen: boolean;
+    task: Task | null;
+    suggestedMicroTasks: MicroTask[];
+  }>({ isOpen: false, task: null, suggestedMicroTasks: [] });
+  const [isBreakdownLoading, setIsBreakdownLoading] = useState(false);
+
+  React.useEffect(() => {
+    isAISupported().then(setAiSupported);
+  }, []);
+
+  // Generate initial suggestions when component mounts
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      generateSuggestions({
+        recentAction: 'component_mounted',
+        timestamp: new Date()
+      });
+    }, 2000); // Wait 2 seconds to let other data load
+
+    return () => clearTimeout(timer);
+  }, [generateSuggestions]);
+
   // Inizializza la modalità focus se richiesta
   React.useEffect(() => {
     if (initialFocusMode && !isFocusModeActive) {
       toggleFocusMode();
     }
   }, [initialFocusMode, isFocusModeActive, toggleFocusMode]);
+
+  const onTaskCreated = () => {
+    if (taskListRef.current?.handleRefresh) {
+      taskListRef.current.handleRefresh();
+    }
+    // Log task creation for pattern mining
+    logTaskInteraction('task_created', { timestamp: new Date() });
+    // Generate new suggestions based on updated context
+    generateSuggestions({ 
+      recentAction: 'task_created',
+      timestamp: new Date()
+    });
+  };
+
+  // Gestione AI Breakdown
+  const handleTaskBreakdown = async (task: Task) => {
+    if (!aiSupported) {
+      console.warn('AI non supportato per il breakdown');
+      return;
+    }
+
+    setIsBreakdownLoading(true);
+    try {
+      // Costruisci il contesto esteso per l'AI
+      const context = await taskService.buildAIContext(userId, task);
+      
+      // Crea il servizio AI
+      const aiService = await createAIService();
+      
+      // Prepara la richiesta di breakdown
+      const breakdownRequest = {
+        taskDescription: `${task.title}${task.description ? ': ' + task.description : ''}`,
+        context: {
+          adhdContext: {
+            energyLevel: task.energy_required,
+            timeOfDay: new Date().getHours() < 12 ? 'mattina' : 
+                      new Date().getHours() < 18 ? 'pomeriggio' : 'sera',
+            distractionLevel: context.preferences?.distractionLevel || 'medium',
+            currentMood: 'neutro'
+          },
+          tasks: context.userHistory || [],
+          userBehavior: {
+            preferredTaskDuration: context.preferences?.preferredSessionDuration || 25,
+            energyPatterns: context.workPatterns?.energyDistribution || {},
+            completionRate: context.workPatterns?.completionRate || 0.75,
+            preferredTimeSlots: context.workPatterns?.mostProductiveTimeSlots || []
+          },
+          currentTime: new Date(),
+          sessionData: {
+            archetype: context.archetype,
+            project: context.project,
+            taskType: context.taskType,
+            deadline: context.deadline
+          }
+        },
+        maxMicroTasks: 8,
+        preferredDuration: context.preferences?.preferredSessionDuration || 25,
+        difficultyLevel: task.energy_required === 'molto_alta' || task.energy_required === 'alta' ? 'hard' :
+                        task.energy_required === 'media' ? 'medium' : 'easy'
+      };
+
+      // Chiama l'AI per il breakdown
+      const response = await aiService.breakdownTask(breakdownRequest);
+      
+      // Apri la modale con i risultati
+      setBreakdownModal({
+        isOpen: true,
+        task,
+        suggestedMicroTasks: response.microTasks
+      });
+      
+    } catch (error) {
+      console.error('Errore nel breakdown AI:', error);
+      // TODO: Mostra notifica di errore all'utente
+    } finally {
+      setIsBreakdownLoading(false);
+    }
+  };
+
+  const handleBreakdownConfirm = async (microTasks: MicroTask[]) => {
+    if (!breakdownModal.task) return;
+
+    setIsBreakdownLoading(true);
+    try {
+      // Crea le subtask nel database
+      for (const microTask of microTasks) {
+        const taskData = {
+          title: microTask.title,
+          description: microTask.description || '',
+          task_type: breakdownModal.task.task_type,
+          energy_required: microTask.energy === 'basso' ? 'bassa' as const :
+                          microTask.energy === 'medio' ? 'media' as const : 'alta' as const,
+          due_date: breakdownModal.task.due_date,
+          is_recurring: false,
+          tags: breakdownModal.task.tags || [],
+          can_be_interrupted: true
+        };
+
+        await taskService.createTask(userId, taskData, breakdownModal.task.id);
+      }
+
+      // Chiudi la modale e aggiorna la lista
+      setBreakdownModal({ isOpen: false, task: null, suggestedMicroTasks: [] });
+      onTaskCreated();
+      
+      // TODO: Mostra notifica di successo
+      console.log(`✅ Creati ${microTasks.length} micro-task per "${breakdownModal.task.title}"`);
+      
+      // Log AI breakdown usage for pattern mining
+      logTaskInteraction('ai_breakdown_completed', { 
+        originalTask: breakdownModal.task,
+        microTasksCount: microTasks.length,
+        timestamp: new Date()
+      });
+      
+      // Generate suggestions based on AI breakdown usage
+      generateSuggestions({
+        recentAction: 'ai_breakdown_completed',
+        taskComplexity: microTasks.length > 3 ? 'high' : 'medium',
+        timestamp: new Date()
+      });
+      
+    } catch (error) {
+      console.error('Errore nella creazione delle subtask:', error);
+      // TODO: Mostra notifica di errore
+    } finally {
+      setIsBreakdownLoading(false);
+    }
+  };
+
+  const handleBreakdownClose = () => {
+    setBreakdownModal({ isOpen: false, task: null, suggestedMicroTasks: [] });
+  };
 
   // Gestisce il completamento di una sessione focus
   const handleFocusSessionComplete = React.useCallback(() => {
@@ -293,7 +505,14 @@ export const TaskManager: React.FC<TaskManagerProps> = ({
 
         <div className="flex items-center gap-2">
           {/* Bottone AI Breakdown */}
-          <AIBreakdownButton />
+          <AIBreakdownButton 
+            userId={userId} 
+            onTaskCreated={() => {
+              if (taskListRef.current?.handleRefresh) {
+                taskListRef.current.handleRefresh();
+              }
+            }} 
+          />
           
           {/* Bottone Crea Task */}
           <Button
@@ -419,6 +638,7 @@ export const TaskManager: React.FC<TaskManagerProps> = ({
               focusMode={isFocusModeActive}
               focusTaskCount={focusTaskCount}
               onTaskComplete={onProfileUpdate}
+              onTaskBreakdown={handleTaskBreakdown}
               className="min-h-[400px]"
             />
           </FocusKeep>
@@ -430,6 +650,7 @@ export const TaskManager: React.FC<TaskManagerProps> = ({
             showCompleted={true}
             focusMode={false}
             onTaskComplete={onProfileUpdate}
+            onTaskBreakdown={handleTaskBreakdown}
             className="min-h-[400px]"
           />
           
@@ -443,6 +664,15 @@ export const TaskManager: React.FC<TaskManagerProps> = ({
 
         <TabsContent value="analytics" className="mt-6">
           <div className="grid gap-6">
+            {/* Smart Suggestions Panel */}
+            {suggestions.length > 0 && (
+              <SmartSuggestionsPanel
+                suggestions={suggestions}
+                onApplySuggestion={acceptSuggestion}
+                onDismissSuggestion={dismissSuggestion}
+              />
+            )}
+            
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -482,6 +712,18 @@ export const TaskManager: React.FC<TaskManagerProps> = ({
           </FocusMode>
         ) : (
           renderTaskContent()
+        )}
+        
+        {/* Modale AI Breakdown */}
+        {breakdownModal.task && (
+          <AIBreakdownModal
+            isOpen={breakdownModal.isOpen}
+            onClose={handleBreakdownClose}
+            originalTask={breakdownModal.task}
+            suggestedMicroTasks={breakdownModal.suggestedMicroTasks}
+            onConfirm={handleBreakdownConfirm}
+            isLoading={isBreakdownLoading}
+          />
         )}
       </div>
     </ErrorBoundary>
