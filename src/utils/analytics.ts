@@ -355,6 +355,14 @@ export class AnalyticsManager {
     this.saveSettings();
   }
 
+  public getUserId(): string | undefined {
+    return this.userId;
+  }
+
+  public getEventLogger(): EventLogger {
+    return this.eventLogger;
+  }
+
   public setEnabled(enabled: boolean): void {
     this.isEnabled = enabled;
     this.saveSettings();
