@@ -5,6 +5,7 @@
 
 import { AIService } from './AIService';
 import { ContextBuilder } from './ContextBuilder';
+import { aiErrorHandler, AIServiceError } from './AIErrorHandler';
 import type {
   AIInferenceRequest,
   AIInferenceResponse,
@@ -32,7 +33,7 @@ interface NativeLLMConfig {
  */
 export class NativeLLMService extends AIService {
   private config: NativeLLMConfig;
-  private isNativeAvailable: boolean = false;
+  private _isNativeAvailable: boolean = false;
 
   constructor(config: NativeLLMConfig = {}) {
     super();
@@ -54,7 +55,7 @@ export class NativeLLMService extends AIService {
   private checkNativeAvailability(): void {
     // Check for Capacitor
     if (typeof window !== 'undefined' && (window as any).Capacitor) {
-      this.isNativeAvailable = true;
+      this._isNativeAvailable = true;
       this.updateStatus({
         isLoaded: false,
         isLoading: false,
@@ -68,7 +69,7 @@ export class NativeLLMService extends AIService {
 
     // Check for Electron
     if (typeof window !== 'undefined' && (window as any).electronAPI) {
-      this.isNativeAvailable = true;
+      this._isNativeAvailable = true;
       this.updateStatus({
         isLoaded: false,
         isLoading: false,
@@ -92,19 +93,44 @@ export class NativeLLMService extends AIService {
   }
 
   /**
-   * Load native model
+   * Load native model with retry logic
    */
   async loadModel(): Promise<void> {
-    if (!this.isNativeAvailable) {
-      throw new Error('Native LLM bridge not available. Use WebLLM instead.');
+    if (!this._isNativeAvailable) {
+      throw new AIServiceError(
+        'Native LLM bridge not available. Use WebLLM instead.',
+        'NATIVE_BRIDGE_NOT_AVAILABLE',
+        {
+          operation: 'loadModel',
+          serviceName: 'NativeLLMService',
+          modelName: this.config.modelName,
+          attempt: 1,
+          totalAttempts: 1
+        },
+        undefined,
+        false // Not retryable
+      );
     }
 
     try {
       this.updateStatus({ isLoading: true, error: null });
       this.emit('loading-progress', { progress: 0, stage: 'Inizializzazione bridge nativo...' });
 
-      // Simulate model loading (replace with actual native calls)
-      await this.simulateModelLoading();
+      await aiErrorHandler.executeWithRetry(
+        async () => {
+          // Simulate model loading (replace with actual native calls)
+          await this.simulateModelLoading();
+        },
+        {
+          operation: 'loadModel',
+          serviceName: 'NativeLLMService',
+          modelName: this.config.modelName
+        },
+        {
+          maxRetries: 2,
+          timeoutMs: 60000 // 60 seconds for model loading
+        }
+      );
 
       this.updateStatus({
         isLoaded: true,
@@ -123,11 +149,21 @@ export class NativeLLMService extends AIService {
         isLoading: false,
         error: errorMessage
       });
-      this.emit('error', {
-        error: 'MODEL_NOT_LOADED',
-        message: errorMessage,
-        details: error
-      });
+      
+      if (error instanceof AIServiceError) {
+        this.emit('error', {
+          error: error.code,
+          message: error.message,
+          details: error.originalError
+        });
+      } else {
+        this.emit('error', {
+          error: 'MODEL_NOT_LOADED',
+          message: errorMessage,
+          details: error
+        });
+      }
+      
       throw error;
     }
   }
@@ -152,46 +188,80 @@ export class NativeLLMService extends AIService {
   }
 
   /**
-   * Perform native inference
+   * Perform native inference with retry logic
    */
   async infer(request: AIInferenceRequest): Promise<AIInferenceResponse> {
     if (!this.isReady()) {
-      throw new Error('Native model not loaded. Call loadModel() first.');
+      throw new AIServiceError(
+        'Native model not loaded. Call loadModel() first.',
+        'MODEL_NOT_LOADED',
+        {
+          operation: 'infer',
+          serviceName: 'NativeLLMService',
+          modelName: this.config.modelName,
+          attempt: 1,
+          totalAttempts: 1
+        },
+        undefined,
+        false // Not retryable until model is loaded
+      );
     }
 
     try {
       const requestId = Math.random().toString(36).substring(7);
       this.emit('inference-start', { requestId });
 
-      // Simulate native inference (replace with actual native calls)
-      const response = await this.simulateInference(request);
-      
-      const result: AIInferenceResponse = {
-        text: response,
-        finishReason: 'stop',
-        usage: {
-          promptTokens: Math.floor(request.prompt.length / 4),
-          completionTokens: Math.floor(response.length / 4),
-          totalTokens: Math.floor((request.prompt.length + response.length) / 4)
+      const result = await aiErrorHandler.executeWithRetry(
+        async () => {
+          // Simulate native inference (replace with actual native calls)
+          const response = await this.simulateInference(request);
+          
+          return {
+            text: response,
+            finishReason: 'stop' as const,
+            usage: {
+              promptTokens: Math.floor(request.prompt.length / 4),
+              completionTokens: Math.floor(response.length / 4),
+              totalTokens: Math.floor((request.prompt.length + response.length) / 4)
+            },
+            metadata: {
+              modelName: this.config.modelName,
+              platform: 'native',
+              temperature: request.temperature ?? this.config.temperature,
+              requestId
+            }
+          };
         },
-        metadata: {
+        {
+          operation: 'infer',
+          serviceName: 'NativeLLMService',
           modelName: this.config.modelName,
-          platform: 'native',
-          temperature: request.temperature ?? this.config.temperature,
           requestId
+        },
+        {
+          maxRetries: 2,
+          timeoutMs: 30000 // 30 seconds for inference
         }
-      };
+      );
 
       this.emit('inference-complete', { requestId, response: result });
       return result;
 
     } catch (error) {
-      this.emit('error', {
-        error: 'INFERENCE_FAILED',
-        message: error instanceof Error ? error.message : 'Unknown native inference error',
-        details: error
-      });
-      throw new Error(`Native inference failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      if (error instanceof AIServiceError) {
+        this.emit('error', {
+          error: error.code,
+          message: error.message,
+          details: error.originalError
+        });
+      } else {
+        this.emit('error', {
+          error: 'INFERENCE_FAILED',
+          message: error instanceof Error ? error.message : 'Unknown native inference error',
+          details: error
+        });
+      }
+      throw error;
     }
   }
 
@@ -372,8 +442,8 @@ export class NativeLLMService extends AIService {
   /**
    * Check if native bridge is available
    */
-  isNativeAvailable(): boolean {
-    return this.isNativeAvailable;
+  public isNativeAvailable(): boolean {
+    return this._isNativeAvailable;
   }
 
   /**
@@ -416,7 +486,7 @@ export class NativeLLMService extends AIService {
    */
   async cleanup(): Promise<void> {
     // Cleanup native resources if available
-    if (this.isNativeAvailable) {
+    if (this._isNativeAvailable) {
       console.log('Cleaning up native LLM resources...');
     }
     

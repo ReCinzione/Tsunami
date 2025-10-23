@@ -4,6 +4,7 @@ import { Task, TaskFormData, TaskMutationCallbacks } from '../types';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { useErrorHandler } from '@/hooks/common/useErrorHandler';
+import { progressionService } from '@/services/ProgressionService';
 import { useState } from 'react';
 
 interface UseTaskMutationsReturn {
@@ -227,8 +228,8 @@ export const useTaskMutations = (): UseTaskMutationsReturn => {
       });
 
       if (profile) {
-        const currentLevel = calculateLevelFromXP(profile.total_xp - xpGained);
-        const newLevel = calculateLevelFromXP(profile.total_xp);
+        const currentLevel = progressionService.calculateLevelFromXP(profile.total_xp - xpGained);
+        const newLevel = progressionService.calculateLevelFromXP(profile.total_xp);
         
         if (newLevel > currentLevel) {
           setLevelUpData({
@@ -244,21 +245,7 @@ export const useTaskMutations = (): UseTaskMutationsReturn => {
     }
   };
 
-  // Funzione per calcolare il livello dall'XP (dovrebbe essere condivisa)
-  const calculateLevelFromXP = (totalXP: number): number => {
-    if (totalXP < 100) return 1;
-    if (totalXP < 250) return 2;
-    if (totalXP < 450) return 3;
-    if (totalXP < 700) return 4;
-    if (totalXP < 1000) return 5;
-    if (totalXP < 1350) return 6;
-    if (totalXP < 1750) return 7;
-    if (totalXP < 2200) return 8;
-    if (totalXP < 2700) return 9;
-    if (totalXP < 3250) return 10;
-    
-    return Math.floor((totalXP - 3250) / 600) + 11;
-  };
+
 
   const isAnyLoading = 
     createTaskMutation.isPending ||

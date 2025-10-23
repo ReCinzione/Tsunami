@@ -562,14 +562,6 @@ const AppContent = () => {
                     description: `Hai completato ${params?.completedToday || 0} task oggi!`,
                   });
                   break;
-                case 'suggest_next_task':
-                  if (params?.task) {
-                    toast({
-                      title: "Prossimo Task",
-                      description: `Inizia con: ${params.task.title}`,
-                    });
-                  }
-                  break;
                 case 'open_prioritization_mode':
                   setActiveTab('tasks');
                   toast({

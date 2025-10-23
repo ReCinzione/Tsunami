@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -12,9 +12,139 @@ import { EmptyTaskState } from './EmptyTaskState';
 import { TaskFilters } from './TaskFilters';
 import { cn } from '@/lib/utils';
 
+// Componente memoizzato per le statistiche
+const TaskStats = React.memo<{
+  stats: {
+    total: number;
+    completed: number;
+    pending: number;
+    inProgress: number;
+    overdue: number;
+  };
+}>(({ stats }) => (
+  <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mb-4">
+    <div className="text-center p-2 bg-gray-50 rounded-lg">
+      <div className="text-lg font-semibold text-gray-900">{stats.total}</div>
+      <div className="text-xs text-gray-600">Totali</div>
+    </div>
+    <div className="text-center p-2 bg-green-50 rounded-lg">
+      <div className="text-lg font-semibold text-green-700">{stats.completed}</div>
+      <div className="text-xs text-green-600">Completate</div>
+    </div>
+    <div className="text-center p-2 bg-yellow-50 rounded-lg">
+      <div className="text-lg font-semibold text-yellow-700">{stats.pending}</div>
+      <div className="text-xs text-yellow-600">In attesa</div>
+    </div>
+    <div className="text-center p-2 bg-blue-50 rounded-lg">
+      <div className="text-lg font-semibold text-blue-700">{stats.inProgress}</div>
+      <div className="text-xs text-blue-600">In corso</div>
+    </div>
+    {stats.overdue > 0 && (
+      <div className="text-center p-2 bg-red-50 rounded-lg">
+        <div className="text-lg font-semibold text-red-700">{stats.overdue}</div>
+        <div className="text-xs text-red-600">In ritardo</div>
+      </div>
+    )}
+  </div>
+));
+
+TaskStats.displayName = 'TaskStats';
+
+// Componente memoizzato per la barra di ricerca
+const SearchBar = React.memo<{
+  searchQuery: string;
+  onSearchChange: (query: string) => void;
+}>(({ searchQuery, onSearchChange }) => (
+  <div className="relative w-full sm:w-auto">
+    <Search className="h-4 w-4 absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" />
+    <input
+      type="text"
+      placeholder="Cerca task..."
+      value={searchQuery}
+      onChange={(e) => onSearchChange(e.target.value)}
+      className="w-full pl-8 pr-3 py-1 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+    />
+  </div>
+));
+
+SearchBar.displayName = 'SearchBar';
+
+// Componente memoizzato per la lista delle task con virtualizzazione semplice
+const TaskList = React.memo<{
+  tasks: any[];
+  onTaskComplete: (taskId: string) => void;
+  onTaskClick: (task: any) => void;
+  onTaskEdit: (task: any) => void;
+  onDeleteTask: (taskId: string) => void;
+  onTaskBreakdown?: (task: any) => void;
+  selectedTaskId?: string;
+  focusMode: boolean;
+}>(({ 
+  tasks, 
+  onTaskComplete, 
+  onTaskClick, 
+  onTaskEdit, 
+  onDeleteTask, 
+  onTaskBreakdown, 
+  selectedTaskId, 
+  focusMode 
+}) => {
+  // Implementazione semplice di virtualizzazione per liste lunghe
+  const [visibleRange, setVisibleRange] = React.useState({ start: 0, end: 20 });
+  const [containerRef, setContainerRef] = React.useState<HTMLDivElement | null>(null);
+  
+  // Aggiorna il range visibile quando si scrolla
+  React.useEffect(() => {
+    if (!containerRef || tasks.length <= 20) return;
+    
+    const handleScroll = () => {
+      const scrollTop = containerRef.scrollTop;
+      const itemHeight = 120; // Altezza approssimativa di una task
+      const containerHeight = containerRef.clientHeight;
+      
+      const start = Math.floor(scrollTop / itemHeight);
+      const end = Math.min(start + Math.ceil(containerHeight / itemHeight) + 5, tasks.length);
+      
+      setVisibleRange({ start, end });
+    };
+    
+    containerRef.addEventListener('scroll', handleScroll, { passive: true });
+    return () => containerRef.removeEventListener('scroll', handleScroll);
+  }, [containerRef, tasks.length]);
+  
+  const visibleTasks = tasks.length > 20 ? tasks.slice(visibleRange.start, visibleRange.end) : tasks;
+  const paddingTop = tasks.length > 20 ? visibleRange.start * 120 : 0;
+  const paddingBottom = tasks.length > 20 ? (tasks.length - visibleRange.end) * 120 : 0;
+  
+  return (
+    <div 
+      ref={setContainerRef}
+      className="space-y-3 max-h-[600px] overflow-y-auto"
+      style={{ paddingTop, paddingBottom }}
+    >
+      {visibleTasks.map((task) => (
+        <TaskItem
+          key={task.id}
+          task={task}
+          onClick={onTaskClick}
+          onComplete={onTaskComplete}
+          onEdit={onTaskEdit}
+          onDelete={onDeleteTask}
+          onBreakdown={onTaskBreakdown}
+          showDetails={!focusMode}
+          focusMode={focusMode}
+          isSelected={selectedTaskId === task.id}
+        />
+      ))}
+    </div>
+  );
+});
+
+TaskList.displayName = 'TaskList';
+
 /**
  * Componente presentational per la visualizzazione della lista task
- * Non contiene logica di business, solo UI pura
+ * Ottimizzato per performance con React.memo e virtualizzazione
  */
 export const TaskListView = React.memo<TaskListViewProps>(({ 
   tasks, 
@@ -36,26 +166,45 @@ export const TaskListView = React.memo<TaskListViewProps>(({
   taskStats,
   selectedTaskId
 }) => {
-  // Rimosso showCreateForm - gestito dal container
   const [showFilters, setShowFilters] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState('');
 
-  // Filtra e ordina le task per la visualizzazione
+  // Memoizza il callback per la ricerca con debouncing
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = React.useState('');
+  
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 300);
+    
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Memoizza i callback per evitare re-render non necessari
+  const handleSearchChange = useCallback((query: string) => {
+    setSearchQuery(query);
+  }, []);
+  
+  const handleToggleFilters = useCallback(() => {
+    setShowFilters(prev => !prev);
+  }, []);
+
+  // Filtra e ordina le task per la visualizzazione (ottimizzato)
   const displayTasks = useMemo(() => {
     console.log('🎨 TaskListView - Inizio rendering task:', {
       tasksCount: tasks.length,
-      searchQuery,
+      searchQuery: debouncedSearchQuery,
       focusMode,
       loading,
       timestamp: new Date().toISOString()
     });
 
-    let filteredTasks = [...tasks];
+    let filteredTasks = tasks;
 
-    // Applica ricerca testuale (solo ricerca locale, i filtri principali sono gestiti dal container)
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      filteredTasks = filteredTasks.filter(task => 
+    // Applica ricerca testuale solo se necessario
+    if (debouncedSearchQuery.trim()) {
+      const query = debouncedSearchQuery.toLowerCase();
+      filteredTasks = tasks.filter(task => 
         task.title.toLowerCase().includes(query) ||
         task.description?.toLowerCase().includes(query)
       );
@@ -69,9 +218,9 @@ export const TaskListView = React.memo<TaskListViewProps>(({
     }
 
     return filteredTasks;
-  }, [tasks, searchQuery, focusMode, focusTaskCount]);
+  }, [tasks, debouncedSearchQuery, focusMode, focusTaskCount]);
 
-  // Statistiche rapide
+  // Statistiche rapide (memoizzate)
   const stats = useMemo(() => {
     const total = tasks.length;
     const completed = tasks.filter(t => t.status === 'completed').length;
@@ -118,32 +267,7 @@ export const TaskListView = React.memo<TaskListViewProps>(({
       )}
 
       {/* Statistiche rapide - nascoste in modalità focus */}
-      {!focusMode && (
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mb-4">
-          <div className="text-center p-2 bg-gray-50 rounded-lg">
-            <div className="text-lg font-semibold text-gray-900">{stats.total}</div>
-            <div className="text-xs text-gray-600">Totali</div>
-          </div>
-          <div className="text-center p-2 bg-green-50 rounded-lg">
-            <div className="text-lg font-semibold text-green-700">{stats.completed}</div>
-            <div className="text-xs text-green-600">Completate</div>
-          </div>
-          <div className="text-center p-2 bg-yellow-50 rounded-lg">
-            <div className="text-lg font-semibold text-yellow-700">{stats.pending}</div>
-            <div className="text-xs text-yellow-600">In attesa</div>
-          </div>
-          <div className="text-center p-2 bg-blue-50 rounded-lg">
-            <div className="text-lg font-semibold text-blue-700">{stats.inProgress}</div>
-            <div className="text-xs text-blue-600">In corso</div>
-          </div>
-          {stats.overdue > 0 && (
-            <div className="text-center p-2 bg-red-50 rounded-lg">
-              <div className="text-lg font-semibold text-red-700">{stats.overdue}</div>
-              <div className="text-xs text-red-600">In ritardo</div>
-            </div>
-          )}
-        </div>
-      )}
+      {!focusMode && <TaskStats stats={stats} />}
 
       {/* Barra degli strumenti */}
       <Card>
@@ -169,23 +293,17 @@ export const TaskListView = React.memo<TaskListViewProps>(({
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setShowFilters(!showFilters)}
+                    onClick={handleToggleFilters}
                     className="w-full sm:w-auto"
                   >
                     <Filter className="h-4 w-4 mr-1" />
                     Filtri
                   </Button>
                   
-                  <div className="relative w-full sm:w-auto">
-                    <Search className="h-4 w-4 absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                    <input
-                      type="text"
-                      placeholder="Cerca task..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full pl-8 pr-3 py-1 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
+                  <SearchBar 
+                    searchQuery={searchQuery}
+                    onSearchChange={handleSearchChange}
+                  />
                 </>
               )}
               
@@ -205,89 +323,51 @@ export const TaskListView = React.memo<TaskListViewProps>(({
         {showFilters && !focusMode && (
           <CardContent className="pt-0">
             <TaskFilters
+              filters={filters}
               onFiltersChange={onFiltersChange}
-              initialFilters={filters || {}}
             />
           </CardContent>
         )}
       </Card>
 
-      {/* Lista task */}
-      <div className="space-y-3 pb-20 sm:pb-6">
-        {loading ? (
-          // Skeleton loading
-          Array.from({ length: 3 }).map((_, index) => (
-            <Card key={index}>
-              <CardContent className="p-4">
-                <div className="space-y-3">
-                  <Skeleton className="h-4 w-3/4" />
-                  <Skeleton className="h-3 w-1/2" />
-                  <div className="flex gap-2">
-                    <Skeleton className="h-6 w-16" />
-                    <Skeleton className="h-6 w-20" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))
-        ) : displayTasks.length === 0 ? (
-          // Stato vuoto
-          <EmptyTaskState 
-            hasFilters={searchQuery.trim().length > 0 || (filters && Object.keys(filters).some(key => filters[key] && (Array.isArray(filters[key]) ? filters[key].length > 0 : filters[key])))}
-            focusMode={focusMode}
-            onCreateTask={onCreateTask}
-          />
-        ) : (
-          // Lista task
-          displayTasks.map((task) => (
-            <TaskItem
-              key={task.id}
-              task={task}
-              onClick={onTaskClick}
-              onComplete={(taskId, newStatus) => onTaskComplete?.(taskId, newStatus)}
-              onEdit={onTaskEdit}
-              onDelete={onDeleteTask}
-              onBreakdown={onTaskBreakdown}
-              showDetails={!focusMode}
+      {/* Lista delle task */}
+      <Card>
+        <CardContent className="pt-6">
+          {loading ? (
+            <div className="space-y-3">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <Skeleton key={i} className="h-24 w-full" />
+              ))}
+            </div>
+          ) : displayTasks.length === 0 ? (
+            <EmptyTaskState onCreateTask={onCreateTask} />
+          ) : (
+            <TaskList
+              tasks={displayTasks}
+              onTaskComplete={onTaskComplete}
+              onTaskClick={onTaskClick}
+              onTaskEdit={onTaskEdit}
+              onDeleteTask={onDeleteTask}
+              onTaskBreakdown={onTaskBreakdown}
+              selectedTaskId={selectedTaskId}
               focusMode={focusMode}
             />
-          ))
-        )}
-      </div>
-      
+          )}
+        </CardContent>
+      </Card>
 
-
-      {/* Suggerimento per modalità focus */}
-      {!focusMode && displayTasks.length > 5 && (
-        <Card className="bg-blue-50 border-blue-200">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <Focus className="h-5 w-5 text-blue-600" />
-              <div className="flex-1">
-                <p className="text-sm text-blue-800 font-medium">
-                  Troppe task? Prova la modalità focus!
-                </p>
-                <p className="text-xs text-blue-600">
-                  Concentrati solo sulle {focusTaskCount} task più importanti.
-                </p>
-              </div>
-              <Button 
-                variant="outline" 
-                size="sm"
-                className="border-blue-300 text-blue-700 hover:bg-blue-100"
-                onClick={() => {
-                  // Questa logica dovrebbe essere gestita dal container
-                  console.log('Attiva modalità focus');
-                }}
-              >
-                Attiva Focus
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+      {/* Pulsante mobile per creare task */}
+      {!focusMode && (
+        <div className="fixed bottom-6 right-6 sm:hidden z-40">
+          <Button
+            onClick={onCreateTask}
+            size="lg"
+            className="rounded-full w-14 h-14 bg-blue-600 hover:bg-blue-700 shadow-lg"
+          >
+            <Plus className="h-6 w-6" />
+          </Button>
+        </div>
       )}
-
-      {/* Form gestito dal container tramite Dialog */}
     </div>
   );
 });

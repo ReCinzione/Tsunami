@@ -3,7 +3,8 @@
  * Handles context engineering and prompt construction
  */
 
-import type { ADHDContext, Task, UserBehaviorPattern } from '@/types/chatbot';
+import type { ADHDContext, UserBehaviorPattern } from '@/types/chatbot';
+import type { Task } from '@/types/adhd';
 import type { AIInferenceRequest } from './AIService';
 
 export interface ContextData {
@@ -91,11 +92,11 @@ Fornisci rituali specifici di 2-5 minuti per ogni stato, con istruzioni precise 
    * Build AI request for task breakdown
    */
   static buildTaskBreakdownRequest(
-    taskDescription: string,
+    task: Task | string,
     context: ContextData
   ): AIInferenceRequest {
     const systemPrompt = this.buildSystemPrompt('taskBreakdown', context);
-    const prompt = this.buildTaskBreakdownPrompt(taskDescription, context);
+    const prompt = this.buildTaskBreakdownPrompt(task, context);
 
     return {
       prompt,
@@ -167,10 +168,33 @@ Fornisci rituali specifici di 2-5 minuti per ogni stato, con istruzioni precise 
   }
 
   /**
-   * Build task breakdown prompt
+   * Build task breakdown prompt with context
    */
-  private static buildTaskBreakdownPrompt(taskDescription: string, context: ContextData): string {
+  private static buildTaskBreakdownPrompt(task: Task | string, context: ContextData): string {
+    // Handle both Task object and string input for backward compatibility
+    const taskDescription = typeof task === 'string' ? task : task.title;
+    const taskObj = typeof task === 'object' ? task : null;
+    
     let prompt = `Task da suddividere: "${taskDescription}"`;
+
+    // Add task-specific context if Task object is provided
+    if (taskObj) {
+      if (taskObj.description) {
+        prompt += `\nDescrizione: ${taskObj.description}`;
+      }
+      if (taskObj.due_date) {
+        prompt += `\nScadenza: ${new Date(taskObj.due_date).toLocaleDateString('it-IT')}`;
+      }
+      if (taskObj.energy_required) {
+        prompt += `\nEnergia richiesta: ${taskObj.energy_required}`;
+      }
+      if (taskObj.task_type) {
+        prompt += `\nTipo task: ${taskObj.task_type}`;
+      }
+      if (taskObj.actual_duration) {
+        prompt += `\nDurata stimata precedente: ${taskObj.actual_duration} minuti`;
+      }
+    }
 
     // Add energy level context
     if (context.adhdContext?.energyLevel) {

@@ -16,7 +16,7 @@ import { cn } from '@/lib/utils';
 
 interface TaskFiltersProps {
   onFiltersChange: (filters: Record<string, any>) => void;
-  initialFilters: Record<string, any>;
+  filters?: Record<string, any>;
   className?: string;
 }
 
@@ -33,10 +33,10 @@ interface FilterOption {
  */
 export const TaskFilters: React.FC<TaskFiltersProps> = ({
   onFiltersChange,
-  initialFilters,
+  filters = {},
   className
 }) => {
-  const [activeFilters, setActiveFilters] = React.useState(initialFilters);
+  const [activeFilters, setActiveFilters] = React.useState(filters || {});
 
   // Definizione delle opzioni di filtro
   const filterOptions: FilterOption[] = [
@@ -128,7 +128,7 @@ export const TaskFilters: React.FC<TaskFiltersProps> = ({
   };
 
   // Conta i filtri attivi
-  const activeFilterCount = Object.values(activeFilters).reduce(
+  const activeFilterCount = Object.values(activeFilters || {}).reduce(
     (count, values) => count + (Array.isArray(values) ? values.length : 0),
     0
   );

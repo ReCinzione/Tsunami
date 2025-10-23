@@ -1,6 +1,25 @@
 import { supabase } from '../../../integrations/supabase/client';
 import { Task, TaskFormData, TaskFilters, TaskStats } from '../types';
 import { AnalyticsManager } from '../../../utils/analytics';
+import { progressionService } from '@/services/ProgressionService';
+
+/**
+ * Custom error for validation failures
+ */
+export class ValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ValidationError';
+  }
+}
+
+/**
+ * Validation result interface
+ */
+interface ValidationResult {
+  valid: boolean;
+  errors: string[];
+}
 
 class TaskService {
   /**
@@ -112,9 +131,64 @@ class TaskService {
   }
 
   /**
+   * Validate task data before database operations
+   */
+  private validateTaskData(taskData: Partial<TaskFormData>): ValidationResult {
+    const errors: string[] = [];
+    
+    // Title validation
+    if (!taskData.title || typeof taskData.title !== 'string') {
+      errors.push("Titolo è obbligatorio");
+    } else if (taskData.title.trim().length < 3) {
+      errors.push("Titolo deve essere almeno 3 caratteri");
+    } else if (taskData.title.length > 100) {
+      errors.push("Titolo massimo 100 caratteri");
+    }
+    
+    // Description validation
+    if (taskData.description && taskData.description.length > 500) {
+      errors.push("Descrizione massimo 500 caratteri");
+    }
+    
+    // Due date validation
+    if (taskData.due_date) {
+      const dueDate = new Date(taskData.due_date);
+      if (isNaN(dueDate.getTime())) {
+        errors.push("Data scadenza non valida");
+      } else if (dueDate < new Date()) {
+        errors.push("Data scadenza non può essere nel passato");
+      }
+    }
+    
+    // Energy required validation
+    if (taskData.energy_required) {
+      const validEnergyLevels = ['bassa', 'media', 'alta'];
+      if (!validEnergyLevels.includes(taskData.energy_required)) {
+        errors.push("Livello energia deve essere: bassa, media, o alta");
+      }
+    }
+    
+    // Task type validation
+    if (taskData.task_type) {
+      const validTaskTypes = ['azione', 'riflessione', 'comunicazione', 'creativita', 'organizzazione'];
+      if (!validTaskTypes.includes(taskData.task_type)) {
+        errors.push("Tipo task non valido");
+      }
+    }
+    
+    return { valid: errors.length === 0, errors };
+  }
+
+  /**
    * Crea una nuova task
    */
   async createTask(userId: string, taskData: TaskFormData): Promise<Task> {
+    // Validate input data
+    const validation = this.validateTaskData(taskData);
+    if (!validation.valid) {
+      throw new ValidationError(validation.errors.join(', '));
+    }
+    
     const xpReward = this.calculateXPReward(taskData);
     
     // Extract only the fields that exist in the database schema
@@ -163,6 +237,12 @@ class TaskService {
    * Aggiorna una task esistente
    */
   async updateTask(taskId: string, updates: Partial<TaskFormData>): Promise<Task> {
+    // Validate input data
+    const validation = this.validateTaskData(updates);
+    if (!validation.valid) {
+      throw new ValidationError(validation.errors.join(', '));
+    }
+    
     // Ricalcola XP se necessario
     if (this.shouldRecalculateXP(updates)) {
       updates = { ...updates };
@@ -297,7 +377,7 @@ class TaskService {
       : 0;
 
     // Calcola il livello dall'XP totale
-    const level = this.calculateLevelFromXP(totalXP);
+    const level = progressionService.calculateLevelFromXP(totalXP);
     
     // Calcola lo streak (giorni consecutivi con task completate)
     const streak = this.calculateStreak(completed);
@@ -316,24 +396,7 @@ class TaskService {
     };
   }
 
-  /**
-   * Calcola il livello dall'XP totale
-   */
-  private calculateLevelFromXP(totalXP: number): number {
-    if (totalXP < 100) return 1;
-    if (totalXP < 250) return 2;
-    if (totalXP < 450) return 3;
-    if (totalXP < 700) return 4;
-    if (totalXP < 1000) return 5;
-    if (totalXP < 1350) return 6;
-    if (totalXP < 1750) return 7;
-    if (totalXP < 2200) return 8;
-    if (totalXP < 2700) return 9;
-    if (totalXP < 3250) return 10;
-    
-    // Per livelli superiori a 10
-    return 10 + Math.floor((totalXP - 3250) / 600);
-  }
+
 
   /**
    * Calcola lo streak di giorni consecutivi con task completate

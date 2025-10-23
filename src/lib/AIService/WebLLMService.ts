@@ -5,6 +5,7 @@
 
 import { AIService } from './AIService';
 import { ContextBuilder } from './ContextBuilder';
+import { aiErrorHandler, AIServiceError } from './AIErrorHandler';
 import type {
   AIInferenceRequest,
   AIInferenceResponse,
@@ -183,37 +184,62 @@ export class WebLLMService extends AIService {
   }
 
   /**
-   * Load WebLLM model
+   * Load WebLLM model with retry logic
    */
   async loadModel(): Promise<void> {
     if (this.status.isLoaded) return;
 
+    // Check WebGPU support first
+    if (!this.checkWebGPUSupport()) {
+      throw new AIServiceError(
+        'WebGPU not supported in this browser',
+        'WEBGPU_NOT_SUPPORTED',
+        {
+          operation: 'loadModel',
+          serviceName: 'WebLLMService',
+          modelName: this.modelConfig.modelId,
+          attempt: 1,
+          totalAttempts: 1
+        },
+        undefined,
+        false // Not retryable
+      );
+    }
+
+    this.updateStatus({ isLoading: true, error: null });
+    this.emit('loading-progress', { progress: 0, stage: 'Inizializzazione...' });
+
     try {
-      this.updateStatus({ isLoading: true, error: null });
-      this.emit('loading-progress', { progress: 0, stage: 'Inizializzazione...' });
-      
-      // Check WebGPU support
-      if (!this.checkWebGPUSupport()) {
-        throw new Error('WebGPU not supported in this browser');
-      }
+      await aiErrorHandler.executeWithRetry(
+        async () => {
+          // Initialize mock engine (replace with real WebLLM)
+          this.engine = new MockWebLLMEngine();
+          
+          // Set up progress callback
+          if (this.engine.setInitProgressCallback) {
+            this.engine.setInitProgressCallback((progress) => {
+              const progressValue = progress.progress || 0;
+              this.updateStatus({ loadingProgress: progressValue });
+              this.emit('loading-progress', { 
+                progress: progressValue, 
+                stage: progress.text || 'Caricamento modello...' 
+              });
+            });
+          }
 
-      // Initialize mock engine (replace with real WebLLM)
-      this.engine = new MockWebLLMEngine();
-      
-      // Set up progress callback
-      if (this.engine.setInitProgressCallback) {
-        this.engine.setInitProgressCallback((progress) => {
-          const progressValue = progress.progress || 0;
-          this.updateStatus({ loadingProgress: progressValue });
-          this.emit('loading-progress', { 
-            progress: progressValue, 
-            stage: progress.text || 'Caricamento modello...' 
-          });
-        });
-      }
-
-      // Load model
-      await this.engine.reload(this.modelConfig.modelId);
+          // Load model
+          await this.engine.reload(this.modelConfig.modelId);
+        },
+        {
+          operation: 'loadModel',
+          serviceName: 'WebLLMService',
+          modelName: this.modelConfig.modelId
+        },
+        {
+          maxRetries: 2,
+          timeoutMs: 60000 // 60 seconds for model loading
+        }
+      );
       
       this.updateStatus({
         isLoaded: true,
@@ -232,70 +258,114 @@ export class WebLLMService extends AIService {
         isLoading: false,
         error: errorMessage
       });
-      this.emit('error', {
-        error: 'MODEL_NOT_LOADED',
-        message: errorMessage,
-        details: error
-      });
+      
+      if (error instanceof AIServiceError) {
+        this.emit('error', {
+          error: error.code,
+          message: error.message,
+          details: error.originalError
+        });
+      } else {
+        this.emit('error', {
+          error: 'MODEL_NOT_LOADED',
+          message: errorMessage,
+          details: error
+        });
+      }
+      
       throw error;
     }
   }
 
   /**
-   * Perform AI inference
+   * Perform AI inference with retry logic
    */
   async infer(request: AIInferenceRequest): Promise<AIInferenceResponse> {
     if (!this.engine || !this.status.isLoaded) {
-      throw new Error('Model not loaded. Call loadModel() first.');
+      throw new AIServiceError(
+        'Model not loaded. Call loadModel() first.',
+        'MODEL_NOT_LOADED',
+        {
+          operation: 'infer',
+          serviceName: 'WebLLMService',
+          modelName: this.modelConfig.modelId,
+          attempt: 1,
+          totalAttempts: 1
+        },
+        undefined,
+        false // Not retryable until model is loaded
+      );
     }
 
+    const requestId = Math.random().toString(36).substring(7);
+    this.emit('inference-start', { requestId });
+
     try {
-      const requestId = Math.random().toString(36).substring(7);
-      this.emit('inference-start', { requestId });
+      const result = await aiErrorHandler.executeWithRetry(
+        async () => {
+          // Convert request to WebLLM format
+          const messages = [
+            {
+              role: 'system',
+              content: request.systemPrompt || 'You are a helpful AI assistant specialized in ADHD support.'
+            },
+            {
+              role: 'user', 
+              content: request.prompt
+            }
+          ];
 
-      // Convert request to WebLLM format
-      const messages = [
-        {
-          role: 'system',
-          content: request.systemPrompt || 'You are a helpful AI assistant specialized in ADHD support.'
+          // Make inference request using mock engine
+          const responseText = await this.engine!.chat(messages, {
+            temperature: request.temperature ?? this.modelConfig.temperature,
+            max_tokens: request.maxTokens ?? this.modelConfig.maxTokens
+          }, requestId);
+
+          return {
+            text: responseText,
+            finishReason: 'stop' as const,
+            usage: {
+              promptTokens: Math.floor(request.prompt.length / 4), // rough estimate
+              completionTokens: Math.floor(responseText.length / 4),
+              totalTokens: Math.floor((request.prompt.length + responseText.length) / 4)
+            },
+            metadata: {
+              modelId: this.modelConfig.modelId,
+              temperature: request.temperature ?? this.modelConfig.temperature,
+              requestId
+            }
+          };
         },
         {
-          role: 'user', 
-          content: request.prompt
-        }
-      ];
-
-      // Make inference request using mock engine
-      const responseText = await this.engine.chat(messages, {
-        temperature: request.temperature ?? this.modelConfig.temperature,
-        max_tokens: request.maxTokens ?? this.modelConfig.maxTokens
-      }, requestId);
-
-      const response: AIInferenceResponse = {
-        text: responseText,
-        finishReason: 'stop',
-        usage: {
-          promptTokens: Math.floor(request.prompt.length / 4), // rough estimate
-          completionTokens: Math.floor(responseText.length / 4),
-          totalTokens: Math.floor((request.prompt.length + responseText.length) / 4)
-        },
-        metadata: {
-          modelId: this.modelConfig.modelId,
-          temperature: request.temperature ?? this.modelConfig.temperature,
+          operation: 'infer',
+          serviceName: 'WebLLMService',
+          modelName: this.modelConfig.modelId,
           requestId
+        },
+        {
+          maxRetries: 2,
+          timeoutMs: 30000 // 30 seconds for inference
         }
-      };
+      );
 
-      this.emit('inference-complete', { requestId, response });
-      return response;
+      this.emit('inference-complete', { requestId, response: result });
+      return result;
       
     } catch (error) {
-      this.emit('error', {
-        error: 'INFERENCE_FAILED',
-        message: error instanceof Error ? error.message : 'Unknown inference error',
-        details: error
-      });
-      throw new Error(`Inference failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      if (error instanceof AIServiceError) {
+        this.emit('error', {
+          error: error.code,
+          message: error.message,
+          details: error.originalError
+        });
+      } else {
+        this.emit('error', {
+          error: 'INFERENCE_FAILED',
+          message: error instanceof Error ? error.message : 'Unknown inference error',
+          details: error
+        });
+      }
+      throw error;
     }
   }
 

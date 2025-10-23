@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback, forwardRef, useImperativeHandle } from 'react';
+import React, { useState, useCallback, useMemo, useImperativeHandle, forwardRef } from 'react';
 import { TaskListView } from '../components/TaskListView';
 import { TaskForm } from '../components/TaskForm';
 import { useTasks, useFocusTasks, useTaskStats } from '../hooks/useTasks';
@@ -30,10 +30,10 @@ interface TaskListContainerProps {
 }
 
 /**
- * Container che gestisce la logica di business per la lista delle task
- * Separa la logica di stato/fetch dalla presentazione
+ * Container ottimizzato che gestisce la logica di business per la lista delle task
+ * Utilizza React.memo, useCallback e useMemo per ottimizzare le performance
  */
-export const TaskListContainer = forwardRef<
+export const TaskListContainer = React.memo(forwardRef<
   { handleCreateTask: () => void; handleRefresh: () => void },
   TaskListContainerProps
 >((
@@ -51,18 +51,17 @@ export const TaskListContainer = forwardRef<
   ref
 ) => {
 
-  // State locale per UI
-  const [filters, setFilters] = useState<TaskFilters>({
-    status: showCompleted ? ['completed'] : ['pending', 'in_progress'], // Filtra in base a showCompleted
+  // State locale per UI (memoizzato)
+  const [filters, setFilters] = useState<TaskFilters>(() => ({
+    status: showCompleted ? ['completed'] : ['pending', 'in_progress'],
     search: '',
     task_type: undefined,
     energy_required: undefined,
-    // requires_deep_focus: undefined, // Removed - not in database schema
     due_date_range: undefined,
     sort_by: 'due_date',
     sort_order: 'asc',
     ...initialFilters
-  });
+  }));
   
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [showTaskForm, setShowTaskForm] = useState(false);
@@ -72,13 +71,14 @@ export const TaskListContainer = forwardRef<
   const { handleError, showSuccess } = useErrorHandler();
   const { toast } = useToast();
 
-  // Hooks per dati e mutazioni
+  // Hooks per dati e mutazioni (memoizzati)
+  const tasksQuery = focusMode ? useFocusTasks() : useTasks({ filters });
   const { 
     tasks: allTasks = [], 
     loading: isLoading, 
     error,
     refetch 
-  } = focusMode ? useFocusTasks() : useTasks({ filters });
+  } = tasksQuery;
   
   const { data: taskStats } = useTaskStats();
   
@@ -90,7 +90,7 @@ export const TaskListContainer = forwardRef<
     isAnyLoading
   } = useTaskMutations();
 
-  // Gestione errori di fetch
+  // Gestione errori di fetch (memoizzata)
   React.useEffect(() => {
     if (error) {
       handleError(error, {
@@ -101,7 +101,7 @@ export const TaskListContainer = forwardRef<
     }
   }, [error, handleError, refetch]);
 
-  // Filtra e ordina le task
+  // Filtra e ordina le task (ottimizzato con useMemo)
   const filteredTasks = useMemo(() => {
     console.log('🔄 TaskListContainer - Filtraggio task:', {
       allTasksCount: allTasks.length,
@@ -111,7 +111,7 @@ export const TaskListContainer = forwardRef<
       timestamp: new Date().toISOString()
     });
 
-    let tasks = [...allTasks];
+    let tasks = allTasks;
 
     // Applica limite se specificato
     if (maxTasks && tasks.length > maxTasks) {
@@ -125,9 +125,9 @@ export const TaskListContainer = forwardRef<
     });
 
     return tasks;
-  }, [allTasks, maxTasks, focusMode, filters]);
+  }, [allTasks, maxTasks]);
 
-  // Callbacks per azioni sulle task
+  // Callbacks memoizzati per azioni sulle task
   const handleTaskClick = useCallback((task: Task) => {
     setSelectedTask(task);
     onTaskSelect?.(task);
@@ -136,10 +136,11 @@ export const TaskListContainer = forwardRef<
   const handleTaskComplete = useCallback(async (taskId: string) => {
     try {
       await completeTask.mutateAsync(taskId);
+      onTaskComplete?.();
     } catch (error) {
       // Errore già gestito nel hook
     }
-  }, [completeTask]);
+  }, [completeTask, onTaskComplete]);
 
   const handleTaskEdit = useCallback((task: Task) => {
     setEditingTask(task);
@@ -159,10 +160,15 @@ export const TaskListContainer = forwardRef<
     setShowTaskForm(true);
   }, []);
 
-  // Espone la funzione handleCreateTask al componente padre
+  const handleRefresh = useCallback(() => {
+    refetch();
+  }, [refetch]);
+
+  // Espone le funzioni al componente padre
   useImperativeHandle(ref, () => ({
-    handleCreateTask
-  }), [handleCreateTask]);
+    handleCreateTask,
+    handleRefresh
+  }), [handleCreateTask, handleRefresh]);
 
   const handleFormSubmit = useCallback(async (formData: TaskFormData) => {
     try {
@@ -200,64 +206,79 @@ export const TaskListContainer = forwardRef<
     setFilters(prev => ({ ...prev, ...newFilters }));
   }, []);
 
-  const handleRefresh = useCallback(() => {
-    refetch();
-    toast({
-      title: "Lista aggiornata",
-      description: "Le task sono state ricaricate",
-      duration: 2000
-    });
-  }, [refetch, toast]);
+  const handleTaskBreakdown = useCallback((task: Task) => {
+    onTaskBreakdown?.(task);
+  }, [onTaskBreakdown]);
 
-  // Determina se ci sono operazioni in corso
-  const isAnyOperationLoading = isLoading || isAnyLoading;
+  // Props memoizzate per TaskListView
+  const taskListViewProps = useMemo(() => ({
+    tasks: filteredTasks,
+    loading: isLoading,
+    error,
+    focusMode,
+    focusTaskCount: 3,
+    onCreateTask: handleCreateTask,
+    onUpdateTask: updateTask.mutateAsync,
+    onDeleteTask: handleTaskDelete,
+    onTaskComplete: handleTaskComplete,
+    onTaskClick: handleTaskClick,
+    onTaskEdit: handleTaskEdit,
+    onTaskBreakdown: handleTaskBreakdown,
+    filters,
+    onFiltersChange: handleFiltersChange,
+    onRefresh: handleRefresh,
+    isLoading: isAnyLoading,
+    taskStats,
+    selectedTaskId: selectedTask?.id
+  }), [
+    filteredTasks,
+    isLoading,
+    error,
+    focusMode,
+    handleCreateTask,
+    updateTask.mutateAsync,
+    handleTaskDelete,
+    handleTaskComplete,
+    handleTaskClick,
+    handleTaskEdit,
+    handleTaskBreakdown,
+    filters,
+    handleFiltersChange,
+    handleRefresh,
+    isAnyLoading,
+    taskStats,
+    selectedTask?.id
+  ]);
 
   return (
-    <>
-      <TaskListView
-        tasks={filteredTasks}
-        loading={isAnyOperationLoading}
-        error={error}
-        filters={filters}
-        onFiltersChange={handleFiltersChange}
-        onTaskClick={handleTaskClick}
-        onTaskComplete={handleTaskComplete}
-        onTaskEdit={handleTaskEdit}
-        onDeleteTask={handleTaskDelete}
-        onTaskBreakdown={onTaskBreakdown}
-        onCreateTask={handleCreateTask}
-        onRefresh={handleRefresh}
-        isLoading={isAnyOperationLoading}
-        focusMode={focusMode}
-        taskStats={taskStats}
-        selectedTaskId={selectedTask?.id}
-        onUpdateTask={updateTask.mutateAsync}
-      />
-
-      {/* Dialog per form task */}
+    <div className={className}>
+      <TaskListView {...taskListViewProps} />
+      
+      {/* Dialog per creazione/modifica task */}
       <Dialog open={showTaskForm} onOpenChange={setShowTaskForm}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {editingTask ? 'Modifica Task' : 'Crea Nuova Task'}
             </DialogTitle>
             <DialogDescription>
               {editingTask 
-                ? 'Modifica i dettagli della task esistente' 
-                : 'Compila i campi per creare una nuova task'
+                ? 'Modifica i dettagli della task esistente.'
+                : 'Compila i campi per creare una nuova task. I campi con * sono obbligatori.'
               }
             </DialogDescription>
           </DialogHeader>
+          
           <TaskForm
-            task={editingTask}
+            initialData={editingTask || undefined}
             onSubmit={handleFormSubmit}
             onCancel={handleFormCancel}
-            isLoading={editingTask ? updateTask.loading : createTask.loading}
+            isLoading={createTask.isPending || updateTask.isPending}
           />
         </DialogContent>
       </Dialog>
-    </>
+    </div>
   );
-});
+}));
 
 TaskListContainer.displayName = 'TaskListContainer';

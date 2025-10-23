@@ -586,10 +586,6 @@ export class AnalyticsManager {
   }
 
   // Metodi per accedere all'EventLogger
-  public getEventLogger(): EventLogger {
-    return this.eventLogger;
-  }
-
   public getRecentEvents(count?: number) {
     return this.eventLogger.getRecentEvents(count);
   }

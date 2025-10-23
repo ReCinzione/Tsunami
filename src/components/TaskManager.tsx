@@ -19,8 +19,7 @@ import {
   Clock,
   TrendingUp,
   Plus,
-  Brain,
-  Loader2
+  Lightbulb
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { StatsSkeleton } from './common/Skeleton';
@@ -119,162 +118,7 @@ function QuickStats({ userId, className }: QuickStatsProps) {
   );
 }
 
-// Componente per il breakdown AI delle task
-interface AIBreakdownButtonProps {
-  userId: string;
-  onTaskCreated?: () => void;
-  className?: string;
-}
 
-function AIBreakdownButton({ userId, onTaskCreated, className }: AIBreakdownButtonProps) {
-  const [isLoading, setIsLoading] = useState(false);
-  const [taskDescription, setTaskDescription] = useState('');
-  const [showInput, setShowInput] = useState(false);
-  const [aiSupported, setAiSupported] = useState<boolean | null>(null);
-  const [isAILoading, setIsAILoading] = useState(false);
-
-  React.useEffect(() => {
-    isAISupported().then(setAiSupported);
-  }, []);
-
-  const handleAIBreakdown = async () => {
-    if (!taskDescription.trim()) return;
-    
-    setIsLoading(true);
-    try {
-      const aiService = await createAIService();
-      
-      // Check if model is loaded
-      const status = aiService.getStatus();
-      if (!status.isLoaded) {
-        console.log('🤖 Caricamento modello AI...');
-        await aiService.loadModel();
-      }
-      
-      const response = await aiService.breakdownTask({
-        taskDescription,
-        context: {
-          userPreferences: {
-            preferredDuration: 25, // Pomodoro standard
-            energyLevel: 'medio',
-            workingHours: { start: 9, end: 18 }
-          },
-          currentMood: 'neutro',
-          availableTime: 120 // 2 ore
-        }
-      });
-      
-      console.log('🎯 AI Breakdown Result:', response);
-      
-      // Crea la task principale
-      const { taskService } = await import('../features/tasks/services/taskService');
-      
-      const mainTask = await taskService.createTask(userId, {
-        title: taskDescription,
-        description: `Task suddivisa in ${response.microTasks.length} micro-task`,
-        task_type: 'organizzazione',
-        energy_required: 'media',
-        xp_reward: response.microTasks.reduce((sum, mt) => sum + Math.ceil(mt.duration / 5), 0)
-      });
-      
-      // Crea le subtask
-      const subtasks = await Promise.all(
-        response.microTasks.map((microTask, index) => 
-          taskService.createTask(userId, {
-            title: microTask.title,
-            description: microTask.description || '',
-            task_type: 'azione',
-            energy_required: microTask.energy === 'basso' ? 'bassa' : 
-                           microTask.energy === 'alto' ? 'alta' : 'media',
-            xp_reward: Math.ceil(microTask.duration / 5), // 1 XP ogni 5 minuti
-            parent_task_id: mainTask.id
-          })
-        )
-      );
-      
-      alert(`✅ Task creata con successo!\n\n📋 Task principale: "${taskDescription}"\n🔨 ${response.microTasks.length} micro-task generate\n\nPuoi trovarle nella lista delle task.`);
-      
-      setTaskDescription('');
-      setShowInput(false);
-      
-      // Refresh della lista task
-      onTaskCreated?.();
-      
-    } catch (error) {
-      console.error('❌ AI Breakdown Error:', error);
-      alert('Errore durante la suddivisione AI. Riprova più tardi.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  if (!aiSupported) {
-    return (
-      <Button
-        variant="outline"
-        size="sm"
-        disabled
-        className="flex items-center gap-2 opacity-50"
-        title="AI non supportata in questo browser"
-      >
-        <Brain className="w-4 h-4" />
-        <span className="hidden sm:inline">AI Breakdown</span>
-      </Button>
-    );
-  }
-
-  if (showInput) {
-    return (
-      <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-lg p-2">
-        <input
-          type="text"
-          placeholder="Descrivi la task da suddividere..."
-          value={taskDescription}
-          onChange={(e) => setTaskDescription(e.target.value)}
-          onKeyPress={(e) => e.key === 'Enter' && handleAIBreakdown()}
-          className="flex-1 min-w-0 px-2 py-1 text-sm border-0 bg-transparent focus:outline-none placeholder:text-blue-400"
-          autoFocus
-        />
-        <Button
-          onClick={handleAIBreakdown}
-          disabled={isLoading || !taskDescription.trim()}
-          size="sm"
-          className="bg-blue-600 hover:bg-blue-700 text-white"
-        >
-          {isLoading ? (
-            <Loader2 className="w-3 h-3 animate-spin" />
-          ) : (
-            <Brain className="w-3 h-3" />
-          )}
-        </Button>
-        <Button
-          onClick={() => {
-            setShowInput(false);
-            setTaskDescription('');
-          }}
-          variant="ghost"
-          size="sm"
-          className="text-blue-600 hover:text-blue-700"
-        >
-          ✕
-        </Button>
-      </div>
-    );
-  }
-
-  return (
-    <Button
-      onClick={() => setShowInput(true)}
-      variant="outline"
-      size="sm"
-      className="flex items-center gap-2 border-blue-200 text-blue-700 hover:bg-blue-50"
-      title="Usa l'AI per suddividere task complesse"
-    >
-      <Brain className="w-4 h-4" />
-      <span className="hidden sm:inline">AI Breakdown</span>
-    </Button>
-  );
-}
 
 // Componente principale TaskManager refactorizzato
 export const TaskManager: React.FC<TaskManagerProps> = ({
@@ -504,16 +348,6 @@ export const TaskManager: React.FC<TaskManagerProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Bottone AI Breakdown */}
-          <AIBreakdownButton 
-            userId={userId} 
-            onTaskCreated={() => {
-              if (taskListRef.current?.handleRefresh) {
-                taskListRef.current.handleRefresh();
-              }
-            }} 
-          />
-          
           {/* Bottone Crea Task */}
           <Button
             onClick={() => {

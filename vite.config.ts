@@ -16,4 +16,26 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  build: {
+    // Ottimizzazioni per Vercel
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom'],
+          ui: ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-tabs'],
+          supabase: ['@supabase/supabase-js'],
+          router: ['react-router-dom'],
+          query: ['@tanstack/react-query'],
+          motion: ['framer-motion'],
+          charts: ['recharts']
+        }
+      }
+    },
+    chunkSizeWarningLimit: 1000,
+    sourcemap: mode === 'development'
+  },
+  // Configurazione specifica per produzione
+  ...(mode === 'production' && {
+    base: '/'
+  })
 }));

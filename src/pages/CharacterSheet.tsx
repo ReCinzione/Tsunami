@@ -9,6 +9,7 @@ import { ArrowLeft, User, Trophy, Star, Zap, Target, Calendar, Award, Sparkles, 
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { progressionService } from '@/services/ProgressionService';
 import InventorySystem from '@/components/InventorySystem';
 
 interface Profile {
@@ -165,19 +166,7 @@ const CharacterSheet = () => {
     });
   };
 
-  const calculateLevelFromXP = (totalXP: number): number => {
-    if (totalXP < 100) return 1;
-    if (totalXP < 250) return 2;
-    if (totalXP < 450) return 3;
-    if (totalXP < 700) return 4;
-    if (totalXP < 1000) return 5;
-    if (totalXP < 1350) return 6;
-    if (totalXP < 1750) return 7;
-    if (totalXP < 2200) return 8;
-    if (totalXP < 2700) return 9;
-    if (totalXP < 3250) return 10;
-    return Math.floor((totalXP - 3250) / 600) + 11;
-  };
+
 
   const getXPForNextLevel = (currentLevel: number): number => {
     const xpThresholds = [0, 100, 250, 450, 700, 1000, 1350, 1750, 2200, 2700, 3250];
@@ -256,7 +245,7 @@ const CharacterSheet = () => {
   }
 
   const totalXP = profile.total_xp || 0;
-  const calculatedLevel = calculateLevelFromXP(totalXP);
+  const calculatedLevel = progressionService.calculateLevelFromXP(totalXP);
   const currentLevel = calculatedLevel; // Usa il livello calcolato dall'XP
   const xpForCurrentLevel = currentLevel > 1 ? getXPForNextLevel(currentLevel - 1) : 0;
   const xpForNextLevel = getXPForNextLevel(currentLevel);

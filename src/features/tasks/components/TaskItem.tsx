@@ -1,418 +1,371 @@
-import React, { useState } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import React, { useState, useCallback, useMemo, memo } from 'react';
+import { Task, TaskStatus } from '../types';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Progress } from '@/components/ui/progress';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { 
   CheckCircle2, 
-  Circle, 
   Clock, 
-  Calendar, 
-  Zap, 
-  Edit, 
-  Trash2, 
-  AlertTriangle,
-  Focus,
-  Timer,
-  Target,
-  ChevronDown,
+  AlertTriangle, 
+  ChevronDown, 
   ChevronRight,
-  List,
-  Brain
+  Edit,
+  Trash2,
+  Zap,
+  Calendar,
+  Target,
+  Lightbulb
 } from 'lucide-react';
-import { TaskItemProps } from '../types';
 import { cn } from '@/lib/utils';
-import { format, isToday, isTomorrow, isPast } from 'date-fns';
-import { it } from 'date-fns/locale';
+import { taskService } from '../services/taskService';
+import { useToast } from '@/hooks/use-toast';
+
+interface TaskItemProps {
+  task: Task;
+  onComplete?: (taskId: string) => void;
+  onEdit?: (task: Task) => void;
+  onDelete?: (taskId: string) => void;
+  onBreakdown?: (task: Task) => void;
+  onClick?: (task: Task) => void;
+  isSelected?: boolean;
+  showActions?: boolean;
+  compact?: boolean;
+  className?: string;
+}
+
+// Componente memoizzato per le azioni della task
+const TaskActions = memo<{
+  task: Task;
+  onEdit?: (task: Task) => void;
+  onDelete?: (taskId: string) => void;
+  onBreakdown?: (task: Task) => void;
+}>(({ task, onEdit, onDelete, onBreakdown }) => {
+  const handleEdit = useCallback(() => onEdit?.(task), [onEdit, task]);
+  const handleDelete = useCallback(() => onDelete?.(task.id), [onDelete, task.id]);
+  const handleBreakdown = useCallback(() => onBreakdown?.(task), [onBreakdown, task]);
+
+  return (
+    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={handleEdit}
+        className="h-8 w-8 p-0"
+      >
+        <Edit className="h-4 w-4" />
+      </Button>
+      
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={handleBreakdown}
+        className="h-8 w-8 p-0"
+        title="Breakdown AI"
+      >
+        <Lightbulb className="h-4 w-4" />
+      </Button>
+      
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={handleDelete}
+        className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+      >
+        <Trash2 className="h-4 w-4" />
+      </Button>
+    </div>
+  );
+});
+
+TaskActions.displayName = 'TaskActions';
+
+// Componente memoizzato per il badge di priorità
+const PriorityBadge = memo<{ priority: Task['priority'] }>(({ priority }) => {
+  const priorityConfig = useMemo(() => {
+    switch (priority) {
+      case 'high':
+        return { label: 'Alta', variant: 'destructive' as const, icon: AlertTriangle };
+      case 'medium':
+        return { label: 'Media', variant: 'default' as const, icon: Clock };
+      case 'low':
+        return { label: 'Bassa', variant: 'secondary' as const, icon: Clock };
+      default:
+        return { label: 'Media', variant: 'default' as const, icon: Clock };
+    }
+  }, [priority]);
+
+  const Icon = priorityConfig.icon;
+
+  return (
+    <Badge variant={priorityConfig.variant} className="text-xs">
+      <Icon className="w-3 h-3 mr-1" />
+      {priorityConfig.label}
+    </Badge>
+  );
+});
+
+PriorityBadge.displayName = 'PriorityBadge';
+
+// Componente memoizzato per le subtask
+const SubtasksList = memo<{
+  taskId: string;
+  isExpanded: boolean;
+}>(({ taskId, isExpanded }) => {
+  const [subtasks, setSubtasks] = useState<Task[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const { toast } = useToast();
+
+  // Carica subtask solo quando necessario
+  React.useEffect(() => {
+    if (isExpanded && !loaded && !loading) {
+      setLoading(true);
+      taskService.getSubtasks(taskId)
+        .then(setSubtasks)
+        .catch((error) => {
+          console.error('Errore caricamento subtask:', error);
+          toast({
+            title: "Errore",
+            description: "Impossibile caricare le subtask",
+            variant: "destructive"
+          });
+        })
+        .finally(() => {
+          setLoading(false);
+          setLoaded(true);
+        });
+    }
+  }, [isExpanded, loaded, loading, taskId, toast]);
+
+  const progress = useMemo(() => {
+    if (subtasks.length === 0) return 0;
+    const completed = subtasks.filter(st => st.status === 'completed').length;
+    return Math.round((completed / subtasks.length) * 100);
+  }, [subtasks]);
+
+  if (!isExpanded) return null;
+
+  return (
+    <div className="mt-3 space-y-2">
+      {subtasks.length > 0 && (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <span>Progresso subtask:</span>
+          <Progress value={progress} className="flex-1 h-2" />
+          <span>{progress}%</span>
+        </div>
+      )}
+      
+      {loading ? (
+        <div className="text-sm text-muted-foreground">Caricamento subtask...</div>
+      ) : subtasks.length > 0 ? (
+        <div className="space-y-1">
+          {subtasks.map((subtask) => (
+            <div key={subtask.id} className="flex items-center gap-2 text-sm pl-4">
+              <Checkbox 
+                checked={subtask.status === 'completed'}
+                disabled
+                className="h-4 w-4"
+              />
+              <span className={cn(
+                subtask.status === 'completed' && "line-through text-muted-foreground"
+              )}>
+                {subtask.title}
+              </span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="text-sm text-muted-foreground pl-4">Nessuna subtask</div>
+      )}
+    </div>
+  );
+});
+
+SubtasksList.displayName = 'SubtasksList';
 
 /**
- * Componente per visualizzare una singola task con design ADHD-friendly
+ * Componente ottimizzato per visualizzare una singola task
+ * Utilizza React.memo e callback memoizzati per evitare re-render non necessari
  */
-export const TaskItem = React.memo<TaskItemProps>(({ 
+export const TaskItem = memo<TaskItemProps>(({ 
   task, 
-  onClick, 
   onComplete, 
   onEdit, 
-  onDelete,
+  onDelete, 
   onBreakdown,
-  showDetails = true,
-  focusMode = false
+  onClick,
+  isSelected = false,
+  showActions = true,
+  compact = false,
+  className 
 }) => {
   const [isCompleting, setIsCompleting] = useState(false);
-  const [showActions, setShowActions] = useState(false);
   const [showSubtasks, setShowSubtasks] = useState(false);
-  const [subtasks, setSubtasks] = useState<Task[]>([]);
-  const [loadingSubtasks, setLoadingSubtasks] = useState(false);
+  const { toast } = useToast();
 
-  // Calcola lo stato della task
-  const isCompleted = task.status === 'completed';
-  const isOverdue = task.due_date && isPast(new Date(task.due_date)) && !isCompleted;
-  const isDueToday = task.due_date && isToday(new Date(task.due_date));
-  const isDueTomorrow = task.due_date && isTomorrow(new Date(task.due_date));
-  const hasSubtasks = task.parent_task_id === null || task.parent_task_id === undefined;
-
-  // Carica le subtask quando necessario
-  const loadSubtasks = async () => {
-    if (loadingSubtasks || subtasks.length > 0) return;
-    
-    setLoadingSubtasks(true);
-    try {
-      const { taskService } = await import('../services/taskService');
-      const taskSubtasks = await taskService.getSubtasks(task.id);
-      setSubtasks(taskSubtasks);
-    } catch (error) {
-      console.error('Errore nel caricamento delle subtask:', error);
-    } finally {
-      setLoadingSubtasks(false);
+  // Memoizza lo stato di completamento
+  const isCompleted = useMemo(() => task.status === 'completed', [task.status]);
+  
+  // Memoizza l'icona di stato
+  const statusIcon = useMemo(() => {
+    switch (task.status) {
+      case 'completed':
+        return <CheckCircle2 className="w-4 h-4 text-green-500" />;
+      case 'in_progress':
+        return <Clock className="w-4 h-4 text-blue-500" />;
+      default:
+        return <Clock className="w-4 h-4 text-gray-400" />;
     }
-  };
+  }, [task.status]);
 
-  // Gestisce l'espansione/collasso delle subtask
-  const handleToggleSubtasks = async () => {
-    if (!showSubtasks && subtasks.length === 0) {
-      await loadSubtasks();
-    }
-    setShowSubtasks(!showSubtasks);
-  };
-
-  // Calcola il progresso delle subtask
-  const subtaskProgress = subtasks.length > 0 
-    ? (subtasks.filter(st => st.status === 'completed').length / subtasks.length) * 100 
-    : 0;
-  const completedSubtasks = subtasks.filter(st => st.status === 'completed').length;
-
-  // Gestisce il completamento con feedback visivo e debouncing per prevenire race condition
-  const handleComplete = async () => {
-    if (isCompleted || isCompleting) return; // Previene doppi click
+  // Callback memoizzati
+  const handleComplete = useCallback(async () => {
+    if (isCompleting || isCompleted) return;
     
     setIsCompleting(true);
     try {
       await onComplete?.(task.id);
+      toast({
+        title: "Task completata! 🎉",
+        description: `"${task.title}" è stata completata con successo.`,
+        duration: 3000
+      });
     } catch (error) {
-      console.error('Errore nel completamento task:', error);
-      // Reset dello stato in caso di errore
-      setIsCompleting(false);
+      console.error('Errore completamento task:', error);
     } finally {
-      // Mantiene lo stato di completamento per un breve periodo
-      setTimeout(() => setIsCompleting(false), 500);
+      // Debounce per evitare click multipli
+      setTimeout(() => setIsCompleting(false), 1000);
     }
-  };
+  }, [isCompleting, isCompleted, onComplete, task.id, task.title, toast]);
 
-  // Stili dinamici basati sullo stato
-  const getTaskStyles = () => {
-    if (isCompleted) {
-      return {
-        card: "bg-green-50 border-green-200 opacity-75",
-        title: "text-green-800 line-through",
-        badge: "bg-green-100 text-green-800"
-      };
-    }
-    
-    if (isOverdue) {
-      return {
-        card: "bg-red-50 border-red-200 border-l-4 border-l-red-500",
-        title: "text-red-900 font-medium",
-        badge: "bg-red-100 text-red-800"
-      };
-    }
-    
-    if (isDueToday) {
-      return {
-        card: "bg-yellow-50 border-yellow-200 border-l-4 border-l-yellow-500",
-        title: "text-yellow-900 font-medium",
-        badge: "bg-yellow-100 text-yellow-800"
-      };
-    }
-    
-    return {
-      card: "bg-white border-gray-200 hover:border-blue-300 hover:shadow-sm",
-      title: "text-gray-900",
-      badge: "bg-gray-100 text-gray-800"
-    };
-  };
+  const handleClick = useCallback(() => {
+    onClick?.(task);
+  }, [onClick, task]);
 
-  const styles = getTaskStyles();
+  const toggleSubtasks = useCallback(() => {
+    setShowSubtasks(prev => !prev);
+  }, []);
 
-  // Icona di stato
-  const StatusIcon = isCompleted ? CheckCircle2 : Circle;
+  // Memoizza le classi CSS
+  const cardClasses = useMemo(() => cn(
+    "group transition-all duration-200 hover:shadow-md cursor-pointer",
+    isSelected && "ring-2 ring-primary",
+    isCompleted && "opacity-75",
+    compact && "py-2",
+    className
+  ), [isSelected, isCompleted, compact, className]);
 
-  // Badge per energia richiesta
-  const getEnergyBadge = () => {
-    const energyConfig = {
-      'molto_bassa': { color: 'bg-gray-100 text-gray-600', icon: '●', text: 'Molto Bassa' },
-      'bassa': { color: 'bg-green-100 text-green-600', icon: '●', text: 'Bassa' },
-      'media': { color: 'bg-yellow-100 text-yellow-600', icon: '●', text: 'Media' },
-      'alta': { color: 'bg-orange-100 text-orange-600', icon: '●', text: 'Alta' },
-      'molto_alta': { color: 'bg-red-100 text-red-600', icon: '●', text: 'Molto Alta' }
-    };
-    
-    const config = energyConfig[task.energy_required];
-    
-    return (
-      <Badge className={cn("text-xs flex items-center gap-1", config.color)}>
-        <span>{config.icon}</span>
-        {focusMode ? config.icon : config.text}
-      </Badge>
-    );
-  };
-
-  // Formatta la data di scadenza
-  const formatDueDate = () => {
-    if (!task.due_date) return null;
-    
-    const dueDate = new Date(task.due_date);
-    
-    if (isOverdue) {
-      return (
-        <div className="flex items-center gap-1 text-red-600 text-xs">
-          <AlertTriangle className="h-3 w-3" />
-          Scaduta {format(dueDate, 'dd/MM', { locale: it })}
-        </div>
-      );
-    }
-    
-    if (isDueToday) {
-      return (
-        <div className="flex items-center gap-1 text-yellow-600 text-xs font-medium">
-          <Clock className="h-3 w-3" />
-          Oggi
-        </div>
-      );
-    }
-    
-    if (isDueTomorrow) {
-      return (
-        <div className="flex items-center gap-1 text-blue-600 text-xs">
-          <Calendar className="h-3 w-3" />
-          Domani
-        </div>
-      );
-    }
-    
-    return (
-      <div className="flex items-center gap-1 text-gray-500 text-xs">
-        <Calendar className="h-3 w-3" />
-        {format(dueDate, 'dd/MM/yyyy', { locale: it })}
-      </div>
-    );
-  };
+  const titleClasses = useMemo(() => cn(
+    "font-medium transition-colors",
+    isCompleted && "line-through text-muted-foreground",
+    compact ? "text-sm" : "text-base"
+  ), [isCompleted, compact]);
 
   return (
-    <Card
-      className={cn(
-        "w-full rounded-lg shadow-sm p-2 mb-2 flex flex-col md:flex-row items-center group transition-all duration-200 hover:shadow-md cursor-pointer",
-        styles.card,
-        isCompleting && "scale-[0.98] opacity-50",
-        focusMode && "shadow-md border-2"
-      )}
-      onMouseEnter={() => setShowActions(true)}
-      onMouseLeave={() => setShowActions(false)}
-      onClick={() => onClick?.(task)}
-    >
-      <CardContent className={cn(
-        "p-2 w-full",
-        focusMode && "p-6"
-      )}>
-        <div className="flex items-start gap-3 w-full">
-          {/* Checkbox di completamento */}
-          <div className="flex-shrink-0 mt-0.5">
+    <Card className={cardClasses} onClick={handleClick}>
+      <CardHeader className={cn("pb-2", compact && "py-2")}>
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start gap-3 flex-1 min-w-0">
+            {/* Checkbox per completamento */}
             <Checkbox
               checked={isCompleted}
+              disabled={isCompleting}
               onCheckedChange={handleComplete}
-              className={cn(
-                "h-5 w-5",
-                isCompleted && "bg-green-500 border-green-500"
-              )}
               onClick={(e) => e.stopPropagation()}
+              className="mt-0.5 flex-shrink-0"
             />
-          </div>
-
-          {/* Contenuto principale */}
-          <div className="flex-1 min-w-0 w-full">
-            {/* Titolo e badge */}
-            <div className="flex flex-col gap-2">
-              <div className="flex gap-2 items-center w-full">
-                {/* Icona priorità/media */}
-                <div className="flex items-center gap-1">
-                  <Target className="h-3 w-3" />
-                  <span className="text-xs font-medium">{task.xp_reward || 10} XP</span>
-                </div>
-                
-                <h3 className={cn(
-                  "font-medium text-sm leading-tight flex-1 break-words",
-                  styles.title,
-                  focusMode && "text-base font-semibold"
-                )}>
+            
+            {/* Contenuto principale */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                {statusIcon}
+                <h3 className={titleClasses}>
                   {task.title}
                 </h3>
+              </div>
+              
+              {!compact && task.description && (
+                <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
+                  {task.description}
+                </p>
+              )}
+              
+              {/* Badges e metadati */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <PriorityBadge priority={task.priority} />
                 
-                {showDetails && (
-                  <div className="flex items-center gap-1 flex-shrink-0">
-                    {getEnergyBadge()}
-                  </div>
+                {task.energy_required && (
+                  <Badge variant="outline" className="text-xs">
+                    <Zap className="w-3 h-3 mr-1" />
+                    {task.energy_required}
+                  </Badge>
+                )}
+                
+                {task.due_date && (
+                  <Badge variant="outline" className="text-xs">
+                    <Calendar className="w-3 h-3 mr-1" />
+                    {new Date(task.due_date).toLocaleDateString('it-IT')}
+                  </Badge>
+                )}
+                
+                {task.task_type && (
+                  <Badge variant="outline" className="text-xs">
+                    <Target className="w-3 h-3 mr-1" />
+                    {task.task_type}
+                  </Badge>
                 )}
               </div>
             </div>
-
-            {/* Descrizione (se presente e showDetails) */}
-            {showDetails && task.description && (
-              <p className="text-xs text-gray-600 mb-2 line-clamp-2 break-words">
-                {task.description}
-              </p>
-            )}
-
-            {/* Metadata row */}
-            {showDetails && (
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 text-xs text-gray-500">
-                <div className="flex flex-wrap items-center gap-3">
-                  {/* Data scadenza */}
-                  {formatDueDate()}
-                  
-                  {/* XP */}
-                  {task.xp_reward && (
-                    <div className="flex items-center gap-1">
-                      <Target className="h-3 w-3" />
-                      {task.xp_reward} XP
-                    </div>
-                  )}
-                  
-                  {/* Durata stimata */}
-                  {task.estimated_duration && (
-                    <div className="flex items-center gap-1">
-                      <Timer className="h-3 w-3" />
-                      {task.estimated_duration}min
-                    </div>
-                  )}
-                </div>
-
-                {/* Azioni rapide */}
-                {showActions && (
-                  <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                    {!isCompleted && hasSubtasks && onBreakdown && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-base p-2 rounded-md bg-purple-50 w-fit h-fit hover:bg-purple-100 text-purple-600 hover:text-purple-700"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onBreakdown?.(task);
-                        }}
-                        title="🧠 Breakdown AI - Scomponi in micro-task"
-                      >
-                        <Brain className="h-3 w-3" />
-                      </Button>
-                    )}
-                    {!isCompleted && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-base p-2 rounded-md bg-blue-50 w-fit h-fit hover:bg-blue-100"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onEdit?.(task);
-                        }}
-                      >
-                        <Edit className="h-3 w-3" />
-                      </Button>
-                    )}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-base p-2 rounded-md bg-red-50 w-fit h-fit hover:bg-red-100 text-red-600 hover:text-red-700"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onDelete?.(task.id);
-                      }}
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Progress bar per task parzialmente completate */}
-            {task.progress && task.progress > 0 && task.progress < 100 && (
-              <div className="mt-2">
-                <Progress value={task.progress} className="h-1" />
-                <span className="text-xs text-gray-500 mt-1">
-                  {task.progress}% completato
-                </span>
-              </div>
-            )}
-
-            {/* Messaggio di completamento */}
-            {isCompleted && (
-              <div className="mt-2 text-xs text-green-600 font-medium">
-                Completata! 🎉
-              </div>
-            )}
-
-            {/* Sezione Subtask */}
-            {hasSubtasks && (
-              <div className="mt-3 border-t pt-3">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleToggleSubtasks();
-                  }}
-                  className="flex items-center gap-2 text-xs text-gray-600 hover:text-gray-800 transition-colors"
-                >
-                  {showSubtasks ? (
-                    <ChevronDown className="h-3 w-3" />
-                  ) : (
-                    <ChevronRight className="h-3 w-3" />
-                  )}
-                  <List className="h-3 w-3" />
-                  <span>
-                    {loadingSubtasks ? 'Caricamento...' : 
-                     subtasks.length > 0 ? 
-                       `${completedSubtasks}/${subtasks.length} micro-task` :
-                       'Carica micro-task'
-                    }
-                  </span>
-                </button>
-
-                {/* Progress bar subtask */}
-                {subtasks.length > 0 && (
-                  <div className="mt-2">
-                    <Progress value={subtaskProgress} className="h-1" />
-                    <span className="text-xs text-gray-500 mt-1">
-                      {Math.round(subtaskProgress)}% micro-task completate
-                    </span>
-                  </div>
-                )}
-
-                {/* Lista subtask espansa */}
-                {showSubtasks && subtasks.length > 0 && (
-                  <div className="mt-3 space-y-2 pl-4 border-l-2 border-gray-100">
-                    {subtasks.map((subtask) => (
-                      <div key={subtask.id} className="flex items-center gap-2 text-xs">
-                        <Checkbox
-                          checked={subtask.status === 'completed'}
-                          onCheckedChange={() => onComplete?.(subtask.id)}
-                          className="h-3 w-3"
-                          onClick={(e) => e.stopPropagation()}
-                        />
-                        <span className={cn(
-                          "flex-1",
-                          subtask.status === 'completed' && "line-through text-gray-500"
-                        )}>
-                          {subtask.title}
-                        </span>
-                        <span className="text-gray-400">
-                          {subtask.xp_reward} XP
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
           </div>
+          
+          {/* Azioni */}
+          {showActions && (
+            <div onClick={(e) => e.stopPropagation()}>
+              <TaskActions
+                task={task}
+                onEdit={onEdit}
+                onDelete={onDelete}
+                onBreakdown={onBreakdown}
+              />
+            </div>
+          )}
         </div>
-      </CardContent>
+      </CardHeader>
+      
+      {/* Subtask collapsible */}
+      {!compact && task.has_subtasks && (
+        <CardContent className="pt-0">
+          <Collapsible open={showSubtasks} onOpenChange={setShowSubtasks}>
+            <CollapsibleTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full justify-start p-0 h-auto font-normal"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleSubtasks();
+                }}
+              >
+                {showSubtasks ? (
+                  <ChevronDown className="w-4 h-4 mr-2" />
+                ) : (
+                  <ChevronRight className="w-4 h-4 mr-2" />
+                )}
+                <span className="text-sm text-muted-foreground">
+                  {showSubtasks ? 'Nascondi' : 'Mostra'} subtask
+                </span>
+              </Button>
+            </CollapsibleTrigger>
+            
+            <CollapsibleContent>
+              <SubtasksList taskId={task.id} isExpanded={showSubtasks} />
+            </CollapsibleContent>
+          </Collapsible>
+        </CardContent>
+      )}
     </Card>
   );
 });
