@@ -48,33 +48,33 @@ const TaskActions = memo<{
   const handleBreakdown = useCallback(() => onBreakdown?.(task), [onBreakdown, task]);
 
   return (
-    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+    <div className="flex gap-0.5 md:gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
       <Button
         variant="ghost"
         size="sm"
         onClick={handleEdit}
-        className="h-8 w-8 p-0"
+        className="h-6 w-6 md:h-8 md:w-8 p-0"
       >
-        <Edit className="h-4 w-4" />
+        <Edit className="h-3 w-3 md:h-4 md:w-4" />
       </Button>
       
       <Button
         variant="ghost"
         size="sm"
         onClick={handleBreakdown}
-        className="h-8 w-8 p-0"
+        className="h-6 w-6 md:h-8 md:w-8 p-0"
         title="Breakdown AI"
       >
-        <Lightbulb className="h-4 w-4" />
+        <Lightbulb className="h-3 w-3 md:h-4 md:w-4" />
       </Button>
       
       <Button
         variant="ghost"
         size="sm"
         onClick={handleDelete}
-        className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+        className="h-6 w-6 md:h-8 md:w-8 p-0 text-destructive hover:text-destructive"
       >
-        <Trash2 className="h-4 w-4" />
+        <Trash2 className="h-3 w-3 md:h-4 md:w-4" />
       </Button>
     </div>
   );
@@ -266,21 +266,21 @@ export const TaskItem = memo<TaskItemProps>(({
 
   return (
     <Card className={cardClasses} onClick={handleClick}>
-      <CardHeader className={cn("pb-2", compact && "py-2")}>
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-start gap-3 flex-1 min-w-0">
+      <CardHeader className={cn("pb-1 md:pb-2 p-3 md:p-6", compact && "py-2")}>
+        <div className="flex items-start justify-between gap-2 md:gap-3">
+          <div className="flex items-start gap-2 md:gap-3 flex-1 min-w-0">
             {/* Checkbox per completamento */}
             <Checkbox
               checked={isCompleted}
               disabled={isCompleting}
               onCheckedChange={handleComplete}
               onClick={(e) => e.stopPropagation()}
-              className="mt-0.5 flex-shrink-0"
+              className="mt-0.5 flex-shrink-0 h-4 w-4 md:h-5 md:w-5"
             />
             
             {/* Contenuto principale */}
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1">
+              <div className="flex items-center gap-1 md:gap-2 mb-1">
                 {statusIcon}
                 <h3 className={titleClasses}>
                   {task.title}
@@ -288,13 +288,13 @@ export const TaskItem = memo<TaskItemProps>(({
               </div>
               
               {!compact && task.description && (
-                <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
+                <p className="text-xs md:text-sm text-muted-foreground line-clamp-2 mb-1 md:mb-2">
                   {task.description}
                 </p>
               )}
               
               {/* Badges e metadati */}
-              <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-1 md:gap-2 flex-wrap">
                 <PriorityBadge priority={task.priority} />
                 
                 {task.energy_required && (

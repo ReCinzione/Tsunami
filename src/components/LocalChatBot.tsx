@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { MessageCircle, Zap, Focus, Timer, Brain, ChevronDown } from 'lucide-react';
+import { MessageCircle, Zap, Focus, Timer, Brain, ChevronDown, X, Minimize2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 // Import new utility functions
@@ -33,6 +33,9 @@ interface LocalChatBotProps {
   adhdContext?: ADHDContext;
   tasks?: Task[];
   onActionSuggested?: (action: string, params?: any) => void;
+  onClose?: () => void;
+  isMinimized?: boolean;
+  onToggleMinimize?: () => void;
 }
 
 // Interfaccia per il learning comportamentale
@@ -247,13 +250,17 @@ const SEMANTIC_KEYWORDS = {
   energy: ['energia', 'forza', 'stanco', 'carico', 'motivato', 'spossato']
 };
 
-export const LocalChatBot: React.FC<LocalChatBotProps> = ({
-  userId,
-  adhdContext = {},
-  tasks = [],
-  onActionSuggested
+export const LocalChatBot: React.FC<LocalChatBotProps> = ({ 
+  userId, 
+  adhdContext = {}, 
+  tasks = [], 
+  onActionSuggested,
+  onClose,
+  isMinimized = false,
+  onToggleMinimize
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [hasReceivedFirstMessage, setHasReceivedFirstMessage] = useState(false);
   const [currentQuickActions, setCurrentQuickActions] = useState<QuickAction[]>([]);
   const [lastActionResult, setLastActionResult] = useState<string>('');
   const [projects, setProjects] = useState<Project[]>([]);
@@ -413,6 +420,8 @@ export const LocalChatBot: React.FC<LocalChatBotProps> = ({
     const quickActions = getContextualQuickActions(adhdContext);
     setCurrentQuickActions(quickActions);
   }, [adhdContext, tasks]);
+
+  // Rimuovo la chiusura automatica - l'utente preferisce chiudere manualmente
 
   // Previeni chiusura accidentale del chatbot durante l'interazione
   useEffect(() => {
@@ -2265,61 +2274,76 @@ export const LocalChatBot: React.FC<LocalChatBotProps> = ({
   }
 
   return (
-    <Card className="fixed bottom-6 right-6 z-50 w-full max-w-md h-[600px] shadow-2xl border-2 border-primary/20 sm:w-96 flex flex-col">
+    <Card className={`fixed bottom-6 right-6 z-50 w-full max-w-sm shadow-2xl border-2 border-primary/20 sm:w-80 flex flex-col transition-all duration-200 ${isMinimized ? 'h-auto' : 'h-[500px]'}`}>
       <CardHeader className="pb-2 p-3 flex-shrink-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Brain className="w-5 h-5 text-primary" />
-            <CardTitle className="text-lg">Assistant</CardTitle>
+            <Brain className="w-4 h-4 text-primary" />
+            <CardTitle className="text-sm">Assistant</CardTitle>
             <Badge variant="secondary" className="text-xs">
               Locale
             </Badge>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
+            {onToggleMinimize && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onToggleMinimize}
+                className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+                title={isMinimized ? "Espandi" : "Minimizza"}
+              >
+                <Minimize2 className="w-3 h-3" />
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setShowQuickActions(!showQuickActions)}
-              className="h-8 w-8 p-0"
-              title={showQuickActions ? "Nascondi azioni rapide" : "Mostra azioni rapide"}
+              onClick={() => {
+                console.log('🔴 Pulsante X cliccato - Chiusura chatbot');
+                if (onClose) {
+                  console.log('🔴 Chiamata onClose prop');
+                  onClose();
+                } else {
+                  console.log('🔴 Impostazione isOpen a false');
+                  setIsOpen(false);
+                }
+              }}
+              className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+              title="Chiudi"
             >
-              {showQuickActions ? <MessageCircle className="w-4 h-4" /> : <Zap className="w-4 h-4" />}
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setIsOpen(false)}
-              className="h-8 w-8 p-0"
-            >
-              ×
+              <X className="w-3 h-3" />
             </Button>
           </div>
         </div>
         
-        {/* Indicatori di contesto */}
-        <div className="flex gap-1 flex-wrap mt-2">
-          {adhdContext.focusMode && (
-            <Badge variant="outline" className="text-xs">
-              <Focus className="w-3 h-3 mr-1" />
-              Focus Mode
-            </Badge>
-          )}
-          {adhdContext.energyLevel && (
-            <Badge variant="outline" className="text-xs">
-              <Zap className="w-3 h-3 mr-1" />
-              Energia: {adhdContext.energyLevel}/10
-            </Badge>
-          )}
-          {adhdContext.activeTasks && (
-            <Badge variant="outline" className="text-xs">
-              <Timer className="w-3 h-3 mr-1" />
-              {adhdContext.activeTasks} task
-            </Badge>
-          )}
-        </div>
+        {/* Indicatori di contesto - solo se non minimizzato */}
+        {!isMinimized && (
+          <div className="flex gap-1 flex-wrap mt-2">
+            {adhdContext.focusMode && (
+              <Badge variant="outline" className="text-xs">
+                <Focus className="w-3 h-3 mr-1" />
+                Focus Mode
+              </Badge>
+            )}
+            {adhdContext.energyLevel && (
+              <Badge variant="outline" className="text-xs">
+                <Zap className="w-3 h-3 mr-1" />
+                Energia: {adhdContext.energyLevel}/10
+              </Badge>
+            )}
+            {adhdContext.activeTasks && (
+              <Badge variant="outline" className="text-xs">
+                <Timer className="w-3 h-3 mr-1" />
+                {adhdContext.activeTasks} task
+              </Badge>
+            )}
+          </div>
+        )}
       </CardHeader>
       
-      <CardContent className="p-3 flex flex-col flex-1 min-h-0">
+      {!isMinimized && (
+        <CardContent className="p-3 flex flex-col flex-1 min-h-0">
         {/* Area Chat */}
         <div className="flex-1 flex flex-col min-h-0">
           {/* Messaggi Chat */}
@@ -2389,47 +2413,7 @@ export const LocalChatBot: React.FC<LocalChatBotProps> = ({
           </div>
         </div>
         
-        {/* Quick Actions (collassabili) */}
-        {showQuickActions && (
-          <div className="mt-3 pt-3 border-t flex-shrink-0">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-medium text-muted-foreground">
-                Azioni rapide:
-              </h3>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowQuickActions(false)}
-                className="h-6 w-6 p-0 text-muted-foreground"
-              >
-                <ChevronDown className="w-3 h-3" />
-              </Button>
-            </div>
-            
-            <div className="max-h-28 overflow-y-auto">
-              {currentQuickActions.length > 0 ? (
-                <div className="grid grid-cols-2 gap-2">
-                  {currentQuickActions.slice(0, 4).map((action, index) => (
-                    <Button
-                      key={index}
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleQuickActionClick(action)}
-                      className="text-xs h-8 justify-start"
-                    >
-                      <span className="mr-1">{action.icon}</span>
-                      {action.label}
-                    </Button>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-xs text-muted-foreground text-center py-2">
-                  Nessuna azione rapida disponibile
-                </p>
-              )}
-            </div>
-          </div>
-        )}
+
         
         {/* Risultato ultima azione */}
         {lastActionResult && (
@@ -2457,7 +2441,8 @@ export const LocalChatBot: React.FC<LocalChatBotProps> = ({
             </p>
           </div>
         </div>
-      </CardContent>
+        </CardContent>
+      )}
     </Card>
   );
 };

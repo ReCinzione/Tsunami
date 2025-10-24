@@ -51,11 +51,11 @@ export const SettingsPage = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">Email</label>
-                  <p className="text-sm">{user.email}</p>
+                  <p className="text-sm break-all">{user.email}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-muted-foreground">ID Utente</label>
-                  <p className="text-xs font-mono bg-muted px-2 py-1 rounded">{user.id}</p>
+                  <p className="text-xs font-mono bg-muted px-2 py-1 rounded break-all">{user.id}</p>
                 </div>
               </div>
             </div>

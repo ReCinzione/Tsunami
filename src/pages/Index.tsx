@@ -18,7 +18,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { LogOut, User, ChevronRight, Focus, Plus, Settings } from 'lucide-react';
+import { LogOut, User, ChevronRight, Focus, Plus, Settings, MessageCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useUIStore } from '@/store/uiStore';
 import { useTaskStore } from '@/store/taskStore';
@@ -46,6 +46,8 @@ const AppContent = () => {
   const [tasks, setTasks] = useState([]);
   const [energyLevel, setEnergyLevel] = useState(7);
   const [showVoiceInput, setShowVoiceInput] = useState(false);
+  const [chatBotOpen, setChatBotOpen] = useState(false);
+  const [chatBotMinimized, setChatBotMinimized] = useState(false);
   const { toast } = useToast();
   const { handleError } = useErrorHandler();
 
@@ -306,7 +308,7 @@ const AppContent = () => {
                 </div>
               </div>
             )}
-          </div>
+            </div>
 
         </div>
 
@@ -441,15 +443,12 @@ const AppContent = () => {
                 />
               </div>
             )}
-            
 
           </TabsContent>
-          
-
-
 
           {/* Local ChatBot */}
-          <LocalChatBot
+          {chatBotOpen && (
+            <LocalChatBot
             userId="current-user"
             tasks={tasks}
             adhdContext={{
@@ -707,7 +706,11 @@ const AppContent = () => {
                   });
               }
             }}
+            onClose={() => setChatBotOpen(false)}
+            isMinimized={chatBotMinimized}
+            onToggleMinimize={() => setChatBotMinimized(!chatBotMinimized)}
           />
+          )}
 
           <TabsContent value="character" className="space-y-6 mt-6">
             {/* Dominant Archetype Description */}
@@ -890,6 +893,17 @@ const AppContent = () => {
 
 
         </Tabs>
+
+        {/* Floating ChatBot Button */}
+        {!chatBotOpen && (
+          <button
+            onClick={() => setChatBotOpen(true)}
+            className="fixed bottom-6 right-6 bg-primary hover:bg-primary/90 text-primary-foreground rounded-full p-4 shadow-lg transition-all duration-200 hover:scale-105 z-50"
+            aria-label="Apri ChatBot"
+          >
+            <MessageCircle className="w-6 h-6" />
+          </button>
+        )}
       </div>
     </div>
   );

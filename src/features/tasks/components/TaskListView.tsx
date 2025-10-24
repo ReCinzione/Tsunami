@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Plus, Focus, Filter, Search, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Focus, Filter, Search, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { TaskListViewProps } from '../types';
 import { TaskItem } from './TaskItem';
 import { TaskForm } from './TaskForm';
@@ -312,7 +312,6 @@ export const TaskListView = React.memo<TaskListViewProps>(({
                 size="sm"
                 className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto hidden sm:flex"
               >
-                <Plus className="h-4 w-4 mr-1" />
                 Nuova Task
               </Button>
             </div>
@@ -356,18 +355,7 @@ export const TaskListView = React.memo<TaskListViewProps>(({
         </CardContent>
       </Card>
 
-      {/* Pulsante mobile per creare task */}
-      {!focusMode && (
-        <div className="fixed bottom-6 right-6 sm:hidden z-40">
-          <Button
-            onClick={onCreateTask}
-            size="lg"
-            className="rounded-full w-14 h-14 bg-blue-600 hover:bg-blue-700 shadow-lg"
-          >
-            <Plus className="h-6 w-6" />
-          </Button>
-        </div>
-      )}
+
     </div>
   );
 });

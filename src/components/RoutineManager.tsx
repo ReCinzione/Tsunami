@@ -86,7 +86,7 @@ const RoutineManager: React.FC<RoutineManagerProps> = ({ userId }) => {
     suggestions,
     applySuggestion,
     dismissSuggestion,
-    logRoutineActivation,
+    logTaskInteraction,
     isProcessing
   } = usePatternMining(userId);
   const [isCreating, setIsCreating] = useState(false);
@@ -115,20 +115,30 @@ const RoutineManager: React.FC<RoutineManagerProps> = ({ userId }) => {
     const currentDay = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
     const currentDate = today.getDate();
     
-    return routines.filter(routine => {
-      if (!routine.is_active) return false;
+    const filtered = routines.filter(routine => {
+      if (!routine.is_active) {
+        return false;
+      }
       
+      let shouldShow = false;
       switch (routine.type) {
         case 'daily':
-          return true;
+          shouldShow = true;
+          break;
         case 'weekly':
-          return routine.days_of_week?.includes(currentDay.toString()) || false;
+          shouldShow = routine.days_of_week?.includes(currentDay.toString()) || false;
+          break;
         case 'monthly':
-          return routine.day_of_month === currentDate;
+          shouldShow = routine.day_of_month === currentDate;
+          break;
         default:
-          return true;
+          shouldShow = true;
       }
+      
+      return shouldShow;
     });
+    
+    return filtered;
   };
 
   // Load data from database
@@ -216,17 +226,20 @@ const RoutineManager: React.FC<RoutineManagerProps> = ({ userId }) => {
     try {
       setLoading(true);
 
+      // Determine the actual routine type
+      const actualRoutineType = (routineType === 'daily' && showSpecificDays && selectedDays.length > 0) ? 'weekly' : routineType;
+      
       // Create routine
       const { data: routineData, error: routineError } = await supabase
         .from('routines')
         .insert({
           user_id: userId,
           name: routineName,
-          type: routineType,
+          type: actualRoutineType,
           category: routineCategory,
           start_time: routineTime || null,
-          days_of_week: (routineType === 'weekly' || showSpecificDays) ? selectedDays.map(String) : null,
-          day_of_month: routineType === 'monthly' ? dayOfMonth : null,
+          days_of_week: (actualRoutineType === 'weekly' || showSpecificDays) ? selectedDays.map(String) : null,
+          day_of_month: actualRoutineType === 'monthly' ? dayOfMonth : null,
           is_active: true
         })
         .select()
@@ -271,17 +284,14 @@ const RoutineManager: React.FC<RoutineManagerProps> = ({ userId }) => {
         if (goalsError) throw goalsError;
       }
 
-      // Log routine creation event
-      logRoutineActivation({
-        routineId: routineData.id,
-        routineName: routineData.name,
+      // Log routine creation for pattern mining
+      logTaskInteraction('routine_created', {
         routineType: routineData.type,
         category: routineData.category,
-        action: 'created',
-        metadata: {
-          itemsCount: items.length,
-          goalsCount: goals.length,
-          hasSchedule: !!(routineData.start_time || routineData.days_of_week)
+        timeOfDay: routineData.start_time ? 'scheduled' : 'flexible',
+        context: {
+          hasItems: items.length > 0,
+          itemCount: items.length
         }
       });
       
@@ -314,15 +324,13 @@ const RoutineManager: React.FC<RoutineManagerProps> = ({ userId }) => {
           : routine
       ));
       
-      // Log routine activation/deactivation event
+      // Log routine activation/deactivation for pattern mining
       if (routine) {
-        logRoutineActivation({
-          routineId: routineId,
-          routineName: routine.name,
+        logTaskInteraction(!isActive ? 'routine_activated' : 'routine_deactivated', {
           routineType: routine.type,
           category: routine.category,
-          action: !isActive ? 'activated' : 'deactivated',
-          metadata: {
+          timeOfDay: routine.start_time ? 'scheduled' : 'flexible',
+          context: {
             previousState: isActive ? 'active' : 'inactive'
           }
         });
@@ -413,15 +421,18 @@ const RoutineManager: React.FC<RoutineManagerProps> = ({ userId }) => {
       setLoading(true);
 
       // Update routine
+      // Determine the actual routine type
+      const actualRoutineType = (routineType === 'daily' && showSpecificDays && selectedDays.length > 0) ? 'weekly' : routineType;
+      
       const { error: routineError } = await supabase
         .from('routines')
         .update({
           name: routineName,
-          type: routineType,
+          type: actualRoutineType,
           category: routineCategory,
           start_time: routineTime || null,
-          days_of_week: (routineType === 'weekly' || showSpecificDays) ? selectedDays.map(String) : null,
-          day_of_month: routineType === 'monthly' ? dayOfMonth : null,
+          days_of_week: (actualRoutineType === 'weekly' || showSpecificDays) ? selectedDays.map(String) : null,
+          day_of_month: actualRoutineType === 'monthly' ? dayOfMonth : null,
         })
         .eq('id', editingRoutine.id)
         .eq('user_id', userId);

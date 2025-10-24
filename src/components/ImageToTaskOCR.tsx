@@ -179,22 +179,38 @@ const ImageToTaskOCR: React.FC<ImageToTaskOCRProps> = ({ onTaskCreated }) => {
   };
 
   const saveAsTask = async () => {
-    if (!extractedText.trim() || !user) return;
+    if (!extractedText.trim()) {
+      toast({
+        title: "Errore",
+        description: "Non c'è testo da salvare.",
+        variant: "destructive"
+      });
+      return;
+    }
 
     try {
       let imageUrl = null;
       
       // Upload image to Supabase Storage if available
       if (image) {
-        const uploadedPath = await uploadImageToStorage(image);
-        if (uploadedPath) {
-          const { data } = supabase.storage
+        const fileName = `task-image-${Date.now()}-${Math.random().toString(36).substring(7)}.${image.type.split('/')[1]}`;
+        
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('task-images')
+          .upload(fileName, image);
+
+        if (uploadError) {
+          console.warn('Image upload failed:', uploadError);
+          // Continue without image if upload fails
+        } else {
+          const { data: { publicUrl } } = supabase.storage
             .from('task-images')
-            .getPublicUrl(uploadedPath);
-          imageUrl = data.publicUrl;
+            .getPublicUrl(fileName);
+          imageUrl = publicUrl;
         }
       }
 
+      // Create task with extracted text
       const { error } = await supabase
         .from('tasks')
         .insert({
@@ -214,6 +230,9 @@ const ImageToTaskOCR: React.FC<ImageToTaskOCRProps> = ({ onTaskCreated }) => {
         title: "Task creato",
         description: imageUrl ? "Task creato con immagine allegata." : "Il testo è stato salvato come nuovo task."
       });
+      
+      // Non pulire automaticamente per mantenere l'immagine visibile
+      // clearAll();
     } catch (error) {
       console.error('Error creating task:', error);
       toast({

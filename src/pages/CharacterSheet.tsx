@@ -277,20 +277,20 @@ const CharacterSheet = () => {
           <div className="lg:col-span-2">
             <Card className="bg-gradient-to-br from-primary/10 to-secondary/10 border-primary/20">
               <CardHeader>
-                <div className="flex items-center gap-4">
-                  <div className="w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center text-3xl">
+                <div className="flex items-center gap-3 md:gap-4">
+                  <div className="w-12 h-12 md:w-16 md:h-16 bg-primary/20 rounded-full flex items-center justify-center text-2xl md:text-3xl flex-shrink-0">
                     {getArchetypeEmoji(profile.dominant_archetype)}
                   </div>
-                  <div className="flex-1">
-                    <CardTitle className="text-2xl">
+                  <div className="flex-1 min-w-0">
+                    <CardTitle className="text-lg md:text-2xl break-words">
                       {profile.display_name || 'Avventuriero'}
                     </CardTitle>
-                    <CardDescription className="text-lg capitalize">
+                    <CardDescription className="text-sm md:text-lg capitalize break-words">
                       {profile.dominant_archetype ? `Il ${profile.dominant_archetype}` : 'Tipo non definito'}
                     </CardDescription>
                   </div>
-                  <Badge variant="secondary" className="text-lg px-3 py-1">
-                    Livello {currentLevel}
+                  <Badge variant="secondary" className="text-sm md:text-lg px-2 py-1 md:px-3 flex-shrink-0">
+                    Lv. {currentLevel}
                   </Badge>
                 </div>
               </CardHeader>
@@ -408,12 +408,12 @@ const CharacterSheet = () => {
 
         {/* Detailed Tabs */}
         <Tabs defaultValue="personality" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="personality">Personalità</TabsTrigger>
-            <TabsTrigger value="progression">Progressione</TabsTrigger>
-            <TabsTrigger value="achievements">Obiettivi</TabsTrigger>
-            <TabsTrigger value="inventory">Inventario</TabsTrigger>
-            <TabsTrigger value="history">Storia</TabsTrigger>
+          <TabsList className="w-full flex overflow-x-auto md:grid md:grid-cols-5 gap-1 md:gap-0 p-1">
+            <TabsTrigger value="personality" className="flex-shrink-0 text-xs md:text-sm px-2 md:px-3">Personalità</TabsTrigger>
+            <TabsTrigger value="progression" className="flex-shrink-0 text-xs md:text-sm px-2 md:px-3">Progressione</TabsTrigger>
+            <TabsTrigger value="achievements" className="flex-shrink-0 text-xs md:text-sm px-2 md:px-3">Obiettivi</TabsTrigger>
+            <TabsTrigger value="inventory" className="flex-shrink-0 text-xs md:text-sm px-2 md:px-3">Inventario</TabsTrigger>
+            <TabsTrigger value="history" className="flex-shrink-0 text-xs md:text-sm px-2 md:px-3">Storia</TabsTrigger>
           </TabsList>
 
           <TabsContent value="personality" className="space-y-6">
