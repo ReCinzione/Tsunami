@@ -172,6 +172,52 @@ CREATE OR REPLACE FUNCTION handle_new_user() RETURNS trigger
 
 ## 🎮 Funzionalità dell'Applicazione
 
+### 🎯 FUNZIONALITÀ PRINCIPALI
+
+#### 1. Sistema Archetipi
+- **5 Archetipi ADHD-Optimized**: Visionario, Costruttore, Sognatore, Silenzioso, Combattente
+- **Personalizzazione**: Adattamento interfaccia e suggerimenti basati su archetipo dominante
+- **Progressione**: Sistema XP e livelli (1-100) con rewards personalizzati
+
+#### 2. Task Management Intelligente
+- **Categorizzazione**: Azione, Riflessione, Creazione, Organizzazione
+- **Energia Required**: Bassa, Media, Alta per gestione spoons
+- **Smart Filtering**: Filtri avanzati per stato, energia, tipo, tags
+- **Progetti**: Gestione progetti a lungo termine con stati multipli
+
+#### 3. Mental Inbox con Voice Input
+- **Cattura Rapida**: Input veloce per idee e pensieri
+- **🎤 Input Vocale**: Tasto microfono integrato per trascrizione automatica
+- **Auto-Conversione**: Trasformazione automatica idee in task strutturati
+- **Zero Friction**: Interfaccia minimale per ridurre cognitive load
+- **Voice Commands**: Supporto comandi vocali per creazione task rapida
+
+#### 4. Focus Mode Migliorato
+- **Limitazione Task**: Visualizzazione 1-5 task per ridurre overwhelm
+- **Distraction-Free**: Interfaccia pulita durante sessioni focus
+- **Configurabile**: Numero task visibili personalizzabile
+- **Transizioni Fluide**: Passaggio ottimizzato tra modalità normale e focus
+- **Gestione Stato**: Migliore tracking stato focus attivo/inattivo
+
+#### 5. Mood & Energy Tracking
+- **Daily Mood**: Tracciamento umore giornaliero con scale 1-10
+- **Rituali Suggeriti**: Attività personalizzate basate su mood e archetipo
+- **Pattern Recognition**: Identificazione pattern umore/produttività
+
+#### 6. Sistema Routine con Reset Automatico
+- **Routine Multiple**: Giornaliere, settimanali, mensili
+- **♻️ Reset Automatico**: Reset giornaliero automatico delle checklist routine
+- **Streak Tracking**: Monitoraggio continuità e motivazione
+- **Checklist Dinamiche**: Task routine con stato completamento
+- **Gestione Intelligente**: Reset basato su tipo routine (daily/weekly/monthly)
+- **Persistenza**: Tracking ultimo reset tramite localStorage
+
+#### 7. Local ChatBot ADHD-Aware
+- **Completamente Locale**: Nessun dato inviato a servizi esterni
+- **ADHD-Specialized**: Risposte ottimizzate per neurodivergenti
+- **Action Suggestions**: Suggerimenti azioni concrete basate su contesto
+- **Pattern Matching**: Riconoscimento pattern comportamentali e suggerimenti
+
 ### 🏠 Dashboard Principale (`Index.tsx`)
 
 **Componenti Principali**:

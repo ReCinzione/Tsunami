@@ -11,10 +11,9 @@
 ### 🧠 Sistema RAG (Retrieval-Augmented Generation)
 | File | Scopo | Priorità | Aggiornamento |
 |------|-------|----------|---------------|
-| **[CONTEXT_RAG.md](./CONTEXT_RAG.md)** | 📖 **FONTE PRIMARIA** - Knowledge Base centralizzata | 🔥 CRITICA | Quotidiano |
-| **[AI_CONTEXT_CONFIG.md](./AI_CONTEXT_CONFIG.md)** | 🤖 Configurazione AI per context engineering | 🔥 CRITICA | Settimanale |
+| **[CONTEXT_RAG.md](./CONTEXT_RAG.md)** | 📖 **FONTE PRIMARIA** - Knowledge base completa + Architettura dettagliata | 🔥 CRITICA | Quotidiano |
+| **[AI_CONTEXT_CONFIG.md](./AI_CONTEXT_CONFIG.md)** | 🤖 Configurazione AI, template e workflow automatico | 🔥 CRITICA | Settimanale |
 | **[RAG_AUTO_VALIDATOR.md](./RAG_AUTO_VALIDATOR.md)** | 🔍 Sistema validazione automatica coerenza | ⚡ ALTA | Settimanale |
-| **[CONTEXT_ENGINEERING.md](./CONTEXT_ENGINEERING.md)** | 🏗️ Metodologia e workflow | ⚡ ALTA | Mensile |
 
 ### 🚀 Workflow Context Engineering
 ```
@@ -38,7 +37,7 @@
 ### 🏗️ Architettura e Sviluppo
 | File | Descrizione | Audience | Ultimo Aggiornamento |
 |------|-------------|----------|----------------------|
-| **[DEVELOPMENT_BEST_PRACTICES.md](./DEVELOPMENT_BEST_PRACTICES.md)** | Best practices di sviluppo | Sviluppatori | 2025-01-20 |
+| **[DEVELOPMENT_BEST_PRACTICES.md](./DEVELOPMENT_BEST_PRACTICES.md)** | Best practices sviluppo + Testing strategy completa | Sviluppatori | 2025-01-20 |
 | **[FRONTEND_REFACTORING_PLAN.md](./FRONTEND_REFACTORING_PLAN.md)** | Piano di refactoring frontend | Sviluppatori | 2025-01-20 |
 | **[DATABASE_SCHEMA_REFERENCE.md](./DATABASE_SCHEMA_REFERENCE.md)** | Riferimento schema database | Sviluppatori | 2025-01-20 |
 
@@ -49,9 +48,14 @@
 ### 🎭 Ottimizzazione ADHD
 | File | Descrizione | Focus | Stato |
 |------|-------------|-------|-------|
+| **[ADHD_IMPLEMENTATION_ROADMAP.md](./ADHD_IMPLEMENTATION_ROADMAP.md)** | **Piano consolidato 6 mesi** (MASTER) | Strategia Globale | 🔥 MASTER |
 | **[PROGRESS_ADHD_OPTIMIZATION.md](./PROGRESS_ADHD_OPTIMIZATION.md)** | Progresso ottimizzazioni ADHD | Cognitive Load | 🔄 Attivo |
 | **[PROGRESS_COGNITIVE_OPTIMIZATION.md](./PROGRESS_COGNITIVE_OPTIMIZATION.md)** | Ottimizzazioni cognitive specifiche | UX/UI | 🔄 Attivo |
 | **[docs/LOCAL_CHATBOT.md](./docs/LOCAL_CHATBOT.md)** | Architettura chatbot ADHD | Pattern Matching | ✅ Completo |
+
+### 🔄 Sistema di Riferimento e Automazione
+- **[WORKFLOW_AUTOMATION.md](./WORKFLOW_AUTOMATION.md)** - 🤖 **SISTEMA COMPLETAMENTE AUTOMATIZZATO** - Workflow e TODO management automatico
+- **Sistema consolidato in CONTEXT_RAG.md e AI_CONTEXT_CONFIG.md** - Accesso automatico ai riferimenti integrato
 
 ### 🎯 Features ADHD
 - **Sistema Archetipi**: 5 personalità ADHD (Visionario, Costruttore, Sognatore, Silenzioso, Combattente)
@@ -82,12 +86,19 @@
 
 ## 🛠️ GUIDE OPERATIVE
 
+### 📋 TODO MANAGEMENT (Auto-Prioritizzato)
+| File | Descrizione | Priorità | Stato |
+|------|-------------|----------|-------|
+| **[ADHD_IMPLEMENTATION_ROADMAP.md](./ADHD_IMPLEMENTATION_ROADMAP.md)** | **Piano consolidato** - Incrocia analisi ADHD con tutti i TODO | 🔥 MASTER | 🔄 Attivo |
+| **[DATABASE_MODIFICATIONS_TODO.md](./DATABASE_MODIFICATIONS_TODO.md)** | Modifiche DB critiche | 🔥 CRITICA | 📋 Integrato |
+| **[TECHNICAL_FIXES_TODO.md](./TECHNICAL_FIXES_TODO.md)** | Fix problemi confermati | 🔥 CRITICA | 🔄 Integrato |
+| **[PATTERN_MINING_TODO.md](./PATTERN_MINING_TODO.md)** | Roadmap funzionalità avanzate | ⚡ ALTA | ✅ 85% Completo |
+
 ### 🚀 Sviluppo e Deploy
 | File | Descrizione | Tipo |
 |------|-------------|------|
 | **[TASK_BUG_FIX_DOCUMENTATION.md](./TASK_BUG_FIX_DOCUMENTATION.md)** | Documentazione fix bug task | 🐛 Bug Fix |
 | **[TAGS_MIGRATION_INSTRUCTIONS.md](./TAGS_MIGRATION_INSTRUCTIONS.md)** | Istruzioni migrazione tags | 🔄 Migration |
-| **[PATTERN_MINING_TODO.md](./PATTERN_MINING_TODO.md)** | TODO pattern mining | 📋 Roadmap |
 
 ### 🎮 Features Avanzate
 | File | Descrizione | Stato |

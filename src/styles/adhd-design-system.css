@@ -1,0 +1,323 @@
+/* ADHD-Friendly Design System - Miglioramenti Grafici Prioritari */
+
+@layer utilities {
+  /* === PALETTE COLORI ADHD-OPTIMIZED === */
+  :root {
+    /* Colori primari più vivaci per catturare l'attenzione */
+    --adhd-primary: 263 85% 58%; /* Viola più saturo */
+    --adhd-success: 142 76% 36%; /* Verde più vivace */
+    --adhd-warning: 38 92% 50%; /* Arancione energico */
+    --adhd-danger: 0 84% 60%; /* Rosso chiaro */
+    --adhd-focus: 217 91% 60%; /* Blu focus */
+    
+    /* Gradienti motivazionali */
+    --adhd-gradient-energy: linear-gradient(135deg, hsl(263 85% 58%) 0%, hsl(217 91% 60%) 100%);
+    --adhd-gradient-success: linear-gradient(135deg, hsl(142 76% 36%) 0%, hsl(120 100% 25%) 100%);
+    --adhd-gradient-focus: linear-gradient(135deg, hsl(217 91% 60%) 0%, hsl(263 85% 58%) 100%);
+    --adhd-gradient-warm: linear-gradient(135deg, hsl(38 92% 50%) 0%, hsl(0 84% 60%) 100%);
+    
+    /* Ombre più pronunciate per depth perception */
+    --adhd-shadow-soft: 0 2px 8px rgba(0, 0, 0, 0.08);
+    --adhd-shadow-medium: 0 4px 16px rgba(0, 0, 0, 0.12);
+    --adhd-shadow-strong: 0 8px 32px rgba(0, 0, 0, 0.16);
+    --adhd-shadow-glow: 0 0 20px rgba(99, 102, 241, 0.3);
+    
+    /* Animazioni timing ottimizzate per ADHD */
+    --adhd-transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+    --adhd-transition-medium: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --adhd-transition-slow: 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    --adhd-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  }
+
+  /* === MICRO-INTERAZIONI === */
+  .adhd-hover-lift {
+    transition: transform var(--adhd-transition-fast), box-shadow var(--adhd-transition-fast);
+  }
+  
+  .adhd-hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--adhd-shadow-medium);
+  }
+  
+  .adhd-click-bounce {
+    transition: transform var(--adhd-transition-fast);
+  }
+  
+  .adhd-click-bounce:active {
+    transform: scale(0.95);
+  }
+  
+  .adhd-pulse-success {
+    animation: adhd-pulse-success 2s infinite;
+  }
+  
+  @keyframes adhd-pulse-success {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4); }
+    50% { box-shadow: 0 0 0 8px rgba(34, 197, 94, 0); }
+  }
+  
+  .adhd-shimmer {
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+    background-size: 200% 100%;
+    animation: adhd-shimmer 1.5s infinite;
+  }
+  
+  @keyframes adhd-shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+
+  /* === COMPONENTI ADHD-FRIENDLY === */
+  
+  /* Task Cards con feedback visivo immediato */
+  .adhd-task-card {
+    @apply relative overflow-hidden rounded-xl border-2 border-transparent;
+    background: linear-gradient(white, white) padding-box,
+                var(--adhd-gradient-energy) border-box;
+    transition: all var(--adhd-transition-medium);
+  }
+  
+  .adhd-task-card:hover {
+    @apply adhd-hover-lift;
+    border-color: hsl(var(--adhd-primary));
+  }
+  
+  .adhd-task-card.completed {
+    background: linear-gradient(white, white) padding-box,
+                var(--adhd-gradient-success) border-box;
+  }
+  
+  .adhd-task-card.completed::after {
+    content: '✨';
+    @apply absolute top-2 right-2 text-2xl;
+    animation: adhd-celebration 0.6s var(--adhd-bounce);
+  }
+  
+  @keyframes adhd-celebration {
+    0% { transform: scale(0) rotate(0deg); opacity: 0; }
+    50% { transform: scale(1.2) rotate(180deg); opacity: 1; }
+    100% { transform: scale(1) rotate(360deg); opacity: 1; }
+  }
+  
+  /* Progress Bars più visibili */
+  .adhd-progress {
+    @apply h-3 rounded-full overflow-hidden;
+    background: linear-gradient(90deg, #f1f5f9, #e2e8f0);
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+  }
+  
+  .adhd-progress-fill {
+    @apply h-full rounded-full transition-all duration-500;
+    background: var(--adhd-gradient-energy);
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+  }
+  
+  /* Buttons con stati emotivi */
+  .adhd-btn-primary {
+    @apply px-6 py-3 rounded-xl font-semibold text-white;
+    background: var(--adhd-gradient-energy);
+    box-shadow: var(--adhd-shadow-medium);
+    transition: all var(--adhd-transition-medium);
+  }
+  
+  .adhd-btn-primary:hover {
+    @apply adhd-hover-lift;
+    box-shadow: var(--adhd-shadow-strong), var(--adhd-shadow-glow);
+  }
+  
+  .adhd-btn-primary:active {
+    @apply adhd-click-bounce;
+  }
+  
+  .adhd-btn-success {
+    @apply px-6 py-3 rounded-xl font-semibold text-white;
+    background: var(--adhd-gradient-success);
+    box-shadow: var(--adhd-shadow-medium);
+  }
+  
+  .adhd-btn-success:hover {
+    @apply adhd-hover-lift adhd-pulse-success;
+  }
+  
+  /* Focus Mode migliorato */
+  .adhd-focus-overlay {
+    @apply fixed inset-0 z-50;
+    background: radial-gradient(circle at center, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.8) 100%);
+    backdrop-filter: blur(8px);
+    animation: adhd-focus-enter 0.5s ease-out;
+  }
+  
+  @keyframes adhd-focus-enter {
+    0% { opacity: 0; backdrop-filter: blur(0px); }
+    100% { opacity: 1; backdrop-filter: blur(8px); }
+  }
+  
+  .adhd-focus-content {
+    @apply relative z-10 max-w-4xl mx-auto p-8;
+    animation: adhd-focus-content-enter 0.6s var(--adhd-bounce) 0.2s both;
+  }
+  
+  @keyframes adhd-focus-content-enter {
+    0% { transform: scale(0.8) translateY(40px); opacity: 0; }
+    100% { transform: scale(1) translateY(0); opacity: 1; }
+  }
+  
+  /* Timer Pomodoro più visibile */
+  .adhd-timer {
+    @apply relative flex items-center justify-center w-32 h-32 rounded-full;
+    background: conic-gradient(from 0deg, hsl(var(--adhd-focus)) var(--progress, 0%), transparent var(--progress, 0%));
+    box-shadow: var(--adhd-shadow-strong), inset 0 0 20px rgba(255,255,255,0.1);
+  }
+  
+  .adhd-timer::before {
+    content: '';
+    @apply absolute inset-2 rounded-full bg-white;
+    box-shadow: inset var(--adhd-shadow-medium);
+  }
+  
+  .adhd-timer-text {
+    @apply relative z-10 text-2xl font-bold;
+    background: var(--adhd-gradient-energy);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  
+  /* Mood Selector più espressivo */
+  .adhd-mood-card {
+    @apply relative p-6 rounded-2xl cursor-pointer transition-all duration-300;
+    background: linear-gradient(135deg, rgba(255,255,255,0.9), rgba(255,255,255,0.7));
+    backdrop-filter: blur(10px);
+    border: 2px solid transparent;
+  }
+  
+  .adhd-mood-card:hover {
+    @apply adhd-hover-lift;
+    background: linear-gradient(135deg, rgba(255,255,255,1), rgba(255,255,255,0.9));
+    border-color: hsl(var(--adhd-primary));
+  }
+  
+  .adhd-mood-card.selected {
+    background: var(--adhd-gradient-energy);
+    color: white;
+    box-shadow: var(--adhd-shadow-glow);
+    animation: adhd-mood-select 0.4s var(--adhd-bounce);
+  }
+  
+  @keyframes adhd-mood-select {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+  }
+  
+  .adhd-mood-emoji {
+    @apply text-6xl mb-4 transition-transform duration-300;
+  }
+  
+  .adhd-mood-card:hover .adhd-mood-emoji {
+    transform: scale(1.1) rotate(5deg);
+  }
+  
+  /* Stats Cards più coinvolgenti */
+  .adhd-stat-card {
+    @apply relative p-4 rounded-xl overflow-hidden;
+    background: linear-gradient(135deg, rgba(255,255,255,0.95), rgba(255,255,255,0.8));
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.2);
+    transition: all var(--adhd-transition-medium);
+  }
+  
+  .adhd-stat-card::before {
+    content: '';
+    @apply absolute inset-0 opacity-0 transition-opacity duration-300;
+    background: var(--adhd-gradient-energy);
+  }
+  
+  .adhd-stat-card:hover::before {
+    opacity: 0.1;
+  }
+  
+  .adhd-stat-card:hover {
+    @apply adhd-hover-lift;
+    border-color: hsl(var(--adhd-primary));
+  }
+  
+  .adhd-stat-value {
+    @apply text-3xl font-bold mb-1;
+    background: var(--adhd-gradient-energy);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  
+  /* Notifiche più gentili */
+  .adhd-notification {
+    @apply fixed top-4 right-4 p-4 rounded-xl max-w-sm;
+    background: linear-gradient(135deg, rgba(255,255,255,0.95), rgba(255,255,255,0.9));
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.3);
+    box-shadow: var(--adhd-shadow-strong);
+    animation: adhd-notification-enter 0.5s var(--adhd-bounce);
+  }
+  
+  @keyframes adhd-notification-enter {
+    0% { transform: translateX(100%) scale(0.8); opacity: 0; }
+    100% { transform: translateX(0) scale(1); opacity: 1; }
+  }
+  
+  .adhd-notification.success {
+    border-left: 4px solid hsl(var(--adhd-success));
+  }
+  
+  .adhd-notification.warning {
+    border-left: 4px solid hsl(var(--adhd-warning));
+  }
+  
+  /* Responsive ottimizzato per mobile ADHD */
+  @media (max-width: 768px) {
+    .adhd-task-card {
+      @apply p-4 mb-3;
+    }
+    
+    .adhd-timer {
+      @apply w-24 h-24;
+    }
+    
+    .adhd-timer-text {
+      @apply text-lg;
+    }
+    
+    .adhd-mood-card {
+      @apply p-4;
+    }
+    
+    .adhd-mood-emoji {
+      @apply text-4xl;
+    }
+  }
+  
+  /* Accessibilità migliorata */
+  .adhd-focus-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2;
+  }
+  
+  .adhd-focus-ring:focus-visible {
+    ring-color: hsl(var(--adhd-focus));
+  }
+  
+  /* Riduzione movimento per utenti sensibili */
+  @media (prefers-reduced-motion: reduce) {
+    .adhd-hover-lift:hover {
+      transform: none;
+    }
+    
+    .adhd-click-bounce:active {
+      transform: none;
+    }
+    
+    .adhd-pulse-success,
+    .adhd-shimmer {
+      animation: none;
+    }
+  }
+}

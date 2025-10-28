@@ -370,15 +370,18 @@ const useToggleTask = () => {
 
 ---
 
-## 🧪 Testing
+## 🧪 Testing Strategy Completa
 
-### Unit Tests
+### Piramide di Testing
 
+#### 1. Unit Tests (70%)
 ```typescript
 // ✅ CORRETTO: Test completi
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { vi } from 'vitest';
 import { TaskItem } from './TaskItem';
+import TaskForm from '../TaskForm';
 
 const createWrapper = () => {
   const queryClient = new QueryClient({
@@ -411,7 +414,7 @@ describe('TaskItem', () => {
   });
   
   it('toggles task completion on checkbox click', async () => {
-    const mockToggle = jest.fn();
+    const mockToggle = vi.fn();
     render(
       <TaskItem task={mockTask} onToggle={mockToggle} />, 
       { wrapper: createWrapper() }
@@ -432,10 +435,53 @@ describe('TaskItem', () => {
     expect(checkbox).toHaveAttribute('aria-label', expect.stringContaining('Segna come'));
   });
 });
+
+// Test TaskForm
+const mockOnSubmit = vi.fn();
+const mockOnCancel = vi.fn();
+
+describe('TaskForm', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('should submit valid task data', async () => {
+    render(
+      <TaskForm 
+        onSubmit={mockOnSubmit} 
+        onCancel={mockOnCancel} 
+      />
+    );
+    
+    const titleInput = screen.getByLabelText(/titolo/i);
+    const submitButton = screen.getByRole('button', { name: /salva/i });
+    
+    fireEvent.change(titleInput, { target: { value: 'Test Task' } });
+    fireEvent.click(submitButton);
+    
+    await waitFor(() => {
+      expect(mockOnSubmit).toHaveBeenCalledWith({
+        title: 'Test Task',
+        description: '',
+        priority: 'medium'
+      });
+    });
+  });
+
+  it('should show validation errors', async () => {
+    render(<TaskForm onSubmit={mockOnSubmit} onCancel={mockOnCancel} />);
+    
+    const submitButton = screen.getByRole('button', { name: /salva/i });
+    fireEvent.click(submitButton);
+    
+    await waitFor(() => {
+      expect(screen.getByText(/titolo richiesto/i)).toBeInTheDocument();
+    });
+  });
+});
 ```
 
-### Integration Tests
-
+#### 2. Integration Tests (20%)
 ```typescript
 // ✅ CORRETTO: Test di integrazione
 import { renderHook, waitFor } from '@testing-library/react';
@@ -462,6 +508,146 @@ describe('useTasks Integration', () => {
       title: expect.any(String),
       user_id: 'user-1',
     });
+  });
+});
+
+// Test integrazione TaskManager + TaskForm
+describe('Task Management Integration', () => {
+  it('should create task end-to-end', async () => {
+    const { user } = renderWithProviders(<TaskManager />);
+    
+    // Apri form creazione
+    await user.click(screen.getByText('Nuova Task'));
+    
+    // Compila form
+    await user.type(screen.getByLabelText(/titolo/i), 'Integration Test Task');
+    await user.selectOptions(screen.getByLabelText(/priorità/i), 'high');
+    
+    // Submit
+    await user.click(screen.getByText('Salva'));
+    
+    // Verifica task creata
+    await waitFor(() => {
+      expect(screen.getByText('Integration Test Task')).toBeInTheDocument();
+    });
+  });
+});
+```
+
+#### 3. E2E Tests (10%)
+```typescript
+// Playwright E2E
+import { test, expect } from '@playwright/test';
+
+test('complete task workflow', async ({ page }) => {
+  await page.goto('/dashboard');
+  
+  // Login
+  await page.fill('[data-testid="email"]', 'test@example.com');
+  await page.fill('[data-testid="password"]', 'password');
+  await page.click('[data-testid="login-button"]');
+  
+  // Crea task
+  await page.click('[data-testid="new-task-button"]');
+  await page.fill('[data-testid="task-title"]', 'E2E Test Task');
+  await page.click('[data-testid="save-task"]');
+  
+  // Verifica task visibile
+  await expect(page.locator('[data-testid="task-item"]')).toContainText('E2E Test Task');
+});
+```
+
+### Test di Regressione
+
+#### Visual Regression Testing
+```typescript
+// Chromatic per visual testing
+import { Meta, StoryObj } from '@storybook/react';
+import TaskForm from './TaskForm';
+
+const meta: Meta<typeof TaskForm> = {
+  title: 'Components/TaskForm',
+  component: TaskForm,
+  parameters: {
+    chromatic: { 
+      viewports: [320, 768, 1200],
+      delay: 300
+    }
+  }
+};
+
+export const Default: StoryObj = {
+  args: {
+    onSubmit: () => {},
+    onCancel: () => {}
+  }
+};
+
+export const WithValidationErrors: StoryObj = {
+  args: {
+    ...Default.args,
+    initialErrors: { title: 'Titolo richiesto' }
+  }
+};
+```
+
+#### Performance Testing
+```typescript
+// Performance benchmarks
+import { performance } from 'perf_hooks';
+
+describe('Performance Tests', () => {
+  it('should render TaskList under 100ms', async () => {
+    const start = performance.now();
+    
+    render(<TaskList tasks={generateMockTasks(100)} />);
+    
+    const end = performance.now();
+    expect(end - start).toBeLessThan(100);
+  });
+  
+  it('should handle 1000 tasks without memory leaks', () => {
+    const initialMemory = process.memoryUsage().heapUsed;
+    
+    const { unmount } = render(<TaskList tasks={generateMockTasks(1000)} />);
+    unmount();
+    
+    // Force garbage collection
+    global.gc?.();
+    
+    const finalMemory = process.memoryUsage().heapUsed;
+    const memoryIncrease = finalMemory - initialMemory;
+    
+    expect(memoryIncrease).toBeLessThan(10 * 1024 * 1024); // 10MB
+  });
+});
+```
+
+### Accessibility Testing
+```typescript
+// axe-core per a11y testing
+import { axe, toHaveNoViolations } from 'jest-axe';
+
+expect.extend(toHaveNoViolations);
+
+describe('Accessibility Tests', () => {
+  it('should have no accessibility violations', async () => {
+    const { container } = render(<TaskForm onSubmit={() => {}} onCancel={() => {}} />);
+    const results = await axe(container);
+    expect(results).toHaveNoViolations();
+  });
+  
+  it('should support keyboard navigation', async () => {
+    render(<TaskForm onSubmit={() => {}} onCancel={() => {}} />);
+    
+    const titleInput = screen.getByLabelText(/titolo/i);
+    const submitButton = screen.getByRole('button', { name: /salva/i });
+    
+    // Tab navigation
+    titleInput.focus();
+    fireEvent.keyDown(titleInput, { key: 'Tab' });
+    
+    expect(submitButton).toHaveFocus();
   });
 });
 ```

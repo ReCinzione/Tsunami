@@ -92,8 +92,8 @@ function QuickStats({ userId, className }: QuickStatsProps) {
   return (
     <div className={cn("grid grid-cols-2 md:grid-cols-4 gap-1.5 md:gap-4 mb-4 md:mb-6", className)}>
       {statCards.map((stat, index) => (
-        <Card key={index} className={cn("transition-all hover:shadow-md w-full", stat.color)}>
-          <CardContent className="p-1.5 md:p-4">
+        <div key={index} className="adhd-stat-card adhd-hover-lift adhd-click-bounce w-full">
+          <div className="relative z-10">
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-1 md:gap-2">
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-medium text-muted-foreground break-words">
@@ -110,8 +110,8 @@ function QuickStats({ userId, className }: QuickStatsProps) {
                 {stat.icon}
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       ))}
     </div>
   );

@@ -257,6 +257,13 @@ CREATE INDEX idx_routine_items_routine_id ON routine_items(routine_id);
 CREATE INDEX idx_routine_items_order ON routine_items(order_index);
 ```
 
+**🔄 Reset Automatico Implementato**:
+- **Sistema Client-Side**: Reset automatico giornaliero dei flag `is_completed`
+- **Logica**: Implementata in `RoutineManager.tsx` con `useEffect`
+- **Tracking**: Ultimo reset salvato in `localStorage` come `lastRoutineReset`
+- **Gestione Intelligente**: Reset basato su tipo routine (daily/weekly/monthly)
+- **Prevenzione Duplicati**: Controllo data per evitare reset multipli nella stessa giornata
+
 ### 9. **routine_goals** - Obiettivi delle Routine
 
 ```sql

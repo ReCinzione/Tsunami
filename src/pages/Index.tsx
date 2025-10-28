@@ -15,6 +15,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useErrorHandler } from '@/hooks/useErrorHandler';
 import { Toaster } from '@/components/ui/toaster';
+import { ADHDPomodoroTimer } from '@/components/ADHDPomodoroTimer';
+import { ADHDNotificationContainer } from '@/components/ADHDNotification';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -254,40 +256,18 @@ const AppContent = () => {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto p-6 space-y-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mb-4">
-          <div className="text-center sm:text-left flex-1">
-            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold gradient-text">
-              Il tuo spazio personale
-            </h1>
-            <p className="text-sm sm:text-base md:text-lg text-muted-foreground">
-              Tipo di personalità: <span className="text-primary font-semibold capitalize">{profile?.dominant_archetype}</span>
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => navigate('/impostazioni')} className="gap-2 shrink-0 text-sm">
-              <Settings className="w-4 h-4" />
-              <span className="hidden sm:inline">Impostazioni</span>
-            </Button>
-            <Button variant="outline" onClick={handleLogout} className="gap-2 shrink-0 text-sm">
-              <LogOut className="w-4 h-4" />
-              <span className="hidden sm:inline">Logout</span>
-              <span className="sm:hidden">Esci</span>
-            </Button>
-          </div>
-        </div>
-
         {/* Focus Mode & Quick Actions Bar */}
         <div className="flex items-center justify-between gap-4 mb-4 p-4 bg-card border rounded-xl">
           <div className="flex items-center gap-3">
             <Button
-              variant={focusMode ? "default" : "outline"}
+              className={`adhd-btn-primary adhd-focus-ring flex items-center gap-2 ${
+                focusMode ? 'adhd-pulse-success' : ''
+              }`}
               size="sm"
               onClick={() => setFocusMode(!focusMode)}
-              className="gap-2"
             >
               <Focus className="w-4 h-4" />
-              {focusMode ? 'Modalità Focus ON' : 'Attiva Focus'}
+              {focusMode ? '🎯 Focus Mode ON' : '✨ Attiva Focus'}
             </Button>
             {focusMode && (
               <div className="flex items-center gap-2">
@@ -308,8 +288,18 @@ const AppContent = () => {
                 </div>
               </div>
             )}
-            </div>
-
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => navigate('/impostazioni')} className="gap-2 shrink-0 text-sm">
+              <Settings className="w-4 h-4" />
+              <span className="hidden sm:inline">Impostazioni</span>
+            </Button>
+            <Button variant="outline" onClick={handleLogout} className="gap-2 shrink-0 text-sm">
+              <LogOut className="w-4 h-4" />
+              <span className="hidden sm:inline">Logout</span>
+              <span className="sm:hidden">Esci</span>
+            </Button>
+          </div>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -853,14 +843,30 @@ const AppContent = () => {
           <TabsContent value="tasks" className="mt-6">
             <div className="space-y-4">
               {focusMode && (
-                <div className="bg-primary/10 border border-primary/20 rounded-xl p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Focus className="w-5 h-5 text-primary" />
-                    <h3 className="font-semibold text-primary">Modalità Focus Attiva</h3>
+                <div className="bg-primary/10 border border-primary/20 rounded-xl p-4 space-y-4">
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <Focus className="w-5 h-5 text-primary" />
+                      <h3 className="font-semibold text-primary">Modalità Focus Attiva</h3>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Visualizzando solo i {focusTaskCount} task più importanti per ridurre il cognitive load
+                    </p>
                   </div>
-                  <p className="text-sm text-muted-foreground">
-                    Visualizzando solo i 3 task più importanti per ridurre il cognitive load
-                  </p>
+                  
+                  {/* Timer Pomodoro ADHD */}
+                  <div className="flex justify-center">
+                    <ADHDPomodoroTimer 
+                      className="max-w-md"
+                      autoStart={false}
+                      onSessionComplete={(type) => {
+                        if (type === 'work') {
+                          // Refresh tasks dopo una sessione completata
+                          setRefreshTasks(prev => prev + 1);
+                        }
+                      }}
+                    />
+                  </div>
                 </div>
               )}
               <TaskManager
@@ -875,16 +881,7 @@ const AppContent = () => {
           </TabsContent>
 
           <TabsContent value="mental-inbox" className="mt-6">
-            <div className="space-y-6">
-              <MentalInbox onTaskCreated={handleTaskCreated} />
-              
-              {/* Voice Input in Mental Inbox Tab */}
-              <VoiceInput 
-                onTaskCreated={handleTaskCreated}
-                onNoteCreated={handleTaskCreated}
-                className="w-full"
-              />
-            </div>
+            <MentalInbox onTaskCreated={handleTaskCreated} />
           </TabsContent>
 
           <TabsContent value="routine" className="mt-6">
@@ -914,6 +911,7 @@ const Index = () => {
     <>
       <AppContent />
       <Toaster />
+      <ADHDNotificationContainer />
     </>
   );
 };

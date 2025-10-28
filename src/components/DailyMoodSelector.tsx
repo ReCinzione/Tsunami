@@ -72,43 +72,35 @@ export const DailyMoodSelector = ({ onMoodSelect }: DailyMoodSelectorProps) => {
             const isSelected = selectedMood === option.id;
             
             return (
-              <Card
+              <div
                 key={option.id}
-                className={`cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-lg ${
-                  isSelected 
-                    ? 'ring-2 ring-primary shadow-xl scale-105' 
-                    : 'hover:border-primary/50'
+                className={`adhd-mood-card adhd-hover-lift adhd-click-bounce adhd-focus-ring ${
+                  isSelected ? 'selected' : ''
                 }`}
                 onClick={() => handleMoodSelect(option)}
               >
-                <CardHeader className="text-center">
+                <div className="text-center">
                   <div className="mx-auto mb-4 relative">
-                    <div className="text-6xl mb-2">{option.emoji}</div>
+                    <div className="adhd-mood-emoji">{option.emoji}</div>
                   </div>
-                  <CardTitle className="text-2xl">{option.label}</CardTitle>
-                  <CardDescription className="text-base">
+                  <h3 className="text-2xl font-bold mb-2">{option.label}</h3>
+                  <p className="text-base mb-4 opacity-90">
                     {option.description}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="bg-muted/50 rounded-lg p-4">
-                    <p className="text-sm font-medium text-primary mb-2">
-                      Micro-rituale suggerito:
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {option.ritual}
-                    </p>
-                  </div>
-                  {isSelected && (
-                    <div className="mt-4 text-center">
-                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto"></div>
-                      <p className="text-sm text-muted-foreground mt-2">
-                        Preparando il tuo spazio...
-                      </p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+                  </p>
+                </div>
+                <div className="bg-white/20 rounded-lg p-4 backdrop-blur-sm">
+                  <p className="text-sm font-semibold mb-2 flex items-center gap-2">
+                    <span className="text-lg">✨</span>
+                    Micro-rituale suggerito:
+                  </p>
+                  <p className="text-sm opacity-90">
+                    {option.ritual}
+                  </p>
+                 </div>
+                 {isSelected && (
+                   <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-2xl animate-pulse" />
+                 )}
+               </div>
             );
           })}
         </div>

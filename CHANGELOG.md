@@ -5,6 +5,41 @@
 
 ---
 
+## [2.0.2] - 2025-01-21
+
+### ✨ New Features
+
+#### 🎤 Voice Input Enhancement
+- **Mental Inbox**: Aggiunto tasto microfono per input vocale diretto
+  - Integrazione `VoiceInput` component nel `MentalInbox`
+  - Riconoscimento vocale automatico con trascrizione in tempo reale
+  - Supporto per comandi vocali e creazione task rapida
+- **Rimozione Nota Vocale**: Eliminata funzionalità nota vocale ridondante
+  - Consolidamento input vocale nel Mental Inbox
+  - Semplificazione UX per ridurre cognitive load
+
+#### 🎯 Focus Mode Improvements
+- **Modalità Focus Migliorata**: Ottimizzazioni UX e performance
+  - Migliore gestione stato focus attivo/inattivo
+  - Transizioni più fluide tra modalità normale e focus
+  - Riduzione distrazioni visive durante focus mode
+
+#### ♻️ Routine Management Enhancement
+- **Reset Automatico Checklist**: Sistema automatico di reset giornaliero
+  - Reset automatico flag checklist routine all'inizio di ogni giorno
+  - Gestione intelligente routine giornaliere, settimanali e mensili
+  - Tracking ultimo reset tramite localStorage per evitare reset multipli
+  - Implementazione in `RoutineManager.tsx` con `useEffect` dedicato
+
+#### 🔧 Technical Details
+- **File modificati**:
+  - `src/components/MentalInbox.tsx`: Integrazione tasto microfono
+  - `src/components/RoutineManager.tsx`: Sistema reset automatico checklist
+  - `src/components/VoiceInput.tsx`: Ottimizzazioni integrazione
+  - Rimozione componenti nota vocale obsoleti
+
+---
+
 ## [2.0.1] - 2025-01-21
 
 ### 🐛 Bug Fixes

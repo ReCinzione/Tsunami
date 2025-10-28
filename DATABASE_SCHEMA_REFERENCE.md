@@ -7,12 +7,12 @@
 1. **archetype_levels** - Livelli degli archetipi con dettagli
 2. **daily_moods** - Tracciamento dell'umore giornaliero
 3. **imaginal_objects** - Oggetti immaginali sbloccati dagli utenti
-4. **mental_inbox** - Inbox mentale per pensieri e idee
+4. **mental_inbox** - Inbox mentale per pensieri e idee (🎤 con input vocale)
 5. **profiles** - Profili utente con archetipi e XP
 6. **projects** - Progetti degli utenti
 7. **routine_goals** - Obiettivi delle routine
-8. **routine_items** - Elementi delle routine
-9. **routines** - Routine degli utenti
+8. **routine_items** - Elementi delle routine (♻️ con reset automatico)
+9. **routines** - Routine degli utenti (daily/weekly/monthly)
 10. **task_interventions** - Interventi sulle task
 11. **tasks** - Task principali del sistema
 12. **test_answers** - Risposte del test degli archetipi
@@ -91,6 +91,28 @@
 - **Scopo**: Aggiorna automaticamente il campo updated_at
 - **Attivazione**: BEFORE UPDATE su varie tabelle
 - **Azione**: Imposta updated_at = now()
+
+## 🆕 NUOVE FUNZIONALITÀ IMPLEMENTATE (v2.0.2)
+
+### 🎤 Input Vocale Mental Inbox
+- **Componente**: `MentalInbox.tsx` integrato con `VoiceInput.tsx`
+- **Funzionalità**: Tasto microfono per trascrizione automatica
+- **Tabella**: `mental_inbox` - nessuna modifica schema richiesta
+- **Implementazione**: Client-side con Web Speech API
+
+### ♻️ Reset Automatico Routine
+- **Componente**: `RoutineManager.tsx` con `useEffect` dedicato
+- **Funzionalità**: Reset giornaliero automatico flag `is_completed`
+- **Tabelle**: `routine_items` - campo `is_completed` gestito via client
+- **Persistenza**: `localStorage` per tracking ultimo reset (`lastRoutineReset`)
+- **Logica**: Reset intelligente basato su tipo routine (daily/weekly/monthly)
+
+### 🎯 Focus Mode Migliorato
+- **Miglioramenti**: Transizioni più fluide, gestione stato ottimizzata
+- **UX**: Riduzione distrazioni visive durante modalità focus
+- **Performance**: Ottimizzazione re-render componenti
+
+---
 
 ## ⚠️ PROBLEMA IDENTIFICATO: Funzione `add_xp_to_profile` MANCANTE
 

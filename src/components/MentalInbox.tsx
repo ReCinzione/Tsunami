@@ -304,7 +304,7 @@ const MentalInbox = ({ onTaskCreated }: MentalInboxProps) => {
     <div className="space-y-6">
       <Tabs defaultValue="notes" className="w-full">
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="notes">📝 Note Testuali</TabsTrigger>
+          <TabsTrigger value="notes">📝 Note</TabsTrigger>
           <TabsTrigger value="ocr">📷 Immagine a Task</TabsTrigger>
         </TabsList>
 
@@ -328,14 +328,22 @@ const MentalInbox = ({ onTaskCreated }: MentalInboxProps) => {
                   onChange={(e) => setNewNote(e.target.value)}
                   className="min-h-[80px]"
                 />
-                <Button 
-                  onClick={addNote} 
-                  disabled={!newNote.trim() || isLoading}
-                  className="gap-2"
-                >
-                  <Plus className="w-4 h-4" />
-                  Aggiungi Nota
-                </Button>
+                <div className="flex gap-2 items-center">
+                  <Button 
+                    onClick={addNote} 
+                    disabled={!newNote.trim() || isLoading}
+                    className="gap-2 flex-1"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Aggiungi Nota
+                  </Button>
+                  <VoiceInput
+                    onNoteCreated={loadInboxItems}
+                    buttonOnly={true}
+                    tooltip="Registra nota vocale"
+                    className="shrink-0"
+                  />
+                </div>
               </div>
 
         {/* Pending notes */}

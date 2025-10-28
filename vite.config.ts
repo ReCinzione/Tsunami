@@ -16,6 +16,9 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  optimizeDeps: {
+    exclude: ['chunk-JKYD5FOD']
+  },
   build: {
     sourcemap: mode === 'development'
   },

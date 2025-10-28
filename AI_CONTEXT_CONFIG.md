@@ -35,6 +35,91 @@
    ✅ Inconsistenze da correggere?
    ✅ Best practices da aggiornare?
    ✅ RAG da aggiornare post-risposta?
+
+🔍 STEP 5: AUTO-REFERENCE LOADING (MANDATORY)
+   ✅ Carica configurazione progetto automaticamente
+   ✅ Identifica componente target della modifica
+   ✅ Mostra checklist pre-modifica obbligatoria
+   ✅ Verifica regole critiche specifiche
+   ✅ Analizza impatto delle modifiche
+```
+
+---
+
+## 🔄 WORKFLOW AUTOMATICO
+
+### 🚀 **SISTEMA COMPLETAMENTE AUTOMATIZZATO** - Vedi [WORKFLOW_AUTOMATION.md](./WORKFLOW_AUTOMATION.md)
+
+#### ✅ **Auto-Attivazione**: Il sistema è ora completamente automatico e non richiede interventi manuali
+
+### Pre-Modifica Workflow (OBBLIGATORIO)
+
+#### 1. Caricamento Automatico Riferimenti
+```typescript
+// Auto-carica configurazione e documentazione
+const projectConfig = loadProjectConfiguration();
+const criticalFiles = identifyCriticalFiles(targetComponent);
+const modificationRules = getCriticalRules(targetComponent);
+const adhdRoadmap = loadADHDImplementationRoadmap(); // MASTER plan
+```
+
+### Auto-Loading Riferimenti
+- `CONTEXT_RAG.md` - Contesto tecnico completo
+- `DEVELOPMENT_BEST_PRACTICES.md` - Best practices consolidate
+- `WORKFLOW_AUTOMATION.md` - Sistema automazione completo
+- `ADHD_IMPLEMENTATION_ROADMAP.md` - Piano consolidato 6 mesi (MASTER)
+- TODO prioritizzati automaticamente
+
+#### 2. Analisi Impatto
+```markdown
+**Componente Target**: [Nome componente]
+**File Coinvolti**: [Lista file]
+**Dipendenze**: [Componenti dipendenti]
+**Rischio**: [Alto/Medio/Basso]
+**Test Richiesti**: [Lista test necessari]
+```
+
+#### 3. **Checklist Pre-Modifica Automatica**
+- ✅ **Roadmap Alignment**: Coerenza con ADHD_IMPLEMENTATION_ROADMAP.md
+- ✅ **Sprint Integration**: Allineamento con sprint plan attuale
+- ✅ **Props Consistency**: Interfacce verificate
+- ✅ **State Management**: Dipendenze controllate  
+- ✅ **Error Handling**: Gestione errori implementata
+- ✅ **Type Safety**: Tipi TypeScript validati
+- ✅ **ADHD UX**: Impatto cognitivo considerato (target 9.0/10)
+- ✅ **Testing**: Test aggiunti per nuove funzionalità
+
+#### 4. **Post-Modifica Workflow (AUTOMATICO)**
+```markdown
+🔄 Dopo ogni modifica approvata:
+├── 🔍 Analisi automatica dell'impatto sulla documentazione
+├── 📝 Aggiornamento intelligente dei file pertinenti
+├── ✅ Validazione coerenza e completezza
+├── 📊 Update automatico progress tracking
+├── 📋 Aggiornamento TODO status se applicabile
+└── 📅 Timestamp "Ultimo Aggiornamento" automatico
+```
+
+##### **File Auto-Aggiornati per Tipo di Modifica**
+```markdown
+🏗️ Architettura → CONTEXT_RAG.md (componenti, flussi)
+📚 Best Practices → DEVELOPMENT_BEST_PRACTICES.md
+🚀 Features → TSUNAMI_APPLICATION_DOCUMENTATION.md
+📋 TODO → Tutti i TODO files + DOCS_INDEX.md
+🎯 Progress → Progress files + CHANGELOG.md
+```
+
+#### 4. Pattern di Riferimento Automatici
+```typescript
+// Callback Pattern (Auto-applicato)
+interface ComponentProps {
+  onSuccess: (data: T) => void;
+  onError: (error: Error) => void;
+  onCancel?: () => void;
+}
+
+// Loading States (Auto-applicato)
+const [isLoading, setIsLoading] = useState(false);
 ```
 
 ---
@@ -45,7 +130,9 @@
 ```markdown
 ## 🎯 [FEATURE_NAME]
 
-### Context RAG Analysis
+### Auto-Reference Analysis
+- **Componente Target**: [da auto-reference]
+- **Checklist Completata**: ✅ Tutti i punti verificati
 - **Pattern Applicabile**: [da CONTEXT_RAG.md]
 - **Integrazione Store**: [TaskStore/altro]
 - **Impatto ADHD**: [cognitive load/energia/mood]

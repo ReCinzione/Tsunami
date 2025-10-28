@@ -1,3 +1,6 @@
+/* Import ADHD-Friendly Design System */
+@import './styles/adhd-design-system.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

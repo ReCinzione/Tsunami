@@ -30,23 +30,83 @@ import { it } from 'date-fns/locale';
  * Form per la creazione e modifica delle task con design ADHD-friendly
  */
 export const TaskForm: React.FC<TaskFormProps> = ({ 
-  task, 
+  initialData, 
   onSubmit, 
   onCancel, 
-  isLoading = false 
+  loading = false,
+  mode 
 }) => {
-  const [formData, setFormData] = useState<TaskFormData>({
-    title: task?.title || '',
-    description: task?.description || '',
-    task_type: task?.task_type || 'azione',
-    energy_required: task?.energy_required || 'media',
-    // estimated_duration removed - not in database schema
-    // difficulty_level removed
-    xp_reward: task?.xp_reward || 10,
-    due_date: task?.due_date ? new Date(task.due_date) : null,
-    // requires_deep_focus: task?.requires_deep_focus || false, // Removed - not in database schema
-    tags: task?.tags || []
+  // LOG: Verifica props ricevute
+  console.log('🔍 TaskForm - Props ricevute:', {
+    initialData,
+    hasInitialData: !!initialData,
+    mode,
+    loading,
+    taskId: initialData?.id,
+    taskTitle: initialData?.title,
+    taskDescription: initialData?.description,
+    taskType: initialData?.task_type,
+    taskEnergy: initialData?.energy_required,
+    taskXP: initialData?.xp_reward,
+    taskDueDate: initialData?.due_date,
+    taskTags: initialData?.tags
   });
+
+  const [formData, setFormData] = useState<TaskFormData>(() => {
+    const initialFormData = {
+      title: initialData?.title || '',
+      description: initialData?.description || '',
+      task_type: initialData?.task_type || 'azione',
+      energy_required: initialData?.energy_required || 'media',
+      xp_reward: initialData?.xp_reward || 10,
+      due_date: initialData?.due_date ? new Date(initialData.due_date) : null,
+      tags: initialData?.tags || []
+    };
+    
+    console.log('🔍 TaskForm - Stato iniziale formData:', initialFormData);
+    return initialFormData;
+  });
+
+  // Aggiorna formData quando cambia initialData
+  useEffect(() => {
+    console.log('🔍 TaskForm - useEffect triggered, initialData:', initialData);
+    
+    if (initialData) {
+      const updatedData = {
+        title: initialData.title || '',
+        description: initialData.description || '',
+        task_type: initialData.task_type || 'azione',
+        energy_required: initialData.energy_required || 'media',
+        xp_reward: initialData.xp_reward || 10,
+        due_date: initialData.due_date ? new Date(initialData.due_date) : null,
+        tags: initialData.tags || []
+      };
+      
+      console.log('🔍 TaskForm - Aggiornamento formData:', updatedData);
+      setFormData(updatedData);
+      
+      const newSelectedTime = initialData.due_date ? format(new Date(initialData.due_date), 'HH:mm') : '23:59';
+      console.log('🔍 TaskForm - Aggiornamento selectedTime:', newSelectedTime);
+      setSelectedTime(newSelectedTime);
+    } else {
+      console.log('🔍 TaskForm - initialData è null/undefined, resetting form');
+      setFormData({
+        title: '',
+        description: '',
+        task_type: 'azione',
+        energy_required: 'media',
+        xp_reward: 10,
+        due_date: null,
+        tags: []
+      });
+      setSelectedTime('23:59');
+    }
+  }, [initialData]);
+
+  const [selectedTime, setSelectedTime] = useState<string>(() => 
+    initialData?.due_date ? format(new Date(initialData.due_date), 'HH:mm') : '23:59'
+  );
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
   const [errors, setErrors] = useState<Partial<TaskFormData>>({});
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -140,7 +200,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({
       <CardHeader className="pb-2 md:pb-4 relative">
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg md:text-xl font-semibold pr-8">
-            {task ? 'Modifica Task' : 'Nuova Task'}
+            {initialData ? 'Modifica Task' : 'Nuova Task'}
           </CardTitle>
           
           <Button
@@ -155,7 +215,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({
         </div>
         
         {/* Template rapidi */}
-        {!task && (
+        {!initialData && (
           <div className="mb-4 md:mb-6">
             <Label className="text-xs md:text-sm font-medium mb-2 block">Template rapidi</Label>
             <div className="flex gap-1 md:gap-2 overflow-x-auto flex-nowrap pb-2">
@@ -276,7 +336,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({
           {/* Data di scadenza */}
           <div className="space-y-2">
             <Label className="text-sm font-medium">Data di Scadenza (opzionale)</Label>
-            <Popover>
+            <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
@@ -287,9 +347,9 @@ export const TaskForm: React.FC<TaskFormProps> = ({
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
                   {formData.due_date ? (
-                    format(formData.due_date, "PPP", { locale: it })
+                    `${format(formData.due_date, "PPP", { locale: it })} alle ${selectedTime}`
                   ) : (
-                    "Seleziona una data"
+                    "Seleziona data e ora"
                   )}
                 </Button>
               </PopoverTrigger>
@@ -297,22 +357,87 @@ export const TaskForm: React.FC<TaskFormProps> = ({
                 <Calendar
                   mode="single"
                   selected={formData.due_date}
-                  onSelect={(date) => setFormData(prev => ({ ...prev, due_date: date }))}
-                  disabled={(date) => date < new Date()}
+                  onSelect={(date) => {
+                    if (date) {
+                      // Combina la data selezionata con l'ora
+                      const [hours, minutes] = selectedTime.split(':').map(Number);
+                      const dateWithTime = new Date(date);
+                      dateWithTime.setHours(hours, minutes, 0, 0);
+                      setFormData(prev => ({ ...prev, due_date: dateWithTime }));
+                      // Non chiudere automaticamente, lascia che l'utente confermi
+                    }
+                  }}
+                  // Rimuovi la disabilitazione delle date passate per permettere la selezione di oggi
+                  disabled={(date) => {
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    return date < today;
+                  }}
                   initialFocus
                 />
-                {formData.due_date && (
-                  <div className="p-3 border-t">
+                <div className="p-3 border-t space-y-3">
+                  {/* Selettore ora */}
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Ora scadenza</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        type="time"
+                        value={selectedTime}
+                        onChange={(e) => {
+                          setSelectedTime(e.target.value);
+                          // Se c'è già una data selezionata, aggiorna anche quella
+                          if (formData.due_date) {
+                            const [hours, minutes] = e.target.value.split(':').map(Number);
+                            const updatedDate = new Date(formData.due_date);
+                            updatedDate.setHours(hours, minutes, 0, 0);
+                            setFormData(prev => ({ ...prev, due_date: updatedDate }));
+                          }
+                        }}
+                        className="flex-1"
+                      />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const now = new Date();
+                          const currentTime = format(now, 'HH:mm');
+                          setSelectedTime(currentTime);
+                          if (formData.due_date) {
+                            const updatedDate = new Date(formData.due_date);
+                            updatedDate.setHours(now.getHours(), now.getMinutes(), 0, 0);
+                            setFormData(prev => ({ ...prev, due_date: updatedDate }));
+                          }
+                        }}
+                      >
+                        Ora
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  {/* Pulsante di conferma */}
+                   <Button
+                     onClick={() => setIsCalendarOpen(false)}
+                     className="w-full"
+                     size="sm"
+                   >
+                     Conferma
+                   </Button>
+
+                  {formData.due_date && (
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setFormData(prev => ({ ...prev, due_date: null }))}
+                      onClick={() => {
+                        setFormData(prev => ({ ...prev, due_date: null }));
+                        setSelectedTime('23:59');
+                        setIsCalendarOpen(false);
+                      }}
                       className="w-full"
                     >
                       Rimuovi data
                     </Button>
-                  </div>
-                )}
+                  )}
+                </div>
               </PopoverContent>
             </Popover>
           </div>
@@ -448,17 +573,17 @@ export const TaskForm: React.FC<TaskFormProps> = ({
               variant="outline"
               onClick={onCancel}
               className="flex-1 text-sm"
-              disabled={isLoading}
+              disabled={loading}
             >
               Annulla
             </Button>
             
             <Button
               type="submit"
-              disabled={!isFormValid || isLoading}
+              disabled={!isFormValid || loading}
               className="flex-1 flex items-center justify-center gap-2 text-sm"
             >
-              {isLoading ? (
+              {loading ? (
                 <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
               ) : (
                 <>
@@ -467,8 +592,8 @@ export const TaskForm: React.FC<TaskFormProps> = ({
                   ) : (
                     <Save className="h-4 w-4" />
                   )}
-                  <span className="hidden sm:inline">{task ? 'Aggiorna Task' : 'Crea Task'}</span>
-                  <span className="sm:hidden">{task ? 'Aggiorna' : 'Crea'}</span>
+                  <span className="hidden sm:inline">{initialData ? 'Aggiorna Task' : 'Crea Task'}</span>
+                  <span className="sm:hidden">{initialData ? 'Aggiorna' : 'Crea'}</span>
                 </>
               )}
             </Button>

@@ -194,11 +194,11 @@ function FocusMode({
 
   return (
     <div
-      className={cn(focusModeVariants({ intensity }), className)}
+      className="adhd-focus-overlay"
       {...props}
     >
       {/* Header della modalità focus */}
-      <div className="fixed top-0 left-0 right-0 z-60 bg-gradient-to-r from-blue-500/10 to-purple-500/10 backdrop-blur-sm border-b border-border/50">
+      <div className="fixed top-0 left-0 right-0 z-60 bg-gradient-to-r from-blue-500/20 to-purple-500/20 backdrop-blur-md border-b border-white/20">
         <div className="flex items-center justify-between p-4 max-w-4xl mx-auto">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
@@ -210,11 +210,10 @@ function FocusMode({
             </div>
             
             {showTimer && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Timer className="w-4 h-4" />
-                <span className="font-mono text-lg font-semibold text-foreground">
+              <div className="adhd-timer" style={{ '--progress': `${progress}%` } as React.CSSProperties}>
+                <div className="adhd-timer-text">
                   {formatTime(timeLeft)}
-                </span>
+                </div>
               </div>
             )}
           </div>
@@ -283,7 +282,7 @@ function FocusMode({
 
       {/* Contenuto principale */}
       <div className="pt-20 pb-8 px-4 h-full overflow-auto">
-        <div className="max-w-4xl mx-auto">
+        <div className="adhd-focus-content">
           {children}
         </div>
       </div>

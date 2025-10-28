@@ -146,6 +146,67 @@ const RoutineManager: React.FC<RoutineManagerProps> = ({ userId }) => {
     loadRoutines();
   }, [userId]);
 
+  // Check and reset daily flags
+  useEffect(() => {
+    const checkAndResetDailyFlags = async () => {
+      const today = new Date().toDateString();
+      const lastResetDate = localStorage.getItem(`lastRoutineReset_${userId}`);
+      
+      if (lastResetDate !== today) {
+        await resetDailyRoutineFlags();
+        localStorage.setItem(`lastRoutineReset_${userId}`, today);
+      }
+    };
+    
+    if (userId) {
+      checkAndResetDailyFlags();
+    }
+  }, [userId, routines]);
+
+  const resetDailyRoutineFlags = async () => {
+    try {
+      // Reset all routine items to not completed for daily and weekly routines that should run today
+      const today = new Date();
+      const currentDay = today.getDay();
+      
+      // Get routines that should reset today
+      const routinesToReset = routines.filter(routine => {
+        if (!routine.is_active) return false;
+        
+        switch (routine.type) {
+          case 'daily':
+            return true;
+          case 'weekly':
+            return routine.days_of_week?.includes(currentDay.toString()) || false;
+          case 'monthly':
+            return routine.day_of_month === today.getDate();
+          default:
+            return false;
+        }
+      });
+      
+      // Reset items for these routines
+      for (const routine of routinesToReset) {
+        const { error } = await supabase
+          .from('routine_items')
+          .update({ is_completed: false })
+          .eq('routine_id', routine.id)
+          .eq('user_id', userId);
+          
+        if (error) {
+          console.error('Error resetting routine items for routine:', routine.id, error);
+        }
+      }
+      
+      // Reload routine items to reflect the reset
+      await loadRoutines();
+      
+      console.log('✅ Routine flags reset for new day');
+    } catch (error) {
+      console.error('Error resetting daily routine flags:', error);
+    }
+  };
+
   const loadRoutines = async () => {
     try {
       setLoading(true);

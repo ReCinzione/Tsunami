@@ -11,8 +11,10 @@
 **Tsunami** è un'applicazione web di produttività per persone con ADHD che utilizza:
 - **Gamificazione** basata su archetipi di personalità
 - **Gestione energia** e mood tracking
+- **🎤 Input vocale** integrato nel Mental Inbox
+- **♻️ Reset automatico** routine giornaliere
 - **Chatbot locale** specializzato ADHD
-- **Focus mode** e task management intelligente
+- **Focus mode migliorato** e task management intelligente
 
 ### Stack Tecnologico Core
 ```
@@ -52,12 +54,26 @@ src/
 - **Integrazione**: onActionSuggested callback con Index.tsx
 - **Stato**: isOpen, chatMessages, currentQuickActions
 
-#### 2. Index.tsx (Dashboard)
+#### 2. MentalInbox.tsx (Enhanced)
+- **Scopo**: Cattura rapida idee con input vocale integrato
+- **🎤 Voice Input**: Tasto microfono per trascrizione automatica
+- **Funzioni**: Cattura idee, conversione in task, voice commands
+- **Integrazione**: VoiceInput component per riconoscimento vocale
+- **UX**: Zero friction, interfaccia minimale per ridurre cognitive load
+
+#### 3. RoutineManager.tsx (Enhanced)
+- **Scopo**: Gestione routine con reset automatico giornaliero
+- **♻️ Reset Automatico**: useEffect per controllo e reset checklist
+- **Funzioni**: resetDailyRoutineFlags, tracking localStorage
+- **Gestione**: Routine daily/weekly/monthly con logica intelligente
+- **Persistenza**: Ultimo reset salvato per evitare reset multipli
+
+#### 4. Index.tsx (Dashboard)
 - **Scopo**: Orchestratore principale dell'app
 - **Gestisce**: Tabs, callbacks, state globale
 - **Callback chiave**: onActionSuggested per azioni chatbot
 
-#### 3. TaskStore (Zustand)
+#### 5. TaskStore (Zustand)
 - **Funzioni**: addTask, updateTask, removeTask
 - **Stato**: tasks[], selectedTask, filters
 
@@ -336,6 +352,144 @@ npm run build        # Build produzione
 npm run test         # Esegui test
 supabase start       # Avvia DB locale
 ```
+
+---
+
+## 🏗️ ARCHITETTURA DETTAGLIATA
+
+### Componenti Principali
+
+#### TaskForm (`src/features/tasks/components/TaskForm.tsx`)
+**Props Interface**:
+```typescript
+interface TaskFormProps {
+  initialData?: Partial<TaskFormData>;
+  onSubmit: (data: TaskFormData) => void;
+  onCancel: () => void;
+  loading?: boolean;
+  mode?: 'create' | 'edit';
+}
+```
+**Stati Critici**: validation, loading, form data
+**Dipendenze**: useTaskStore, validation schemas
+
+#### TaskListContainer (`src/features/tasks/components/TaskListContainer.tsx`)
+**State Management**:
+```typescript
+const [editingTask, setEditingTask] = useState<Task | null>(null);
+const [isLoading, setIsLoading] = useState(false);
+const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+```
+**Flussi Critici**: CRUD operations, filtering, sorting
+
+#### LocalChatBot (`src/components/LocalChatBot.tsx`)
+**Context Integration**:
+```typescript
+interface ADHDContext {
+  currentMood: MoodType;
+  energyLevel: number;
+  dominantArchetype: ArchetypeType;
+  recentTasks: Task[];
+  timeOfDay: 'morning' | 'afternoon' | 'evening';
+}
+```
+
+### Flussi di Dati Critici
+
+#### Creazione Task
+```
+TaskForm → validateInput() → taskStore.createTask() → Supabase → UI Update
+```
+
+#### Modifica Task
+```
+TaskItem.onEdit → setEditingTask → TaskForm(edit mode) → taskStore.updateTask
+```
+
+#### Error Propagation
+```
+Supabase Error → Service Layer → Store → UI Error State → User Feedback
+```
+
+### UI Components Mapping
+
+#### Button Variants
+```typescript
+type ButtonVariant = "default" | "destructive" | "outline" | "secondary" | "ghost" | "link"
+```
+**Utilizzi Critici**:
+- `destructive`: Eliminazioni (Elimina Task)
+- `default`: Azioni principali (Crea Task, Salva)
+- `ghost`: Azioni secondarie (Annulla, Chiudi)
+
+#### Form States
+```typescript
+interface FormState {
+  isValid: boolean;
+  errors: Record<string, string>;
+  isDirty: boolean;
+  isSubmitting: boolean;
+}
+```
+
+### Checklist Pre-Modifica
+
+#### ⚠️ OBBLIGATORIO prima di ogni modifica:
+1. **Props Consistency**: Verificare interfacce props
+2. **State Management**: Controllare dipendenze store
+3. **Error Handling**: Implementare gestione errori
+4. **Type Safety**: Validare tipi TypeScript
+5. **ADHD UX**: Considerare impatto cognitivo
+6. **Testing**: Aggiungere test per nuove funzionalità
+
+#### Pattern di Riferimento Comuni:
+
+**Callback Pattern**:
+```typescript
+interface ComponentProps {
+  onSuccess: (data: T) => void;
+  onError: (error: Error) => void;
+  onCancel?: () => void;
+}
+```
+
+**Loading States**:
+```typescript
+const [isLoading, setIsLoading] = useState(false);
+const handleAction = async () => {
+  setIsLoading(true);
+  try {
+    await action();
+  } finally {
+    setIsLoading(false);
+  }
+};
+```
+
+**Error Boundaries**:
+```typescript
+<ErrorBoundary fallback={<ErrorFallback />}>
+  <Component />
+</ErrorBoundary>
+```
+
+### File Critici da Non Modificare Senza Attenzione
+
+1. **`src/integrations/supabase/`** - Configurazione database
+2. **`src/store/taskStore.ts`** - State management centrale
+3. **`src/types/`** - Definizioni TypeScript core
+4. **`src/hooks/useAuth.tsx`** - Autenticazione
+5. **`src/components/TaskManager.tsx`** - Componente monolitico (1396 righe)
+
+### Errori Comuni da Evitare
+
+1. **Parametri undefined in hook Supabase** (causa 400 Bad Request)
+2. **Props drilling eccessivo** (usare context o store)
+3. **Mancanza di loading states** (UX ADHD critica)
+4. **Validazione input insufficiente** (sicurezza)
+5. **State mutations dirette** (usare immutable updates)
+6. **Missing error boundaries** (crash dell'app)
+7. **Inconsistent naming conventions** (confusione)
 
 ---
 
