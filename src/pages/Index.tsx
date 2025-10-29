@@ -8,6 +8,7 @@ import MentalInbox from '@/components/MentalInbox';
 import RoutineManager from '@/components/RoutineManager';
 import ProjectManager from '@/components/ProjectManager';
 import { LocalChatBot } from '@/components/LocalChatBot';
+import { SmartActionSuggestion } from '@/components/SmartActionSuggestion';
 import VoiceInput from '@/components/VoiceInput';
 import { QuickActionButtons } from '@/components/QuickActionButtons';
 import { getContextualQuickActions } from '@/utils/quickActions';
@@ -44,7 +45,7 @@ const AppContent = () => {
   const setTaskFilters = useTaskStore(state => state.setFilters);
   const resetTaskFilters = useTaskStore(state => state.resetFilters);
   const [focusTaskCount, setFocusTaskCount] = useState(3);
-  const [activeTab, setActiveTab] = useState('tasks');
+  const [activeTab, setActiveTab] = useState('dashboard');
   const [tasks, setTasks] = useState([]);
   const [energyLevel, setEnergyLevel] = useState(7);
   const [showVoiceInput, setShowVoiceInput] = useState(false);
@@ -257,49 +258,62 @@ const AppContent = () => {
     <div className="min-h-screen bg-background">
       <div className="container mx-auto p-6 space-y-6">
         {/* Focus Mode & Quick Actions Bar */}
-        <div className="flex items-center justify-between gap-4 mb-4 p-4 bg-card border rounded-xl">
-          <div className="flex items-center gap-3">
+        <div className="mb-4 space-y-3">
+          {/* Riga dei pulsanti principali */}
+          <div className="flex items-center justify-between gap-2 p-3 sm:p-4 bg-card border rounded-xl">
             <Button
-              className={`adhd-btn-primary adhd-focus-ring flex items-center gap-2 ${
+              className={`adhd-btn-primary adhd-focus-ring flex items-center gap-2 flex-1 h-10 ${
                 focusMode ? 'adhd-pulse-success' : ''
               }`}
-              size="sm"
-              onClick={() => setFocusMode(!focusMode)}
+              onClick={() => {
+                setFocusMode(!focusMode);
+                if (!focusMode) {
+                  setActiveTab('tasks');
+                }
+              }}
             >
               <Focus className="w-4 h-4" />
-              {focusMode ? '🎯 Focus Mode ON' : '✨ Attiva Focus'}
+              <span className="hidden sm:inline">{focusMode ? '🎯 Focus Mode ON' : '✨ Attiva Focus'}</span>
+              <span className="sm:hidden">{focusMode ? '🎯 Focus' : '✨ Focus'}</span>
             </Button>
-            {focusMode && (
-              <div className="flex items-center gap-2">
-                <Badge variant="secondary" className="text-xs">
-                  {focusTaskCount} task prioritari visibili
-                </Badge>
-                <div className="flex items-center gap-2 text-xs">
-                  <span>1</span>
-                  <input
-                    type="range"
-                    min="1"
-                    max="5"
-                    value={focusTaskCount}
-                    onChange={(e) => setFocusTaskCount(Number(e.target.value))}
-                    className="w-16 h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                  />
-                  <span>5</span>
-                </div>
+            
+            <Button 
+               variant="outline" 
+               onClick={() => navigate('/impostazioni')} 
+               className="flex items-center justify-center flex-1 h-10 bg-gradient-to-br from-yellow-100 to-yellow-200 hover:from-yellow-200 hover:to-yellow-300 border-yellow-300"
+             >
+               <Settings className="w-5 h-5 text-yellow-700" />
+             </Button>
+             
+             <Button 
+               variant="outline" 
+               onClick={handleLogout} 
+               className="flex items-center justify-center flex-1 h-10 bg-gradient-to-br from-red-100 to-red-200 hover:from-red-200 hover:to-red-300 border-red-300"
+             >
+               <LogOut className="w-5 h-5 text-red-700" />
+             </Button>
+          </div>
+          
+          {/* Controlli modalità focus */}
+          {focusMode && (
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4 p-3 bg-muted/50 border rounded-xl">
+              <Badge variant="secondary" className="text-xs whitespace-nowrap">
+                {focusTaskCount} task prioritari
+              </Badge>
+              <div className="flex items-center gap-2 text-xs">
+                <span>1</span>
+                <input
+                  type="range"
+                  min="1"
+                  max="5"
+                  value={focusTaskCount}
+                  onChange={(e) => setFocusTaskCount(Number(e.target.value))}
+                  className="w-16 sm:w-20 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                />
+                <span>5</span>
               </div>
-            )}
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => navigate('/impostazioni')} className="gap-2 shrink-0 text-sm">
-              <Settings className="w-4 h-4" />
-              <span className="hidden sm:inline">Impostazioni</span>
-            </Button>
-            <Button variant="outline" onClick={handleLogout} className="gap-2 shrink-0 text-sm">
-              <LogOut className="w-4 h-4" />
-              <span className="hidden sm:inline">Logout</span>
-              <span className="sm:hidden">Esci</span>
-            </Button>
-          </div>
+            </div>
+          )}
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -339,10 +353,6 @@ const AppContent = () => {
                   <p className="text-muted-foreground">Il tuo stato di oggi</p>
                 </div>
               </div>
-              <div className="bg-primary/10 rounded-lg p-4">
-                <h3 className="font-semibold mb-2">🎯 Rituale suggerito:</h3>
-                <p className="text-foreground">{todayMood?.suggested_ritual}</p>
-              </div>
             </div>
 
             {/* Quick Stats */}
@@ -361,31 +371,16 @@ const AppContent = () => {
               </div>
             </div>
 
-            {/* Next Suggested Task */}
-            <div className="bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20 rounded-xl p-6">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="text-2xl">🎯</div>
-                <h3 className="text-lg font-semibold">Prossimo Task Suggerito</h3>
-              </div>
-              <p className="text-muted-foreground mb-4">
-                Basato sul tuo livello di energia attuale e priorità
-              </p>
-              <div className="flex gap-2">
-                <Button 
-                  onClick={() => setActiveTab('tasks')}
-                  className="gap-2"
-                >
-                  📋 Vai alle Attività
-                </Button>
-                <Button 
-                  variant="outline"
-                  onClick={() => setActiveTab('mental-inbox')}
-                  className="gap-2"
-                >
-                  🧠 Aggiungi Idea
-                </Button>
-              </div>
-            </div>
+            {/* Smart Action Suggestion */}
+            <SmartActionSuggestion 
+              mood={todayMood?.mood}
+              suggestedRitual={todayMood?.suggested_ritual}
+              onActionClick={(action) => {
+                if (action === 'tasks') setActiveTab('tasks');
+                else if (action === 'mental-inbox') setActiveTab('mental-inbox');
+                else if (action === 'focus') setActiveTab('focus');
+              }}
+            />
 
             {/* Quick Access to Other Features */}
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
