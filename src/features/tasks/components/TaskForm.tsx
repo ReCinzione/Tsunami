@@ -13,7 +13,6 @@ import {
   Save, 
   X, 
   Calendar as CalendarIcon, 
-  Zap, 
   Focus, 
   Timer, 
   Target,
@@ -58,9 +57,10 @@ export const TaskForm: React.FC<TaskFormProps> = ({
       description: initialData?.description || '',
       task_type: initialData?.task_type || 'azione',
       energy_required: initialData?.energy_required || 'media',
+      priority: initialData?.priority || 'media',
       xp_reward: initialData?.xp_reward || 10,
       due_date: initialData?.due_date ? new Date(initialData.due_date) : null,
-      tags: initialData?.tags || []
+      planned_date: initialData?.planned_date ? new Date(initialData.planned_date) : null
     };
     
     console.log('🔍 TaskForm - Stato iniziale formData:', initialFormData);
@@ -77,9 +77,10 @@ export const TaskForm: React.FC<TaskFormProps> = ({
         description: initialData.description || '',
         task_type: initialData.task_type || 'azione',
         energy_required: initialData.energy_required || 'media',
+        priority: initialData.priority || 'media',
         xp_reward: initialData.xp_reward || 10,
         due_date: initialData.due_date ? new Date(initialData.due_date) : null,
-        tags: initialData.tags || []
+        planned_date: initialData.planned_date ? new Date(initialData.planned_date) : null
       };
       
       console.log('🔍 TaskForm - Aggiornamento formData:', updatedData);
@@ -95,9 +96,10 @@ export const TaskForm: React.FC<TaskFormProps> = ({
         description: '',
         task_type: 'azione',
         energy_required: 'media',
+        priority: 'media',
         xp_reward: 10,
         due_date: null,
-        tags: []
+        planned_date: null
       });
       setSelectedTime('23:59');
     }
@@ -107,10 +109,13 @@ export const TaskForm: React.FC<TaskFormProps> = ({
     initialData?.due_date ? format(new Date(initialData.due_date), 'HH:mm') : '23:59'
   );
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  
+  const [selectedPlannedTime, setSelectedPlannedTime] = useState<string>(() => 
+    initialData?.planned_date ? format(new Date(initialData.planned_date), 'HH:mm') : '09:00'
+  );
+  const [isPlannedCalendarOpen, setIsPlannedCalendarOpen] = useState(false);
 
   const [errors, setErrors] = useState<Partial<TaskFormData>>({});
-  const [showAdvanced, setShowAdvanced] = useState(false);
-  const [currentTag, setCurrentTag] = useState('');
 
   // Validazione in tempo reale
   useEffect(() => {
@@ -142,24 +147,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({
     onSubmit(formData);
   };
 
-  // Aggiunge un tag
-  const addTag = () => {
-    if (currentTag.trim() && !formData.tags.includes(currentTag.trim())) {
-      setFormData(prev => ({
-        ...prev,
-        tags: [...prev.tags, currentTag.trim()]
-      }));
-      setCurrentTag('');
-    }
-  };
 
-  // Rimuove un tag
-  const removeTag = (tagToRemove: string) => {
-    setFormData(prev => ({
-      ...prev,
-      tags: prev.tags.filter(tag => tag !== tagToRemove)
-    }));
-  };
 
   // Calcola XP suggeriti basati su difficoltà e durata
   const calculateSuggestedXP = () => {
@@ -169,29 +157,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({
     return baseXP + durationBonus + focusBonus;
   };
 
-  // Template rapidi per task comuni
-  const quickTemplates = [
-    {
-      name: '📧 Email veloce',
-      data: { task_type: 'comunicazione', energy_required: 'bassa' }
-    },
-    {
-      name: '📞 Chiamata importante',
-      data: { task_type: 'comunicazione', energy_required: 'media' }
-    },
-    {
-      name: '📝 Scrittura creativa',
-      data: { task_type: 'creativita', energy_required: 'alta' } // requires_deep_focus removed
-    },
-    {
-      name: '🧹 Organizzazione rapida',
-      data: { task_type: 'organizzazione', energy_required: 'media' }
-    }
-  ];
 
-  const applyTemplate = (template: typeof quickTemplates[0]) => {
-    setFormData(prev => ({ ...prev, ...template.data }));
-  };
 
   const isFormValid = !errors.title && formData.title.trim();
 
@@ -214,26 +180,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({
           </Button>
         </div>
         
-        {/* Template rapidi */}
-        {!initialData && (
-          <div className="mb-4 md:mb-6">
-            <Label className="text-xs md:text-sm font-medium mb-2 block">Template rapidi</Label>
-            <div className="flex gap-1 md:gap-2 overflow-x-auto flex-nowrap pb-2">
-              {quickTemplates.map((template, index) => (
-                <Button
-                  key={index}
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => applyTemplate(template)}
-                  className="text-xs whitespace-nowrap flex-shrink-0 px-2 md:px-3"
-                >
-                  {template.name}
-                </Button>
-              ))}
-            </div>
-          </div>
-        )}
+
       </CardHeader>
 
       <CardContent className="p-2 md:p-6">
@@ -292,7 +239,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({
             </div>
           </div>
 
-          {/* Tipo e Energia - Layout responsive */}
+          {/* Tipo, Energia e Priorità - Layout responsive */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
             <div className="space-y-2">
               <Label className="text-xs md:text-sm font-medium">Tipo di task</Label>
@@ -323,13 +270,64 @@ export const TaskForm: React.FC<TaskFormProps> = ({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="molto_bassa">🟢 Molto Bassa</SelectItem>
-                  <SelectItem value="bassa">🟡 Bassa</SelectItem>
-                  <SelectItem value="media">🟠 Media</SelectItem>
-                  <SelectItem value="alta">🔴 Alta</SelectItem>
-                  <SelectItem value="molto_alta">🟣 Molto Alta</SelectItem>
+                  <SelectItem value="molto_bassa">🍃 Molto Bassa</SelectItem>
+                  <SelectItem value="bassa">🌊 Bassa</SelectItem>
+                  <SelectItem value="media">💡 Media</SelectItem>
+                  <SelectItem value="alta">🔥 Alta</SelectItem>
+                  <SelectItem value="molto_alta">🌋 Molto Alta</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+          </div>
+
+          {/* Priorità e Ricompensa XP */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+            <div className="space-y-2">
+              <Label className="text-xs md:text-sm font-medium">Priorità</Label>
+              <Select
+                value={formData.priority}
+                onValueChange={(value) => setFormData(prev => ({ ...prev, priority: value as any }))}
+              >
+                <SelectTrigger className="w-full text-xs md:text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="bassa">🟢 Bassa</SelectItem>
+                  <SelectItem value="media">🟡 Media</SelectItem>
+                  <SelectItem value="alta">🔴 Alta</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-xs md:text-sm font-medium">
+                Ricompensa XP
+              </Label>
+              <div className="flex gap-2">
+                <Input
+                  type="number"
+                  value={formData.xp_reward}
+                  onChange={(e) => setFormData(prev => ({ 
+                    ...prev, 
+                    xp_reward: parseInt(e.target.value) || 0 
+                  }))}
+                  min={0}
+                  max={100}
+                  className="flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setFormData(prev => ({ 
+                    ...prev, 
+                    xp_reward: calculateSuggestedXP() 
+                  }))}
+                  className="text-xs px-2"
+                >
+                  <Lightbulb className="h-3 w-3" />
+                </Button>
+              </div>
             </div>
           </div>
 
@@ -371,7 +369,9 @@ export const TaskForm: React.FC<TaskFormProps> = ({
                   disabled={(date) => {
                     const today = new Date();
                     today.setHours(0, 0, 0, 0);
-                    return date < today;
+                    const selectedDate = new Date(date);
+                    selectedDate.setHours(0, 0, 0, 0);
+                    return selectedDate < today;
                   }}
                   initialFocus
                 />
@@ -442,128 +442,114 @@ export const TaskForm: React.FC<TaskFormProps> = ({
             </Popover>
           </div>
 
-          {/* Opzioni avanzate */}
-          <div className="space-y-4">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => setShowAdvanced(!showAdvanced)}
-              className="w-full justify-between p-0 h-auto font-normal"
-            >
-              <span className="text-sm font-medium">Opzioni Avanzate</span>
-              <span className={cn(
-                "transition-transform",
-                showAdvanced && "rotate-180"
-              )}>
-                ▼
-              </span>
-            </Button>
-
-            {showAdvanced && (
-              <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
-                {/* Durata stimata e difficoltà */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Estimated duration field removed - not in database schema */}
-
-                  {/* Difficulty level field removed */}
-                </div>
-
-                {/* XP Reward */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-sm font-medium flex items-center gap-1">
-                      <Zap className="h-3 w-3" />
-                      Ricompensa XP
-                    </Label>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setFormData(prev => ({ 
-                        ...prev, 
-                        xp_reward: calculateSuggestedXP() 
-                      }))}
-                      className="text-xs h-6"
-                    >
-                      <Lightbulb className="h-3 w-3 mr-1" />
-                      Suggerisci ({calculateSuggestedXP()} XP)
-                    </Button>
-                  </div>
-                  <Input
-                    type="number"
-                    value={formData.xp_reward}
-                    onChange={(e) => setFormData(prev => ({ 
-                      ...prev, 
-                      xp_reward: parseInt(e.target.value) || 0 
-                    }))}
-                    min={0}
-                    max={100}
-                  />
-                </div>
-
-                {/* Focus profondo - removed (requires_deep_focus not in database schema) */}
-                {/* <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <Label className="text-sm font-medium flex items-center gap-1">
-                      <Focus className="h-3 w-3" />
-                      Richiede Focus Profondo
-                    </Label>
-                    <p className="text-xs text-gray-600">
-                      Attiva quando la task richiede concentrazione senza interruzioni
-                    </p>
-                  </div>
-                  <Switch
-                    checked={formData.requires_deep_focus}
-                    onCheckedChange={(checked) => setFormData(prev => ({ 
-                      ...prev, 
-                      requires_deep_focus: checked 
-                    }))}
-                  />
-                </div> */}
-
-                {/* Tags */}
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">Tag</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      value={currentTag}
-                      onChange={(e) => setCurrentTag(e.target.value)}
-                      placeholder="Aggiungi tag..."
-                      onKeyPress={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          addTag();
-                        }
-                      }}
-                      className="flex-1"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={addTag}
-                      disabled={!currentTag.trim()}
-                    >
-                      Aggiungi
-                    </Button>
+          {/* Pianificazione */}
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">Pianificazione (opzionale)</Label>
+            <p className="text-xs text-muted-foreground">Quando vuoi svolgere questa attività</p>
+            <Popover open={isPlannedCalendarOpen} onOpenChange={setIsPlannedCalendarOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-full justify-start text-left font-normal",
+                    !formData.planned_date && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {formData.planned_date ? (
+                    `${format(formData.planned_date, "PPP", { locale: it })} alle ${selectedPlannedTime}`
+                  ) : (
+                    "Seleziona quando svolgere l'attività"
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={formData.planned_date}
+                  onSelect={(date) => {
+                    if (date) {
+                      // Combina la data selezionata con l'ora
+                      const [hours, minutes] = selectedPlannedTime.split(':').map(Number);
+                      const dateWithTime = new Date(date);
+                      dateWithTime.setHours(hours, minutes, 0, 0);
+                      setFormData(prev => ({ ...prev, planned_date: dateWithTime }));
+                    }
+                  }}
+                  disabled={(date) => {
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    const selectedDate = new Date(date);
+                    selectedDate.setHours(0, 0, 0, 0);
+                    return selectedDate < today;
+                  }}
+                  initialFocus
+                />
+                <div className="p-3 border-t space-y-3">
+                  {/* Selettore ora */}
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Ora pianificata</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        type="time"
+                        value={selectedPlannedTime}
+                        onChange={(e) => {
+                          setSelectedPlannedTime(e.target.value);
+                          // Se c'è già una data selezionata, aggiorna anche quella
+                          if (formData.planned_date) {
+                            const [hours, minutes] = e.target.value.split(':').map(Number);
+                            const updatedDate = new Date(formData.planned_date);
+                            updatedDate.setHours(hours, minutes, 0, 0);
+                            setFormData(prev => ({ ...prev, planned_date: updatedDate }));
+                          }
+                        }}
+                        className="flex-1"
+                      />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          const now = new Date();
+                          const currentTime = format(now, 'HH:mm');
+                          setSelectedPlannedTime(currentTime);
+                          if (formData.planned_date) {
+                            const updatedDate = new Date(formData.planned_date);
+                            updatedDate.setHours(now.getHours(), now.getMinutes(), 0, 0);
+                            setFormData(prev => ({ ...prev, planned_date: updatedDate }));
+                          }
+                        }}
+                      >
+                        Ora
+                      </Button>
+                    </div>
                   </div>
                   
-                  {formData.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-2">
-                      {formData.tags.map((tag, index) => (
-                        <Badge
-                          key={index}
-                          variant="secondary"
-                          className="text-xs cursor-pointer hover:bg-red-100"
-                          onClick={() => removeTag(tag)}
-                        >
-                          {tag} ×
-                        </Badge>
-                      ))}
-                    </div>
+                  {/* Pulsante di conferma */}
+                   <Button
+                     onClick={() => setIsPlannedCalendarOpen(false)}
+                     className="w-full"
+                     size="sm"
+                   >
+                     Conferma
+                   </Button>
+
+                  {formData.planned_date && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setFormData(prev => ({ ...prev, planned_date: null }));
+                        setSelectedPlannedTime('09:00');
+                        setIsPlannedCalendarOpen(false);
+                      }}
+                      className="w-full"
+                    >
+                      Rimuovi pianificazione
+                    </Button>
                   )}
                 </div>
-              </div>
-            )}
+              </PopoverContent>
+            </Popover>
           </div>
 
           {/* Azioni */}

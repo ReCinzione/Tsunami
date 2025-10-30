@@ -169,11 +169,11 @@ const CharacterSheet = () => {
 
 
   const getXPForNextLevel = (currentLevel: number): number => {
-    const xpThresholds = [0, 100, 250, 450, 700, 1000, 1350, 1750, 2200, 2700, 3250];
-    if (currentLevel <= 10) {
-      return xpThresholds[currentLevel] || 0;
-    }
-    return 3250 + (currentLevel - 10) * 600;
+    return progressionService.getTotalXPForLevel(currentLevel + 1);
+  };
+
+  const getXPForCurrentLevel = (currentLevel: number): number => {
+    return progressionService.getTotalXPForLevel(currentLevel);
   };
 
   const getArchetypeEmoji = (archetype: string | null) => {
@@ -247,7 +247,7 @@ const CharacterSheet = () => {
   const totalXP = profile.total_xp || 0;
   const calculatedLevel = progressionService.calculateLevelFromXP(totalXP);
   const currentLevel = calculatedLevel; // Usa il livello calcolato dall'XP
-  const xpForCurrentLevel = currentLevel > 1 ? getXPForNextLevel(currentLevel - 1) : 0;
+  const xpForCurrentLevel = getXPForCurrentLevel(currentLevel);
   const xpForNextLevel = getXPForNextLevel(currentLevel);
   const xpProgress = totalXP - xpForCurrentLevel;
   const xpNeeded = xpForNextLevel - xpForCurrentLevel;

@@ -334,9 +334,6 @@ export const TaskManager: React.FC<TaskManagerProps> = ({
       {/* Header con controlli - ottimizzato per mobile */}
       <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between md:gap-4">
         <div className="flex items-center gap-2 md:gap-4">
-          <h2 className="text-lg md:text-2xl font-bold tracking-tight">
-            I tuoi Task
-          </h2>
           
           {isFocusModeActive && (
             <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200 text-xs">
@@ -347,58 +344,8 @@ export const TaskManager: React.FC<TaskManagerProps> = ({
         </div>
 
         <div className="flex items-center gap-1 md:gap-2">
-          {/* Bottone Crea Task */}
-          <Button
-            onClick={() => {
-              if (taskListRef.current?.handleCreateTask) {
-                taskListRef.current.handleCreateTask();
-              }
-            }}
-            variant="default"
-            size="sm"
-            className="flex items-center gap-1 bg-primary hover:bg-primary/90 h-8 px-2 md:h-9 md:px-3"
-          >
-            <span className="text-xs md:text-sm">Nuova Task</span>
-          </Button>
           
-          {/* Bottone Focus - solo desktop */}
-          <div className="hidden lg:block">
-            {!isFocusModeActive && (
-              <Button
-                onClick={() => startFocusSession(25)}
-                variant="outline"
-                size="sm"
-                className="flex items-center gap-2"
-              >
-                <Focus className="w-4 h-4" />
-                Focus 25min
-              </Button>
-            )}
-          </div>
-          
-          <div className="relative group">
-            <Button
-              onClick={() => setDistractionMode(!distractionMode)}
-              variant={distractionMode ? "default" : "outline"}
-              size="sm"
-              className="flex items-center gap-1 h-8 px-2 md:h-9 md:px-3 md:gap-2"
-            >
-              <Settings className="w-3 h-3 md:w-4 md:h-4" />
-              <span className="text-xs md:text-sm">{distractionMode ? "Semplice" : "Avanzata"}</span>
-            </Button>
-            
-            {/* Tooltip con descrizioni */}
-            <div className="absolute bottom-full left-0 mb-2 w-72 md:w-80 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50">
-              <div className="space-y-2">
-                <div>
-                  <strong>Modalità Semplice:</strong> Mostra solo la lista dei tuoi task e la funzione aggiungi, nascondendo tutte le analisi e le funzioni avanzate.
-                </div>
-                <div>
-                  <strong>Modalità Avanzata:</strong> Sblocca tutte le funzioni di analisi, i timer, la gestione focus, insight e filtri dettagliati.
-                </div>
-              </div>
-            </div>
-          </div>
+
         </div>
       </div>
 
@@ -410,17 +357,17 @@ export const TaskManager: React.FC<TaskManagerProps> = ({
         console.log('Current view after:', value);
       }} className="w-full">
         <TabsList className={cn(
-          "grid w-full gap-0.5 h-8 md:h-auto p-0.5 md:p-1",
-          distractionMode ? "grid-cols-2" : "grid-cols-2 md:grid-cols-3"
+          "grid w-full gap-0.5 py-2.5 h-auto md:h-auto p-0.5 md:p-1",
+          distractionMode ? "grid-cols-3" : "grid-cols-3"
         )}>
-          <TabsTrigger value="active" className="flex items-center gap-1 text-xs h-7 px-2 md:h-9 md:px-3 md:gap-2 md:text-sm">
+          <TabsTrigger value="active" className="flex items-center gap-1 text-xs py-2.5 h-auto px-2 md:h-9 md:px-3 md:gap-2 md:text-sm">
             <Target className="w-3 h-3 md:w-4 md:h-4" />
             <span className="hidden sm:inline">Task Attivi</span>
             <span className="sm:hidden">Attivi</span>
           </TabsTrigger>
           <TabsTrigger 
             value="completed" 
-            className="flex items-center gap-1 text-xs h-7 px-2 md:h-9 md:px-3 md:gap-2 md:text-sm"
+            className="flex items-center gap-1 text-xs py-2.5 h-auto px-2 md:h-9 md:px-3 md:gap-2 md:text-sm"
             onClick={() => {
               console.log('Completati tab trigger clicked');
               console.log('Current view:', currentView);
@@ -430,12 +377,10 @@ export const TaskManager: React.FC<TaskManagerProps> = ({
             <span className="hidden sm:inline">Completati</span>
             <span className="sm:hidden">Fatti</span>
           </TabsTrigger>
-          {!distractionMode && (
-            <TabsTrigger value="analytics" className="hidden md:flex items-center gap-2 text-xs md:text-sm">
-              <BarChart3 className="w-4 h-4" />
-              Analisi
-            </TabsTrigger>
-          )}
+          <TabsTrigger value="analytics" className="flex items-center gap-1 text-xs py-2.5 h-auto px-2 md:hidden">
+            <BarChart3 className="w-3 h-3" />
+            <span className="sm:hidden">Analisi</span>
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="active" className="mt-3 md:mt-6">

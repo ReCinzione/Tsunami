@@ -102,44 +102,64 @@ export class ProgressionService {
   }
 
   /**
-   * Calculate level from total XP
+   * Calculate level from total XP (using Supabase logic)
    */
   calculateLevelFromXP(totalXP: number): number {
     if (totalXP <= 0) return 1;
     
-    let level = 1;
-    let xpRequired = 0;
+    // Use the same thresholds as Supabase
+    if (totalXP >= 11500) return 10;
+    if (totalXP >= 10500) return 9;
+    if (totalXP >= 7800) return 8;
+    if (totalXP >= 5600) return 7;
+    if (totalXP >= 3850) return 6;
+    if (totalXP >= 2500) return 5;
+    if (totalXP >= 1500) return 4;
+    if (totalXP >= 800) return 3;
+    if (totalXP >= 350) return 2;
+    if (totalXP >= 100) return 1;
     
-    while (xpRequired < totalXP) {
-      xpRequired += this.getXPRequiredForLevel(level);
-      if (xpRequired <= totalXP) {
-        level++;
-      }
-    }
-    
-    return Math.max(1, level - 1);
+    return 1;
   }
 
   /**
-   * Get XP required for a specific level
+   * Get XP required for a specific level (using Supabase logic)
    */
   getXPRequiredForLevel(level: number): number {
-    if (level <= 1) return 0;
-    return Math.round(XP_CONSTANTS.LEVEL_BASE * Math.pow(XP_CONSTANTS.LEVEL_MULTIPLIER, level - 2));
+    // Use the same logic as Supabase calculate_xp_for_level function
+    const xpTable: { [key: number]: number } = {
+      1: 0,
+      2: 100,   // Level 1 to 2: 100 XP
+      3: 150,   // Level 2 to 3: 150 XP  
+      4: 200,   // Level 3 to 4: 200 XP
+      5: 250,   // Level 4 to 5: 250 XP
+      6: 350,   // Level 5 to 6: 350 XP
+      7: 450,   // Level 6 to 7: 450 XP
+      8: 550,   // Level 7 to 8: 550 XP
+      9: 700,   // Level 8 to 9: 700 XP
+      10: 1000  // Level 9 to 10: 1000 XP
+    };
+    return xpTable[level] || 0;
   }
 
   /**
-   * Get total XP required to reach a specific level
+   * Get total XP required to reach a specific level (using Supabase logic)
    */
   getTotalXPForLevel(level: number): number {
-    if (level <= 1) return 0;
-    
-    let totalXP = 0;
-    for (let i = 2; i <= level; i++) {
-      totalXP += this.getXPRequiredForLevel(i);
-    }
-    
-    return totalXP;
+    // Use the same cumulative XP as Supabase
+    const totalXpTable: { [key: number]: number } = {
+      1: 100,
+      2: 350,   // 100 + 250
+      3: 800,   // 350 + 450
+      4: 1500,  // 800 + 700
+      5: 2500,  // 1500 + 1000
+      6: 3850,  // 2500 + 1350
+      7: 5600,  // 3850 + 1750
+      8: 7800,  // 5600 + 2200
+      9: 10500, // 7800 + 2700
+      10: 11500 // 10500 + 1000
+    };
+    return totalXpTable[level] || 0;
   }
 
   /**

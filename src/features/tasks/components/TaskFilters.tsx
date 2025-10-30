@@ -84,18 +84,16 @@ export const TaskFilters: React.FC<TaskFiltersProps> = ({
       ]
     },
     {
-      id: 'tags',
-      label: 'Tag',
-      icon: <Tag className="w-4 h-4" />,
+      id: 'priority',
+      label: 'Priorità',
+      icon: <Target className="w-4 h-4" />,
       options: [
-        { value: 'work', label: 'Lavoro', color: 'bg-blue-100 text-blue-800 border-blue-200' },
-        { value: 'personal', label: 'Personale', color: 'bg-purple-100 text-purple-800 border-purple-200' },
-        { value: 'health', label: 'Salute', color: 'bg-green-100 text-green-800 border-green-200' },
-        { value: 'learning', label: 'Apprendimento', color: 'bg-indigo-100 text-indigo-800 border-indigo-200' },
-        { value: 'creative', label: 'Creativo', color: 'bg-pink-100 text-pink-800 border-pink-200' },
-        { value: 'urgent', label: 'Urgente', color: 'bg-red-100 text-red-800 border-red-200' }
+        { value: 'alta', label: 'Alta', color: 'bg-red-100 text-red-800 border-red-200' },
+        { value: 'media', label: 'Media', color: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
+        { value: 'bassa', label: 'Bassa', color: 'bg-green-100 text-green-800 border-green-200' }
       ]
-    }
+    },
+
   ];
 
   // Gestisce il toggle di un filtro

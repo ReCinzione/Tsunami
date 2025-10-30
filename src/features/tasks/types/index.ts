@@ -6,10 +6,12 @@ export interface Task {
   description?: string;
   status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
   due_date?: string;
+  planned_date?: string;
   is_recurring: boolean;
   recurrence_pattern?: string;
   task_type: 'azione' | 'riflessione' | 'comunicazione' | 'creativita' | 'organizzazione';
   energy_required: 'molto_bassa' | 'bassa' | 'media' | 'alta' | 'molto_alta';
+  priority: 'bassa' | 'media' | 'alta';
   xp_reward: number;
   created_at: string;
   completed_at?: string;
@@ -21,16 +23,17 @@ export interface Task {
   context_switching_cost?: 'low' | 'medium' | 'high';
   // requires_deep_focus?: boolean; // Removed - not in database schema
   can_be_interrupted?: boolean;
+  has_subtasks?: boolean;
 }
 
 export interface TaskFilters {
   status?: Task['status'][];
   task_type?: Task['task_type'][];
   energy_required?: Task['energy_required'][];
+  priority?: ('bassa' | 'media' | 'alta')[];
   due_date_from?: string;
   due_date_to?: string;
   search?: string;
-  tags?: string[];
   // requires_deep_focus?: boolean; // Removed - not in database schema
 }
 
@@ -39,13 +42,11 @@ export interface TaskFormData {
   description?: string;
   task_type: Task['task_type'];
   energy_required: Task['energy_required'];
-  due_date?: string;
-  is_recurring: boolean;
-  recurrence_pattern?: string;
-  // estimated_duration removed - not in database schema
-  tags?: string[];
+  priority: 'bassa' | 'media' | 'alta';
+  xp_reward: number;
+  due_date?: Date | null;
+  planned_date?: Date | null;
   // requires_deep_focus?: boolean; // Removed - not in database schema
-  can_be_interrupted?: boolean;
 }
 
 export interface TaskMutationCallbacks {

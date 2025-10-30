@@ -63,9 +63,7 @@ class TaskService {
       query = query.or(`title.ilike.%${filters.search}%,description.ilike.%${filters.search}%`);
     }
 
-    if (filters?.tags?.length) {
-      query = query.overlaps('tags', filters.tags);
-    }
+
 
     // Deep focus filter removed - requires_deep_focus not in database schema
     // if (filters?.requires_deep_focus !== undefined) {
@@ -204,6 +202,8 @@ class TaskService {
       .insert({
         user_id: userId,
         ...validTaskData,
+        due_date: taskData.due_date?.toISOString(),
+        planned_date: taskData.planned_date?.toISOString(),
         xp_reward: xpReward,
         status: 'pending',
         created_at: new Date().toISOString()
@@ -249,10 +249,19 @@ class TaskService {
       // XP viene ricalcolato solo se cambiano parametri rilevanti
     }
 
+    // Converti le date in ISO string per il database
+    const updateData = { ...updates };
+    if (updateData.due_date !== undefined) {
+      updateData.due_date = updateData.due_date?.toISOString() as any;
+    }
+    if (updateData.planned_date !== undefined) {
+      updateData.planned_date = updateData.planned_date?.toISOString() as any;
+    }
+
     const { data, error } = await supabase
       .from('tasks')
       .update({
-        ...updates,
+        ...updateData,
         updated_at: new Date().toISOString()
       })
       .eq('id', taskId)

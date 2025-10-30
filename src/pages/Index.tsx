@@ -7,7 +7,7 @@ import { TaskManager } from '@/components/TaskManager';
 import MentalInbox from '@/components/MentalInbox';
 import RoutineManager from '@/components/RoutineManager';
 import ProjectManager from '@/components/ProjectManager';
-import { LocalChatBot } from '@/components/LocalChatBot';
+
 import { SmartActionSuggestion } from '@/components/SmartActionSuggestion';
 import VoiceInput from '@/components/VoiceInput';
 import { QuickActionButtons } from '@/components/QuickActionButtons';
@@ -21,7 +21,8 @@ import { ADHDNotificationContainer } from '@/components/ADHDNotification';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { LogOut, User, ChevronRight, Focus, Plus, Settings, MessageCircle } from 'lucide-react';
+import TutorialInterattivo from '@/components/TutorialInterattivo';
+import { LogOut, User, ChevronRight, Focus, Plus, Settings, BookOpen } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useUIStore } from '@/store/uiStore';
 import { useTaskStore } from '@/store/taskStore';
@@ -49,8 +50,7 @@ const AppContent = () => {
   const [tasks, setTasks] = useState([]);
   const [energyLevel, setEnergyLevel] = useState(7);
   const [showVoiceInput, setShowVoiceInput] = useState(false);
-  const [chatBotOpen, setChatBotOpen] = useState(false);
-  const [chatBotMinimized, setChatBotMinimized] = useState(false);
+
   const { toast } = useToast();
   const { handleError } = useErrorHandler();
 
@@ -260,10 +260,10 @@ const AppContent = () => {
         {/* Focus Mode & Quick Actions Bar */}
         <div className="mb-4 space-y-3">
           {/* Riga dei pulsanti principali */}
-          <div className="flex items-center justify-between gap-2 p-3 sm:p-4 bg-card border rounded-xl">
+          <div className="flex items-center justify-between gap-2 p-3 sm:p-4 bg-card rounded-xl">
             <Button
-              className={`adhd-btn-primary adhd-focus-ring flex items-center gap-2 flex-1 h-10 ${
-                focusMode ? 'adhd-pulse-success' : ''
+              className={`flex items-center gap-2 flex-1 h-auto py-2.5 px-4 rounded-xl font-semibold text-[#2E2E2E] bg-gradient-to-br from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 border-0 shadow-[0_2px_6px_rgba(0,0,0,0.1)] transition-all duration-200 ${
+                focusMode ? 'ring-2 ring-blue-300' : ''
               }`}
               onClick={() => {
                 setFocusMode(!focusMode);
@@ -273,24 +273,22 @@ const AppContent = () => {
               }}
             >
               <Focus className="w-4 h-4" />
-              <span className="hidden sm:inline">{focusMode ? '🎯 Focus Mode ON' : '✨ Attiva Focus'}</span>
-              <span className="sm:hidden">{focusMode ? '🎯 Focus' : '✨ Focus'}</span>
+              <span className="hidden sm:inline">{focusMode ? '🎯 Focus Mode ON' : 'Attiva Focus'}</span>
+              <span className="sm:hidden">{focusMode ? '🎯 Focus' : 'Focus'}</span>
             </Button>
             
             <Button 
-               variant="outline" 
                onClick={() => navigate('/impostazioni')} 
-               className="flex items-center justify-center flex-1 h-10 bg-gradient-to-br from-yellow-100 to-yellow-200 hover:from-yellow-200 hover:to-yellow-300 border-yellow-300"
+               className="flex items-center justify-center flex-1 h-auto py-2.5 px-4 rounded-xl font-semibold text-[#2E2E2E] bg-[#F9D57A] hover:bg-[#F7D066] border-0 shadow-[0_2px_6px_rgba(0,0,0,0.1)] transition-all duration-200"
              >
-               <Settings className="w-5 h-5 text-yellow-700" />
+               <Settings className="w-5 h-5" />
              </Button>
              
              <Button 
-               variant="outline" 
                onClick={handleLogout} 
-               className="flex items-center justify-center flex-1 h-10 bg-gradient-to-br from-red-100 to-red-200 hover:from-red-200 hover:to-red-300 border-red-300"
+               className="flex items-center justify-center flex-1 h-auto py-2.5 px-4 rounded-xl font-semibold text-[#2E2E2E] bg-[#F5A5A5] hover:bg-[#F39191] border-0 shadow-[0_2px_6px_rgba(0,0,0,0.1)] transition-all duration-200"
              >
-               <LogOut className="w-5 h-5 text-red-700" />
+               <LogOut className="w-5 h-5" />
              </Button>
           </div>
           
@@ -337,24 +335,6 @@ const AppContent = () => {
           </TabsList>
 
           <TabsContent value="dashboard" className="space-y-6 mt-6">
-            {/* Today's Mood Card */}
-            <div className="bg-card border rounded-xl p-6 shadow-lg">
-              <div className="flex items-center gap-4 mb-4">
-                <div className="text-4xl">
-                  {todayMood?.mood === 'disorientato' ? '🌀' : 
-                   todayMood?.mood === 'congelato' ? '❄️' :
-                   todayMood?.mood === 'in_flusso' ? '🌊' :
-                   todayMood?.mood === 'ispirato' ? '✨' : '🎭'}
-                </div>
-                <div>
-                  <h2 className="text-2xl font-semibold capitalize">
-                    {todayMood?.mood?.replace('_', ' ')}
-                  </h2>
-                  <p className="text-muted-foreground">Il tuo stato di oggi</p>
-                </div>
-              </div>
-            </div>
-
             {/* Quick Stats */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="bg-card border rounded-xl p-4 text-center">
@@ -416,6 +396,7 @@ const AppContent = () => {
                 <span className="text-2xl">🎤</span>
                 <span>Comando Vocale</span>
               </Button>
+              <TutorialInterattivo />
             </div>
             
             {/* Voice Input Component */}
@@ -431,271 +412,7 @@ const AppContent = () => {
 
           </TabsContent>
 
-          {/* Local ChatBot */}
-          {chatBotOpen && (
-            <LocalChatBot
-            userId="current-user"
-            tasks={tasks}
-            adhdContext={{
-              focusMode,
-              energyLevel,
-              activeTasks: tasks.length,
-              timeOfDay: new Date().getHours() < 12 ? 'morning' : 
-                        new Date().getHours() < 18 ? 'afternoon' : 'evening',
-              todayMood
-            }}
-            onActionSuggested={(action, params) => {
-              switch (action) {
-                case 'activate_focus_mode':
-                case 'enable_focus_mode':
-                  setFocusMode(true);
-                  setActiveTab('tasks');
-                  toast({
-                    title: "🎯 Focus Mode Attivato",
-                    description: "Ora vedrai solo i task più importanti",
-                  });
-                  break;
-                case 'filter_low_energy_tasks':
-                case 'show_low_energy_tasks':
-                  // Filtra effettivamente i task a bassa energia
-                  setTaskFilters({ energy_required: ['molto_bassa', 'bassa'] });
-                  setActiveTab('tasks');
-                  toast({
-                    title: "🌱 Task a Bassa Energia",
-                    description: `Filtro applicato per task a bassa energia`,
-                  });
-                  break;
-                case 'suggest_high_energy_tasks':
-                case 'show_high_priority_tasks':
-                  // Filtra task ad alta energia/priorità
-                  setTaskFilters({ energy_required: ['alta', 'molto_alta'] });
-                  setActiveTab('tasks');
-                  toast({
-                    title: "🚀 Task ad Alta Energia",
-                    description: `Filtro applicato per task impegnativi`,
-                  });
-                  break;
-                case 'organize_tasks_by_priority':
-                  // Reset filtri e ordina per priorità
-                  resetTaskFilters();
-                  setActiveTab('tasks');
-                  toast({
-                    title: "📋 Organizzazione Task",
-                    description: "Task organizzati per priorità",
-                  });
-                  break;
-                case 'suggest_easy_task':
-                  setActiveTab('tasks');
-                  toast({
-                    title: "🌱 Task Facile Suggerito",
-                    description: "Inizia con un task semplice per prendere slancio",
-                  });
-                  break;
-                case 'suggest_challenging_task':
-                  setActiveTab('tasks');
-                  toast({
-                    title: "🚀 Task Impegnativo",
-                    description: "Sfrutta la tua energia per qualcosa di importante",
-                  });
-                  break;
-                case 'start_focus_timer':
-                  setFocusMode(true);
-                  setActiveTab('tasks');
-                  toast({
-                    title: "⏰ Sessione Focus Iniziata",
-                    description: "Timer di concentrazione attivato",
-                  });
-                  break;
-                case 'start_micro_timer':
-                  toast({
-                    title: "⏱️ Micro Timer",
-                    description: "2 minuti per iniziare - ogni piccolo passo conta!",
-                  });
-                  break;
-                case 'prioritize_tasks':
-                  setActiveTab('tasks');
-                  toast({
-                    title: "🎯 Prioritizzazione Attivata",
-                    description: "Concentrati sui task più importanti",
-                  });
-                  break;
-                case 'break_task':
-                  setActiveTab('tasks');
-                  toast({
-                    title: "🔨 Spezza il Task",
-                    description: "Dividi il task in parti più piccole e gestibili",
-                  });
-                  break;
-                case 'open_mental_inbox':
-                  setActiveTab('notes');
-                  toast({
-                    title: "📥 Mental Inbox",
-                    description: "Scarica tutti i tuoi pensieri qui",
-                  });
-                  break;
-                case 'tackle_backlog':
-                  setActiveTab('tasks');
-                  toast({
-                    title: "📚 Affronta il Backlog",
-                    description: "Tempo di sistemare i task rimandati",
-                  });
-                  break;
-                case 'show_progress_stats':
-                  toast({
-                    title: "Statistiche Progresso",
-                    description: `Hai completato ${params?.completedToday || 0} task oggi!`,
-                  });
-                  break;
-                case 'open_prioritization_mode':
-                  setActiveTab('tasks');
-                  toast({
-                    title: "Modalità Prioritizzazione",
-                    description: "Organizza i tuoi task per importanza",
-                  });
-                  break;
-                case 'suggest_break':
-                  toast({
-                    title: "Pausa Consigliata",
-                    description: `Prenditi ${params?.duration || 5} minuti di pausa`,
-                  });
-                  break;
-                case 'start_pomodoro':
-                  console.log('Starting Pomodoro timer');
-                  toast({
-                    title: "Timer Pomodoro",
-                    description: "Timer di 25 minuti avviato",
-                  });
-                  break;
-                case 'start_2min_timer':
-                  console.log('Starting 2-minute timer');
-                  toast({
-                    title: "⏱️ Timer Veloce",
-                    description: "Timer di 2 minuti avviato - inizia subito!",
-                  });
-                  break;
-                case 'suggest_next_task':
-                  setActiveTab('tasks');
-                  if (params?.task) {
-                    toast({
-                      title: "➡️ Prossimo Task",
-                      description: `Inizia con: ${params.task.title}`,
-                    });
-                  } else {
-                    toast({
-                      title: "➡️ Prossimo Task",
-                      description: "Controlla la lista task per il prossimo da fare",
-                    });
-                  }
-                  break;
-                case 'extend_focus_session':
-                  toast({
-                    title: "⏰ Focus Esteso",
-                    description: "Continua così! Sessione di concentrazione prolungata",
-                  });
-                  break;
-                case 'track_progress':
-                  toast({
-                    title: "📈 Progresso Tracciato",
-                    description: "Ottimo lavoro! Continua così",
-                  });
-                  break;
-                case 'organize_projects':
-                  setActiveTab('projects');
-                  toast({
-                    title: "📁 Organizzazione Progetti",
-                    description: "Raggruppa le tue attività in progetti",
-                  });
-                  break;
-                case 'process_text':
-                  setActiveTab('notes');
-                  toast({
-                    title: "📝 Elaborazione Testo",
-                    description: "Riorganizza e semplifica i tuoi testi",
-                  });
-                  break;
-                case 'execute_command':
-                  toast({
-                    title: "⚡ Comando Eseguito",
-                    description: "Azione rapida completata",
-                  });
-                  break;
-                case 'create_task':
-                  if (params?.title) {
-                    const addTask = useTaskStore.getState().addTask;
-                    const newTask = {
-                      id: crypto.randomUUID(),
-                      title: params.title,
-                      description: params.description || '',
-                      status: 'pending' as const,
-                      task_type: params.task_type || 'organizzazione' as const,
-                      energy_required: params.energy_required || 'media' as const,
-                      is_recurring: false,
-                      xp_reward: 10,
-                      created_at: new Date().toISOString(),
-                      can_be_interrupted: true
-                    };
-                    addTask(newTask);
-                    setActiveTab('tasks');
-                    toast({
-                      title: "✅ Task Creato",
-                      description: `Nuovo task: ${params.title}`,
-                    });
-                  }
-                  break;
-                case 'manage_energy':
-                  setActiveTab('tasks');
-                  toast({
-                    title: "⚡ Gestione Energia",
-                    description: "Task filtrati in base al tuo livello di energia",
-                  });
-                  break;
-                case 'organize_tasks':
-                  setActiveTab('tasks');
-                  toast({
-                    title: "📋 Organizza Task",
-                    description: "Task riorganizzati per priorità e scadenza",
-                  });
-                  break;
-                case 'improve_focus':
-                  setFocusMode(true);
-                  setActiveTab('tasks');
-                  toast({
-                    title: "🎯 Focus Migliorato",
-                    description: "Modalità focus attivata per ridurre distrazioni",
-                  });
-                  break;
-                case 'view_progress':
-                  toast({
-                    title: "📊 Visualizza Progressi",
-                    description: "Statistiche aggiornate sui tuoi task completati",
-                  });
-                  break;
-                case 'quick_action':
-                  setActiveTab('tasks');
-                  toast({
-                    title: "⚡ Azione Rapida",
-                    description: "Prossima azione suggerita in base al contesto",
-                  });
-                  break;
-                case 'take_break':
-                  toast({
-                    title: "☕ Pausa Meritata",
-                    description: "Prenditi una pausa per ricaricare le energie",
-                  });
-                  break;
-                default:
-                  console.log('Action not implemented:', action, params);
-                  toast({
-                    title: "✨ Azione Eseguita",
-                    description: `${action} completata con successo`,
-                  });
-              }
-            }}
-            onClose={() => setChatBotOpen(false)}
-            isMinimized={chatBotMinimized}
-            onToggleMinimize={() => setChatBotMinimized(!chatBotMinimized)}
-          />
-          )}
+
 
           <TabsContent value="character" className="space-y-6 mt-6">
             {/* Dominant Archetype Description */}
@@ -886,16 +603,7 @@ const AppContent = () => {
 
         </Tabs>
 
-        {/* Floating ChatBot Button */}
-        {!chatBotOpen && (
-          <button
-            onClick={() => setChatBotOpen(true)}
-            className="fixed bottom-6 right-6 bg-primary hover:bg-primary/90 text-primary-foreground rounded-full p-4 shadow-lg transition-all duration-200 hover:scale-105 z-50"
-            aria-label="Apri ChatBot"
-          >
-            <MessageCircle className="w-6 h-6" />
-          </button>
-        )}
+
       </div>
     </div>
   );

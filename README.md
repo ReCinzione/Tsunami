@@ -118,6 +118,27 @@ npm run dev
 
 L'app sarà disponibile su `http://localhost:5173`
 
+## 📚 Tutorial Interattivo
+
+**NUOVO!** Tsunami include ora un tutorial interattivo completo che ti guida passo-passo nell'utilizzo dell'applicazione.
+
+### 🎯 Come Accedere al Tutorial
+- **Dashboard**: Clicca il pulsante "📚 Tutorial Interattivo" nella dashboard principale
+- **Primo Accesso**: Il tutorial si avvia automaticamente per i nuovi utenti
+- **Documentazione**: Consulta `TUTORIAL_INTERATTIVO.md` per la versione testuale completa
+
+### 🏁 Fasi del Tutorial
+1. **Primi Passi** (5 min): Registrazione, archetipi, dashboard
+2. **Funzionalità Base** (10 min): Task, Mental Inbox, mood tracking
+3. **Funzionalità Avanzate** (15 min): Focus mode, routine, progetti
+4. **Ottimizzazione** (10 min): Gamificazione, personalizzazione, analytics
+
+### ✨ Caratteristiche del Tutorial
+- **Interattivo**: Interfaccia guidata con progress tracking
+- **Personalizzato**: Adattato per persone con ADHD
+- **Modulare**: Puoi completare le fasi quando preferisci
+- **Pratico**: Esempi reali e suggerimenti specifici
+
 ---
 
 ## 🗄️ Database Schema

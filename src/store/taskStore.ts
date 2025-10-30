@@ -179,17 +179,7 @@ export const useTaskStore = create<TaskState>()(
             });
           }
 
-          // Filtra per tag
-          if (filters.tags && filters.tags.length > 0) {
-            filteredTasks = filteredTasks.filter(task => {
-              const taskTags = task.tags || [];
-              return filters.tags!.some(filterTag => 
-                taskTags.some(taskTag => 
-                  taskTag.toLowerCase().includes(filterTag.toLowerCase())
-                )
-              );
-            });
-          }
+
 
           // Ordina
           filteredTasks.sort((a, b) => {

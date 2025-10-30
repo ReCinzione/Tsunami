@@ -1,17 +1,28 @@
-# 📚 TSUNAMI DOCUMENTATION INDEX
+# 📚 Indice Centrale Documentazione Tsunami
 
-**Versione**: 1.0  
-**Data**: 2025-01-21  
-**Scopo**: Indice centrale di tutta la documentazione Tsunami  
+**Versione**: 2.2  
+**Ultimo Aggiornamento**: 2025-01-21  
+**Scopo**: Punto di accesso centrale per tutta la documentazione Tsunami  
 
 ---
 
-## 🎯 QUICK ACCESS - CONTEXT ENGINEERING
+## 🎯 Tutorial e Guide Utente
+
+### 📚 Tutorial Interattivo
+- **[TUTORIAL_INTERATTIVO.md](./TUTORIAL_INTERATTIVO.md)** - ⭐ **NUOVO!** Tutorial completo passo-passo per utenti
+- **[README.md](./README.md)** - Introduzione e setup rapido
+
+---
+
+## 🚀 Accesso Rapido - Context Engineering
+
+### 🧠 Sistema RAG e Workflow
+- **[CONTEXT_RAG.md](./CONTEXT_RAG.md)** - Knowledge base completa e sistema di recupero informazioni
+- **[WORKFLOW_DOCUMENTATION.md](./WORKFLOW_DOCUMENTATION.md)** - Flussi di lavoro e processi operativi
 
 ### 🧠 Sistema RAG (Retrieval-Augmented Generation)
 | File | Scopo | Priorità | Aggiornamento |
 |------|-------|----------|---------------|
-| **[CONTEXT_RAG.md](./CONTEXT_RAG.md)** | 📖 **FONTE PRIMARIA** - Knowledge base completa + Architettura dettagliata | 🔥 CRITICA | Quotidiano |
 | **[AI_CONTEXT_CONFIG.md](./AI_CONTEXT_CONFIG.md)** | 🤖 Configurazione AI, template e workflow automatico | 🔥 CRITICA | Settimanale |
 | **[RAG_AUTO_VALIDATOR.md](./RAG_AUTO_VALIDATOR.md)** | 🔍 Sistema validazione automatica coerenza | ⚡ ALTA | Settimanale |
 
@@ -25,21 +36,22 @@
 
 ---
 
-## 📋 DOCUMENTAZIONE PRINCIPALE
+## 📖 Documentazione Principale
 
-### 🏠 Setup e Panoramica
+### 🏗️ Setup e Panoramica
+- **[TSUNAMI_APPLICATION_DOCUMENTATION.md](./TSUNAMI_APPLICATION_DOCUMENTATION.md)** - Documentazione completa applicazione
+
 | File | Descrizione | Audience | Ultimo Aggiornamento |
 |------|-------------|----------|----------------------|
-| **[README.md](./README.md)** | Setup, installazione, panoramica generale | Tutti | 2025-01-21 |
-| **[TSUNAMI_APPLICATION_DOCUMENTATION.md](./TSUNAMI_APPLICATION_DOCUMENTATION.md)** | Documentazione tecnica completa, schema DB | Sviluppatori | 2025-01-21 |
 | **[CHANGELOG.md](./CHANGELOG.md)** | Storia delle modifiche e versioni | Tutti | Continuo |
 
-### 🏗️ Architettura e Sviluppo
+### 🏛️ Architettura e Sviluppo
+- **[DEVELOPMENT_BEST_PRACTICES.md](./DEVELOPMENT_BEST_PRACTICES.md)** - Best practices e linee guida sviluppo
+- **[DATABASE_SCHEMA_REFERENCE.md](./DATABASE_SCHEMA_REFERENCE.md)** - Schema database e relazioni
+
 | File | Descrizione | Audience | Ultimo Aggiornamento |
 |------|-------------|----------|----------------------|
-| **[DEVELOPMENT_BEST_PRACTICES.md](./DEVELOPMENT_BEST_PRACTICES.md)** | Best practices sviluppo + Testing strategy completa | Sviluppatori | 2025-01-20 |
 | **[FRONTEND_REFACTORING_PLAN.md](./FRONTEND_REFACTORING_PLAN.md)** | Piano di refactoring frontend | Sviluppatori | 2025-01-20 |
-| **[DATABASE_SCHEMA_REFERENCE.md](./DATABASE_SCHEMA_REFERENCE.md)** | Riferimento schema database | Sviluppatori | 2025-01-20 |
 
 ---
 

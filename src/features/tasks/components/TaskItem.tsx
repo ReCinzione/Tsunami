@@ -14,7 +14,6 @@ import {
   ChevronRight,
   Edit,
   Trash2,
-  Zap,
   Calendar,
   Target,
   Lightbulb
@@ -42,39 +41,63 @@ const TaskActions = memo<{
   onEdit?: (task: Task) => void;
   onDelete?: (taskId: string) => void;
   onBreakdown?: (task: Task) => void;
-}>(({ task, onEdit, onDelete, onBreakdown }) => {
+  onComplete?: (taskId: string) => void;
+}>(({ task, onEdit, onDelete, onBreakdown, onComplete }) => {
   const handleEdit = useCallback(() => onEdit?.(task), [onEdit, task]);
-  const handleDelete = useCallback(() => onDelete?.(task.id), [onDelete, task.id]);
+  const handleDelete = useCallback(() => {
+    if (confirm(`Sei sicuro di voler eliminare la task "${task.title}"? Questa azione non può essere annullata.`)) {
+      onDelete?.(task.id);
+    }
+  }, [onDelete, task.id, task.title]);
   const handleBreakdown = useCallback(() => onBreakdown?.(task), [onBreakdown, task]);
+  const handleComplete = useCallback(() => {
+    if (confirm(`Sei sicuro di voler completare la task "${task.title}"?`)) {
+      onComplete?.(task.id);
+    }
+  }, [onComplete, task.id, task.title]);
 
   return (
-    <div className="flex gap-0.5 md:gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+    <div className="grid grid-cols-2 gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+      {task.status !== 'completed' && (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleComplete}
+          className="h-10 w-10 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
+          title="Completa task"
+        >
+          <CheckCircle2 className="h-5 w-5" />
+        </Button>
+      )}
+      
       <Button
         variant="ghost"
         size="sm"
         onClick={handleEdit}
-        className="h-6 w-6 md:h-8 md:w-8 p-0"
+        className="h-10 w-10 p-0 hover:bg-blue-50"
+        title="Modifica task"
       >
-        <Edit className="h-3 w-3 md:h-4 md:w-4" />
+        <Edit className="h-5 w-5" />
       </Button>
       
       <Button
         variant="ghost"
         size="sm"
         onClick={handleBreakdown}
-        className="h-6 w-6 md:h-8 md:w-8 p-0"
+        className="h-10 w-10 p-0 hover:bg-yellow-50"
         title="Breakdown AI"
       >
-        <Lightbulb className="h-3 w-3 md:h-4 md:w-4" />
+        <Lightbulb className="h-5 w-5" />
       </Button>
       
       <Button
         variant="ghost"
         size="sm"
         onClick={handleDelete}
-        className="h-6 w-6 md:h-8 md:w-8 p-0 text-destructive hover:text-destructive"
+        className="h-10 w-10 p-0 text-destructive hover:text-destructive hover:bg-red-50"
+        title="Elimina task"
       >
-        <Trash2 className="h-3 w-3 md:h-4 md:w-4" />
+        <Trash2 className="h-5 w-5" />
       </Button>
     </div>
   );
@@ -82,32 +105,88 @@ const TaskActions = memo<{
 
 TaskActions.displayName = 'TaskActions';
 
-// Componente memoizzato per il badge di priorità
-const PriorityBadge = memo<{ priority: Task['priority'] }>(({ priority }) => {
+// Componente memoizzato per il badge di priorità (colore + simbolo)
+const PriorityBadge = memo<{ priority: 'bassa' | 'media' | 'alta' }>(({ priority }) => {
   const priorityConfig = useMemo(() => {
     switch (priority) {
-      case 'high':
-        return { label: 'Alta', variant: 'destructive' as const, icon: AlertTriangle };
-      case 'medium':
-        return { label: 'Media', variant: 'default' as const, icon: Clock };
-      case 'low':
-        return { label: 'Bassa', variant: 'secondary' as const, icon: Clock };
+      case 'alta':
+        return { color: 'bg-red-500', symbol: '🔴', title: 'Priorità Alta' };
+      case 'media':
+        return { color: 'bg-yellow-500', symbol: '🟡', title: 'Priorità Media' };
+      case 'bassa':
+        return { color: 'bg-green-500', symbol: '🟢', title: 'Priorità Bassa' };
       default:
-        return { label: 'Media', variant: 'default' as const, icon: Clock };
+        return { color: 'bg-yellow-500', symbol: '🟡', title: 'Priorità Media' };
     }
   }, [priority]);
 
-  const Icon = priorityConfig.icon;
-
   return (
-    <Badge variant={priorityConfig.variant} className="text-xs">
-      <Icon className="w-3 h-3 mr-1" />
-      {priorityConfig.label}
-    </Badge>
+    <span className="text-sm" title={priorityConfig.title}>
+      {priorityConfig.symbol}
+    </span>
   );
 });
 
 PriorityBadge.displayName = 'PriorityBadge';
+
+// Componente memoizzato per il badge di energia (colore + simbolo)
+const EnergyBadge = memo<{ energy: Task['energy_required'] }>(({ energy }) => {
+  const energyConfig = useMemo(() => {
+    switch (energy) {
+      case 'molto_alta':
+          return { color: 'bg-red-600', symbol: '🌋', title: 'Energia Molto Alta' };
+      case 'alta':
+          return { color: 'bg-orange-500', symbol: '🔥', title: 'Energia Alta' };
+      case 'media':
+        return { color: 'bg-yellow-500', symbol: '💡', title: 'Energia Media' };
+      case 'bassa':
+        return { color: 'bg-blue-500', symbol: '🌊', title: 'Energia Bassa' };
+      case 'molto_bassa':
+        return { color: 'bg-green-500', symbol: '🍃', title: 'Energia Molto Bassa' };
+      default:
+        return { color: 'bg-gray-500', symbol: '❓', title: 'Energia Non Specificata' };
+    }
+  }, [energy]);
+
+  return (
+    <span className="text-sm" title={energyConfig.title}>
+      {energyConfig.symbol}
+    </span>
+  );
+});
+
+EnergyBadge.displayName = 'EnergyBadge';
+
+// Componente memoizzato per il tipo di task (solo simbolo)
+const TaskTypeIcon = memo<{ taskType: Task['task_type'] }>(({ taskType }) => {
+  const typeConfig = useMemo(() => {
+    switch (taskType) {
+      case 'azione':
+        return { icon: '🎯', title: 'Azione' };
+      case 'riflessione':
+        return { icon: '🤔', title: 'Riflessione' };
+      case 'comunicazione':
+        return { icon: '💬', title: 'Comunicazione' };
+      case 'creativita':
+        return { icon: '🎨', title: 'Creatività' };
+      case 'organizzazione':
+        return { icon: '📋', title: 'Organizzazione' };
+      default:
+        return { icon: '📝', title: 'Task Generica' };
+    }
+  }, [taskType]);
+
+  return (
+    <span 
+      className="text-sm"
+      title={typeConfig.title}
+    >
+      {typeConfig.icon}
+    </span>
+  );
+});
+
+TaskTypeIcon.displayName = 'TaskTypeIcon';
 
 // Componente memoizzato per le subtask
 const SubtasksList = memo<{
@@ -225,6 +304,10 @@ export const TaskItem = memo<TaskItemProps>(({
   const handleComplete = useCallback(async () => {
     if (isCompleting || isCompleted) return;
     
+    if (!confirm(`Sei sicuro di voler completare la task "${task.title}"?`)) {
+      return;
+    }
+    
     setIsCompleting(true);
     try {
       await onComplete?.(task.id);
@@ -269,19 +352,10 @@ export const TaskItem = memo<TaskItemProps>(({
       <CardHeader className={cn("pb-1 md:pb-2 p-3 md:p-6", compact && "py-2")}>
         <div className="flex items-start justify-between gap-2 md:gap-3">
           <div className="flex items-start gap-2 md:gap-3 flex-1 min-w-0">
-            {/* Checkbox per completamento */}
-            <Checkbox
-              checked={isCompleted}
-              disabled={isCompleting}
-              onCheckedChange={handleComplete}
-              onClick={(e) => e.stopPropagation()}
-              className="mt-0.5 flex-shrink-0 h-4 w-4 md:h-5 md:w-5"
-            />
             
             {/* Contenuto principale */}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1 md:gap-2 mb-1">
-                {statusIcon}
                 <h3 className={titleClasses}>
                   {task.title}
                 </h3>
@@ -294,27 +368,57 @@ export const TaskItem = memo<TaskItemProps>(({
               )}
               
               {/* Badges e metadati */}
-              <div className="flex items-center gap-1 md:gap-2 flex-wrap">
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* Tipo di task - solo simbolo (primo) */}
+                {task.task_type && (
+                  <TaskTypeIcon taskType={task.task_type} />
+                )}
+                
+                {/* Priorità - solo icona */}
                 <PriorityBadge priority={task.priority} />
                 
+                {/* Energia - solo icona */}
                 {task.energy_required && (
-                  <Badge variant="outline" className="text-xs">
-                    <Zap className="w-3 h-3 mr-1" />
-                    {task.energy_required}
-                  </Badge>
+                  <EnergyBadge energy={task.energy_required} />
                 )}
                 
-                {task.due_date && (
-                  <Badge variant="outline" className="text-xs">
+                {/* Data di pianificazione - sfondo verde */}
+                {task.planned_date && (
+                  <Badge className="text-xs bg-green-100 text-green-800 border-green-200">
                     <Calendar className="w-3 h-3 mr-1" />
-                    {new Date(task.due_date).toLocaleDateString('it-IT')}
+                    {(() => {
+                      const date = new Date(task.planned_date);
+                      const hasTime = date.getHours() !== 0 || date.getMinutes() !== 0;
+                      return hasTime 
+                        ? date.toLocaleString('it-IT', { 
+                            day: '2-digit', 
+                            month: '2-digit', 
+                            year: 'numeric', 
+                            hour: '2-digit', 
+                            minute: '2-digit' 
+                          })
+                        : date.toLocaleDateString('it-IT');
+                    })()}
                   </Badge>
                 )}
                 
-                {task.task_type && (
-                  <Badge variant="outline" className="text-xs">
-                    <Target className="w-3 h-3 mr-1" />
-                    {task.task_type}
+                {/* Data di scadenza - sfondo giallo */}
+                {task.due_date && (
+                  <Badge className="text-xs bg-yellow-100 text-yellow-800 border-yellow-200">
+                    <Calendar className="w-3 h-3 mr-1" />
+                    {(() => {
+                      const date = new Date(task.due_date);
+                      const hasTime = date.getHours() !== 0 || date.getMinutes() !== 0;
+                      return hasTime 
+                        ? date.toLocaleString('it-IT', { 
+                            day: '2-digit', 
+                            month: '2-digit', 
+                            year: 'numeric', 
+                            hour: '2-digit', 
+                            minute: '2-digit' 
+                          })
+                        : date.toLocaleDateString('it-IT');
+                    })()}
                   </Badge>
                 )}
               </div>
@@ -329,6 +433,7 @@ export const TaskItem = memo<TaskItemProps>(({
                 onEdit={onEdit}
                 onDelete={onDelete}
                 onBreakdown={onBreakdown}
+                onComplete={onComplete}
               />
             </div>
           )}

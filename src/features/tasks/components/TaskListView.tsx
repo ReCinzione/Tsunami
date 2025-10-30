@@ -50,24 +50,7 @@ const TaskStats = React.memo<{
 
 TaskStats.displayName = 'TaskStats';
 
-// Componente memoizzato per la barra di ricerca
-const SearchBar = React.memo<{
-  searchQuery: string;
-  onSearchChange: (query: string) => void;
-}>(({ searchQuery, onSearchChange }) => (
-  <div className="relative w-full sm:w-auto">
-    <Search className="h-4 w-4 absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" />
-    <input
-      type="text"
-      placeholder="Cerca task..."
-      value={searchQuery}
-      onChange={(e) => onSearchChange(e.target.value)}
-      className="w-full pl-8 pr-3 py-1 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-    />
-  </div>
-));
 
-SearchBar.displayName = 'SearchBar';
 
 // Componente memoizzato per la lista delle task con virtualizzazione semplice
 const TaskList = React.memo<{
@@ -269,91 +252,89 @@ export const TaskListView = React.memo<TaskListViewProps>(({
       {/* Statistiche rapide - nascoste in modalità focus */}
       {!focusMode && <TaskStats stats={stats} />}
 
-      {/* Barra degli strumenti */}
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-            <CardTitle className="flex items-center gap-2">
-              {focusMode ? (
-                <>
-                  <Focus className="h-5 w-5 text-blue-600" />
-                  Le tue {focusTaskCount} task prioritarie
-                </>
-              ) : (
-                <>
-                  <CheckCircle2 className="h-5 w-5 text-green-600" />
-                  Le tue task
-                </>
-              )}
-            </CardTitle>
-            
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-              {!focusMode && (
-                <>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleToggleFilters}
-                    className="w-full sm:w-auto"
-                  >
-                    <Filter className="h-4 w-4 mr-1" />
-                    Filtri
-                  </Button>
-                  
-                  <SearchBar 
-                    searchQuery={searchQuery}
-                    onSearchChange={handleSearchChange}
-                  />
-                </>
-              )}
-              
-              <Button
-                onClick={onCreateTask}
-                size="sm"
-                className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto hidden sm:flex"
-              >
-                Nuova Task
-              </Button>
+      {/* Header con modalità focus */}
+      {focusMode && (
+        <div className="flex items-center gap-2 mb-4">
+          <Focus className="h-5 w-5 text-purple-600" />
+          <h2 className="text-lg font-semibold">Le tue {focusTaskCount} task prioritarie</h2>
+        </div>
+      )}
+      
+      {/* Barra degli strumenti senza Card */}
+      {!focusMode && (
+        <div className="space-y-3 mb-4">
+          {/* Riga 1: Ricerca e Filtri */}
+          <div className="flex items-center gap-3">
+            <div className="relative flex-1">
+              <Search className="h-4 w-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+              <input
+                 type="text"
+                 placeholder="Cerca"
+                 value={searchQuery}
+                 onChange={(e) => handleSearchChange(e.target.value)}
+                 className="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+               />
             </div>
+            <Button
+              variant="outline"
+              onClick={handleToggleFilters}
+              className="px-4 py-2.5 h-auto border-gray-200 hover:border-purple-300 hover:bg-purple-50"
+            >
+              <Filter className="h-4 w-4 mr-2" />
+              {showFilters ? 'Nascondi Filtri' : 'Filtri'}
+            </Button>
           </div>
-        </CardHeader>
-
-        {/* Filtri espandibili */}
-        {showFilters && !focusMode && (
-          <CardContent className="pt-0">
-            <TaskFilters
-              filters={filters}
-              onFiltersChange={onFiltersChange}
-            />
-          </CardContent>
-        )}
-      </Card>
-
-      {/* Lista delle task */}
-      <Card>
-        <CardContent className="pt-6">
-          {loading ? (
-            <div className="space-y-3">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <Skeleton key={i} className="h-24 w-full" />
-              ))}
+          
+          {/* Riga 2: Azioni principali */}
+          <div className="flex items-center gap-3">
+            <Button
+               onClick={onCreateTask}
+               className="w-full bg-purple-600 hover:bg-purple-700 text-white py-2.5 h-auto font-medium"
+             >
+               Nuova Attività
+             </Button>
+          </div>
+          
+          {/* Spazio per future funzionalità */}
+           <div className="h-12">
+             {/* Spazio riservato */}
+           </div>
+          
+          {/* Filtri espandibili */}
+          {showFilters && (
+            <div className="mt-4">
+              <TaskFilters
+                filters={filters}
+                onFiltersChange={onFiltersChange}
+              />
             </div>
-          ) : displayTasks.length === 0 ? (
-            <EmptyTaskState onCreateTask={onCreateTask} />
-          ) : (
-            <TaskList
-              tasks={displayTasks}
-              onTaskComplete={onTaskComplete}
-              onTaskClick={onTaskClick}
-              onTaskEdit={onTaskEdit}
-              onDeleteTask={onDeleteTask}
-              onTaskBreakdown={onTaskBreakdown}
-              selectedTaskId={selectedTaskId}
-              focusMode={focusMode}
-            />
           )}
-        </CardContent>
-      </Card>
+        </div>
+      )}
+
+      {/* Lista delle task senza contenitore */}
+      <div className="w-full">
+        {loading ? (
+          <div className="space-y-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} className="h-24 w-full" />
+            ))}
+          </div>
+        ) : displayTasks.length === 0 ? (
+          <EmptyTaskState onCreateTask={onCreateTask} />
+        ) : (
+          <TaskList
+            tasks={displayTasks}
+            onTaskComplete={onTaskComplete}
+            onTaskClick={onTaskClick}
+            onTaskEdit={onTaskEdit}
+            onDeleteTask={onDeleteTask}
+            onTaskBreakdown={onTaskBreakdown}
+            selectedTaskId={selectedTaskId}
+            focusMode={focusMode}
+          />
+        )}
+      </div>
 
 
     </div>
