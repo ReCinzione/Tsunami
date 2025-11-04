@@ -31,10 +31,21 @@ const MentalInbox = ({ onTaskCreated }: MentalInboxProps) => {
   const [newNote, setNewNote] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState<'notes' | 'ocr'>(() => {
+    if (typeof window === 'undefined') return 'notes';
+    const saved = window.localStorage.getItem('mentalInboxTab');
+    return (saved === 'ocr' || saved === 'notes') ? (saved as 'notes' | 'ocr') : 'notes';
+  });
 
   useEffect(() => {
     loadInboxItems();
   }, []);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem('mentalInboxTab', activeTab);
+    } catch {}
+  }, [activeTab]);
 
   const loadInboxItems = async () => {
     try {
@@ -62,6 +73,9 @@ const MentalInbox = ({ onTaskCreated }: MentalInboxProps) => {
   const addNote = async (voiceConfidence?: number) => {
     if (!newNote.trim()) return;
 
+    // Assicuriamoci che voiceConfidence sia un numero o undefined
+    const confidence = typeof voiceConfidence === 'number' ? voiceConfidence : undefined;
+
     setIsLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -72,8 +86,8 @@ const MentalInbox = ({ onTaskCreated }: MentalInboxProps) => {
         .insert({
           user_id: user.id,
           content: newNote.trim(),
-          content_type: voiceConfidence ? 'voice' : 'text',
-          voice_confidence: voiceConfidence
+          content_type: confidence ? 'voice' : 'text',
+          voice_confidence: confidence
         });
 
       if (error) throw error;
@@ -86,7 +100,7 @@ const MentalInbox = ({ onTaskCreated }: MentalInboxProps) => {
         description: "La tua nota è stata salvata nel mental inbox."
       });
     } catch (error) {
-      console.error('Error adding note:', error);
+      console.error('Error adding note:', error instanceof Error ? error.message : String(error));
       toast({
         title: "Errore",
         description: "Impossibile aggiungere la nota.",
@@ -302,7 +316,7 @@ const MentalInbox = ({ onTaskCreated }: MentalInboxProps) => {
 
   return (
     <div className="space-y-6">
-      <Tabs defaultValue="notes" className="w-full">
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'notes' | 'ocr')} className="w-full">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="notes">📝 Note</TabsTrigger>
           <TabsTrigger value="ocr">📷 Immagine a Task</TabsTrigger>
@@ -330,7 +344,10 @@ const MentalInbox = ({ onTaskCreated }: MentalInboxProps) => {
                 />
                 <div className="flex gap-2 items-center">
                   <Button 
-                    onClick={addNote} 
+                    onClick={(e) => {
+                      e.preventDefault();
+                      addNote();
+                    }} 
                     disabled={!newNote.trim() || isLoading}
                     className="gap-2 flex-1"
                   >

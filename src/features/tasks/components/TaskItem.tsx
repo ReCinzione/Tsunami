@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo, memo } from 'react';
-import { Task, TaskStatus } from '../types';
+import { Task, TaskStatus, TaskFormData } from '../types';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -16,11 +16,15 @@ import {
   Trash2,
   Calendar,
   Target,
-  Lightbulb
+  Plus,
+  Focus
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { taskService } from '../services/taskService';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
+import { ADHDIndicators } from '@/components/ADHDIndicators';
+import { UnifiedSubtaskCreator } from '@/components/UnifiedSubtaskCreator';
 
 interface TaskItemProps {
   task: Task;
@@ -28,11 +32,17 @@ interface TaskItemProps {
   onEdit?: (task: Task) => void;
   onDelete?: (taskId: string) => void;
   onBreakdown?: (task: Task) => void;
+  onUltraFocus?: (task: Task) => void;
   onClick?: (task: Task) => void;
   isSelected?: boolean;
   showActions?: boolean;
   compact?: boolean;
+  showDetails?: boolean;
+  focusMode?: boolean;
   className?: string;
+  // Nuovi controlli globali
+  forceShowSubtaskToggle?: boolean;
+  globalSubtasksOpen?: boolean;
 }
 
 // Componente memoizzato per le azioni della task
@@ -40,16 +50,18 @@ const TaskActions = memo<{
   task: Task;
   onEdit?: (task: Task) => void;
   onDelete?: (taskId: string) => void;
-  onBreakdown?: (task: Task) => void;
+  onBreakdown?: () => void;
+  onUltraFocus?: (task: Task) => void;
   onComplete?: (taskId: string) => void;
-}>(({ task, onEdit, onDelete, onBreakdown, onComplete }) => {
+}>(({ task, onEdit, onDelete, onBreakdown, onUltraFocus, onComplete }) => {
   const handleEdit = useCallback(() => onEdit?.(task), [onEdit, task]);
   const handleDelete = useCallback(() => {
     if (confirm(`Sei sicuro di voler eliminare la task "${task.title}"? Questa azione non può essere annullata.`)) {
       onDelete?.(task.id);
     }
   }, [onDelete, task.id, task.title]);
-  const handleBreakdown = useCallback(() => onBreakdown?.(task), [onBreakdown, task]);
+  const handleBreakdown = useCallback(() => onBreakdown?.(), [onBreakdown]);
+  const handleUltraFocus = useCallback(() => onUltraFocus?.(task), [onUltraFocus, task]);
   const handleComplete = useCallback(() => {
     if (confirm(`Sei sicuro di voler completare la task "${task.title}"?`)) {
       onComplete?.(task.id);
@@ -59,15 +71,27 @@ const TaskActions = memo<{
   return (
     <div className="grid grid-cols-2 gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
       {task.status !== 'completed' && (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleComplete}
-          className="h-10 w-10 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
-          title="Completa task"
-        >
-          <CheckCircle2 className="h-5 w-5" />
-        </Button>
+        <>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleUltraFocus}
+            className="h-10 w-10 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+            title="Ultra Focus Mode"
+          >
+            <Focus className="h-5 w-5" />
+          </Button>
+          
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleComplete}
+            className="h-10 w-10 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
+            title="Completa task"
+          >
+            <CheckCircle2 className="h-5 w-5" />
+          </Button>
+        </>
       )}
       
       <Button
@@ -84,10 +108,10 @@ const TaskActions = memo<{
         variant="ghost"
         size="sm"
         onClick={handleBreakdown}
-        className="h-10 w-10 p-0 hover:bg-yellow-50"
-        title="Breakdown AI"
+        className="h-10 w-10 p-0 hover:bg-green-50"
+        title="Crea Subtask"
       >
-        <Lightbulb className="h-5 w-5" />
+        <Plus className="h-5 w-5" />
       </Button>
       
       <Button
@@ -195,70 +219,77 @@ const SubtasksList = memo<{
 }>(({ taskId, isExpanded }) => {
   const [subtasks, setSubtasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(false);
-  const [loaded, setLoaded] = useState(false);
-  const { toast } = useToast();
 
-  // Carica subtask solo quando necessario
   React.useEffect(() => {
-    if (isExpanded && !loaded && !loading) {
-      setLoading(true);
-      taskService.getSubtasks(taskId)
-        .then(setSubtasks)
-        .catch((error) => {
-          console.error('Errore caricamento subtask:', error);
-          toast({
-            title: "Errore",
-            description: "Impossibile caricare le subtask",
-            variant: "destructive"
-          });
-        })
-        .finally(() => {
-          setLoading(false);
-          setLoaded(true);
-        });
-    }
-  }, [isExpanded, loaded, loading, taskId, toast]);
-
-  const progress = useMemo(() => {
-    if (subtasks.length === 0) return 0;
-    const completed = subtasks.filter(st => st.status === 'completed').length;
-    return Math.round((completed / subtasks.length) * 100);
-  }, [subtasks]);
+    if (!isExpanded) return;
+    
+    setLoading(true);
+    taskService.getSubtasks(taskId)
+      .then(setSubtasks)
+      .catch((error) => {
+        console.error('Errore caricamento subtask:', error);
+      })
+      .finally(() => setLoading(false));
+  }, [taskId, isExpanded]);
 
   if (!isExpanded) return null;
+  if (loading) return <div className="text-sm text-muted-foreground p-2">Caricamento subtask...</div>;
+  if (subtasks.length === 0) return <div className="text-sm text-muted-foreground p-2">Nessuna subtask</div>;
+
+  const completedCount = subtasks.filter(s => s.status === 'completed').length;
+  const progressPercentage = (completedCount / subtasks.length) * 100;
 
   return (
     <div className="mt-3 space-y-2">
-      {subtasks.length > 0 && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <span>Progresso subtask:</span>
-          <Progress value={progress} className="flex-1 h-2" />
-          <span>{progress}%</span>
-        </div>
-      )}
+      {/* Barra di progresso */}
+      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <span>Progresso subtask:</span>
+        <Progress value={progressPercentage} className="flex-1 h-2" />
+        <span>{completedCount}/{subtasks.length}</span>
+      </div>
       
-      {loading ? (
-        <div className="text-sm text-muted-foreground">Caricamento subtask...</div>
-      ) : subtasks.length > 0 ? (
-        <div className="space-y-1">
-          {subtasks.map((subtask) => (
-            <div key={subtask.id} className="flex items-center gap-2 text-sm pl-4">
-              <Checkbox 
-                checked={subtask.status === 'completed'}
-                disabled
-                className="h-4 w-4"
-              />
-              <span className={cn(
-                subtask.status === 'completed' && "line-through text-muted-foreground"
-              )}>
-                {subtask.title}
-              </span>
+      {/* Lista subtask */}
+      <div className="space-y-2 pl-4 border-l-2 border-muted">
+        {subtasks.map((subtask) => (
+          <div key={subtask.id} className="flex items-start gap-3 p-2 rounded-md bg-muted/30">
+            <Checkbox
+              checked={subtask.status === 'completed'}
+              disabled
+              className="mt-0.5"
+            />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <TaskTypeIcon taskType={subtask.task_type} />
+                <h4 className={cn(
+                  "text-sm font-medium",
+                  subtask.status === 'completed' && "line-through text-muted-foreground"
+                )}>
+                  {subtask.title}
+                </h4>
+              </div>
+              
+              {subtask.description && (
+                <p className={cn(
+                  "text-xs text-muted-foreground mt-1",
+                  subtask.status === 'completed' && "line-through"
+                )}>
+                  {subtask.description}
+                </p>
+              )}
+              
+              <div className="mt-2">
+                <ADHDIndicators 
+                  task={{
+                    ...subtask,
+                    xp_reward: undefined
+                  }}
+                  compact={true}
+                />
+              </div>
             </div>
-          ))}
-        </div>
-      ) : (
-        <div className="text-sm text-muted-foreground pl-4">Nessuna subtask</div>
-      )}
+          </div>
+        ))}
+      </div>
     </div>
   );
 });
@@ -275,15 +306,23 @@ export const TaskItem = memo<TaskItemProps>(({
   onEdit, 
   onDelete, 
   onBreakdown,
+  onUltraFocus,
   onClick,
   isSelected = false,
   showActions = true,
   compact = false,
-  className 
+  showDetails = true,
+  focusMode = false,
+  className,
+  forceShowSubtaskToggle = false,
+  globalSubtasksOpen = false,
 }) => {
   const [isCompleting, setIsCompleting] = useState(false);
   const [showSubtasks, setShowSubtasks] = useState(false);
+  const [showSubtaskModal, setShowSubtaskModal] = useState(false);
+  const [subtasks, setSubtasks] = useState<Task[]>([]);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   // Memoizza lo stato di completamento
   const isCompleted = useMemo(() => task.status === 'completed', [task.status]);
@@ -328,9 +367,29 @@ export const TaskItem = memo<TaskItemProps>(({
     onClick?.(task);
   }, [onClick, task]);
 
+  const handleBreakdown = useCallback(() => {
+    setShowSubtaskModal(true);
+  }, []);
+
   const toggleSubtasks = useCallback(() => {
     setShowSubtasks(prev => !prev);
   }, []);
+
+  // Sincronizza apertura subtask con controllo globale
+  React.useEffect(() => {
+    setShowSubtasks(Boolean(globalSubtasksOpen));
+  }, [globalSubtasksOpen]);
+
+  // Carica subtask se la task ne ha
+  React.useEffect(() => {
+    if (task.has_subtasks) {
+      taskService.getSubtasks(task.id)
+        .then(setSubtasks)
+        .catch((error) => {
+          console.error('Errore caricamento subtask:', error);
+        });
+    }
+  }, [task.id, task.has_subtasks]);
 
   // Memoizza le classi CSS
   const cardClasses = useMemo(() => cn(
@@ -373,18 +432,39 @@ export const TaskItem = memo<TaskItemProps>(({
                 {task.task_type && (
                   <TaskTypeIcon taskType={task.task_type} />
                 )}
-                
-                {/* Priorità - solo icona */}
-                <PriorityBadge priority={task.priority} />
-                
-                {/* Energia - solo icona */}
-                {task.energy_required && (
-                  <EnergyBadge energy={task.energy_required} />
+
+                {/* Icona Priorità (emoji) */}
+                {task.priority && (
+                  <PriorityBadge priority={task.priority} />
                 )}
                 
-                {/* Data di pianificazione - sfondo verde */}
+                {/* Indicatori ADHD-friendly */}
+                <ADHDIndicators 
+                  task={task}
+                  subtasks={subtasks}
+                  showProgress={task.has_subtasks && subtasks.length > 0}
+                  compact={false}
+                />
+                
+                {/* Data di pianificazione - outline verde con testo */}
                 {task.planned_date && (
-                  <Badge className="text-xs bg-green-100 text-green-800 border-green-200">
+                  <Badge 
+                    variant="outline"
+                    className="text-xs mt-2 border-green-300 text-green-700"
+                    title={(() => {
+                      const date = new Date(task.planned_date);
+                      const hasTime = date.getHours() !== 0 || date.getMinutes() !== 0;
+                      return hasTime 
+                        ? date.toLocaleString('it-IT', { 
+                            day: '2-digit', 
+                            month: '2-digit', 
+                            year: 'numeric', 
+                            hour: '2-digit', 
+                            minute: '2-digit' 
+                          })
+                        : date.toLocaleDateString('it-IT');
+                    })()}
+                  >
                     <Calendar className="w-3 h-3 mr-1" />
                     {(() => {
                       const date = new Date(task.planned_date);
@@ -402,9 +482,25 @@ export const TaskItem = memo<TaskItemProps>(({
                   </Badge>
                 )}
                 
-                {/* Data di scadenza - sfondo giallo */}
+                {/* Data di scadenza - outline giallo con testo */}
                 {task.due_date && (
-                  <Badge className="text-xs bg-yellow-100 text-yellow-800 border-yellow-200">
+                  <Badge 
+                    variant="outline"
+                    className="text-xs mt-2 border-yellow-300 text-yellow-700"
+                    title={(() => {
+                      const date = new Date(task.due_date);
+                      const hasTime = date.getHours() !== 0 || date.getMinutes() !== 0;
+                      return hasTime 
+                        ? date.toLocaleString('it-IT', { 
+                            day: '2-digit', 
+                            month: '2-digit', 
+                            year: 'numeric', 
+                            hour: '2-digit', 
+                            minute: '2-digit' 
+                          })
+                        : date.toLocaleDateString('it-IT');
+                    })()}
+                  >
                     <Calendar className="w-3 h-3 mr-1" />
                     {(() => {
                       const date = new Date(task.due_date);
@@ -432,7 +528,8 @@ export const TaskItem = memo<TaskItemProps>(({
                 task={task}
                 onEdit={onEdit}
                 onDelete={onDelete}
-                onBreakdown={onBreakdown}
+                onBreakdown={handleBreakdown}
+                onUltraFocus={onUltraFocus}
                 onComplete={onComplete}
               />
             </div>
@@ -441,7 +538,7 @@ export const TaskItem = memo<TaskItemProps>(({
       </CardHeader>
       
       {/* Subtask collapsible */}
-      {!compact && task.has_subtasks && (
+      {!compact && (forceShowSubtaskToggle || task.has_subtasks) && (
         <CardContent className="pt-0">
           <Collapsible open={showSubtasks} onOpenChange={setShowSubtasks}>
             <CollapsibleTrigger asChild>
@@ -471,6 +568,35 @@ export const TaskItem = memo<TaskItemProps>(({
           </Collapsible>
         </CardContent>
       )}
+      
+      {/* Modal per creazione subtask */}
+      <UnifiedSubtaskCreator
+        mode="advanced"
+        isOpen={showSubtaskModal}
+        onClose={() => setShowSubtaskModal(false)}
+        parentTask={task}
+        onCreateSubtask={async (title: string, description?: string) => {
+          if (!user?.id) {
+            throw new Error('Utente non autenticato');
+          }
+
+          const subtaskData = {
+            title,
+            description: description || '',
+            status: 'pending' as const,
+            priority: 'media' as const,
+            parent_task_id: task.id,
+            task_type: task.task_type,
+            tags: task.tags,
+            is_recurring: false,
+            energy_required: 'media' as const,
+            xp_reward: 10,
+            user_id: user.id
+          };
+
+          await taskService.createSubtask(user.id, subtaskData);
+        }}
+      />
     </Card>
   );
 });

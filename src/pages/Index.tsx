@@ -21,9 +21,11 @@ import { ADHDNotificationContainer } from '@/components/ADHDNotification';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import TutorialInterattivo from '@/components/TutorialInterattivo';
+import { tutorialSteps } from '@/components/InteractiveTutorial';
+import { useTutorial } from '@/hooks/useTutorial';
+import '@/styles/tutorial.css';
 import { LogOut, User, ChevronRight, Focus, Plus, Settings, BookOpen } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useUIStore } from '@/store/uiStore';
 import { useTaskStore } from '@/store/taskStore';
 
@@ -46,17 +48,50 @@ const AppContent = () => {
   const setTaskFilters = useTaskStore(state => state.setFilters);
   const resetTaskFilters = useTaskStore(state => state.resetFilters);
   const [focusTaskCount, setFocusTaskCount] = useState(3);
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState(() => {
+    if (typeof window === 'undefined') return 'dashboard';
+    const saved = window.localStorage.getItem('activeTab');
+    return saved || 'dashboard';
+  });
   const [tasks, setTasks] = useState([]);
   const [energyLevel, setEnergyLevel] = useState(7);
   const [showVoiceInput, setShowVoiceInput] = useState(false);
 
+  // Setup Tutorial: avvio su richiesta
+  const { startTutorial } = useTutorial(tutorialSteps);
+
   const { toast } = useToast();
   const { handleError } = useErrorHandler();
+  const location = useLocation();
 
   const handleTaskCreated = () => {
     setRefreshTasks(prev => prev + 1);
   };
+
+  // Persisti il tab attivo per evitare reset al primo caricamento
+  useEffect(() => {
+    try {
+      window.localStorage.setItem('activeTab', activeTab);
+    } catch {}
+  }, [activeTab]);
+
+  // Supporto deep-link: /inbox, ?tab=mental-inbox, #mental-inbox
+  useEffect(() => {
+    try {
+      const path = location.pathname?.toLowerCase() || '';
+      const params = new URLSearchParams(location.search || '');
+      const hash = (location.hash || '').toLowerCase();
+
+      if (path.includes('/inbox') || path.includes('/note')) {
+        setActiveTab('mental-inbox');
+        return;
+      }
+      const tabParam = params.get('tab');
+      if (tabParam === 'mental-inbox' || hash === '#mental-inbox') {
+        setActiveTab('mental-inbox');
+      }
+    } catch {}
+  }, [location.pathname, location.search, location.hash]);
 
   useEffect(() => {
     if (user) {
@@ -262,6 +297,7 @@ const AppContent = () => {
           {/* Riga dei pulsanti principali */}
           <div className="flex items-center justify-between gap-2 p-3 sm:p-4 bg-card rounded-xl">
             <Button
+              data-tutorial="focus-mode"
               className={`flex items-center gap-2 flex-1 h-auto py-2.5 px-4 rounded-xl font-semibold text-[#2E2E2E] bg-gradient-to-br from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 border-0 shadow-[0_2px_6px_rgba(0,0,0,0.1)] transition-all duration-200 ${
                 focusMode ? 'ring-2 ring-blue-300' : ''
               }`}
@@ -279,6 +315,7 @@ const AppContent = () => {
             
             <Button 
                onClick={() => navigate('/impostazioni')} 
+               aria-label="Impostazioni"
                className="flex items-center justify-center flex-1 h-auto py-2.5 px-4 rounded-xl font-semibold text-[#2E2E2E] bg-[#F9D57A] hover:bg-[#F7D066] border-0 shadow-[0_2px_6px_rgba(0,0,0,0.1)] transition-all duration-200"
              >
                <Settings className="w-5 h-5" />
@@ -316,19 +353,19 @@ const AppContent = () => {
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-4 gap-1 h-auto p-1">
-            <TabsTrigger value="dashboard" className="text-sm px-3 py-3 flex flex-col gap-1">
+            <TabsTrigger value="dashboard" data-tutorial="tab-dashboard" className="text-sm px-3 py-3 flex flex-col gap-1">
               <span className="text-lg">🏠</span>
               <span>Casa</span>
             </TabsTrigger>
-            <TabsTrigger value="tasks" className="text-sm px-3 py-3 flex flex-col gap-1">
+            <TabsTrigger value="tasks" data-tutorial="tab-tasks" className="text-sm px-3 py-3 flex flex-col gap-1">
               <span className="text-lg">📋</span>
               <span>Attività</span>
             </TabsTrigger>
-            <TabsTrigger value="mental-inbox" className="text-sm px-3 py-3 flex flex-col gap-1">
+            <TabsTrigger value="mental-inbox" data-tutorial="tab-mental-inbox" className="text-sm px-3 py-3 flex flex-col gap-1">
               <span className="text-lg">🧠</span>
               <span>Note</span>
             </TabsTrigger>
-            <TabsTrigger value="routine" className="text-sm px-3 py-3 flex flex-col gap-1">
+            <TabsTrigger value="routine" data-tutorial="tab-routine" className="text-sm px-3 py-3 flex flex-col gap-1">
               <span className="text-lg">⏰</span>
               <span>Routine</span>
             </TabsTrigger>
@@ -336,12 +373,12 @@ const AppContent = () => {
 
           <TabsContent value="dashboard" className="space-y-6 mt-6">
             {/* Quick Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4" data-tutorial="quick-stats">
               <div className="bg-card border rounded-xl p-4 text-center">
                 <div className="text-2xl font-bold text-primary">{profile?.current_level}</div>
                 <div className="text-sm text-muted-foreground">Livello Attuale</div>
               </div>
-              <div className="bg-card border rounded-xl p-4 text-center">
+              <div className="bg-card border rounded-xl p-4 text-center" data-tutorial="xp-badge">
                 <div className="text-2xl font-bold text-primary">{profile?.total_xp}</div>
                 <div className="text-sm text-muted-foreground">XP Totali</div>
               </div>
@@ -396,7 +433,14 @@ const AppContent = () => {
                 <span className="text-2xl">🎤</span>
                 <span>Comando Vocale</span>
               </Button>
-              <TutorialInterattivo />
+              {/* Trigger Tutorial Interattivo integrato */}
+              <Button
+                onClick={startTutorial}
+                className="h-20 w-full justify-start gap-2 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white shadow-lg"
+              >
+                <span className="text-xl">📖</span>
+                <span className="font-medium">Tutorial Interattivo</span>
+              </Button>
             </div>
             
             {/* Voice Input Component */}

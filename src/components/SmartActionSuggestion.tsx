@@ -214,7 +214,7 @@ export const SmartActionSuggestion: React.FC<SmartActionSuggestionProps> = ({
   }
 
   return (
-    <div className={`border rounded-xl p-6 transition-all duration-300 ${getUrgencyColor(smartSuggestion.urgency)}`}>
+    <div data-tutorial="smart-action-suggestion" className={`border rounded-xl p-6 transition-all duration-300 ${getUrgencyColor(smartSuggestion.urgency)}`}>
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-3">
           <div className="text-2xl">{smartSuggestion.icon}</div>

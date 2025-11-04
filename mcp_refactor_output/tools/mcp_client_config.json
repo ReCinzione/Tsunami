@@ -1,0 +1,32 @@
+{
+  "mcpServers": {
+    "tsunami": {
+      "command": "node",
+      "args": ["simple_mcp_server.mjs"],
+      "cwd": "C:\\Users\\Fra\\Desktop\\Tsunami\\mcp_refactor_output\\tools",
+      "env": {},
+      "description": "Server MCP per il progetto Tsunami - Accesso ottimizzato alla documentazione e configurazione",
+      "resources": {
+        "base_uri": "tsunami://context/",
+        "categories": [
+          "00_CORE",
+          "01_TECH", 
+          "02_FUNCTIONAL",
+          "03_COGNITIVE",
+          "04_GUIDES",
+          "RAG"
+        ]
+      },
+      "capabilities": {
+        "resources": true,
+        "tools": false,
+        "prompts": false
+      }
+    }
+  },
+  "client": {
+    "name": "Tsunami Builder with MCP",
+    "version": "1.0.0",
+    "description": "Builder potenziato con accesso MCP al contesto Tsunami"
+  }
+}

@@ -25,6 +25,8 @@ interface TaskListContainerProps {
   onTaskComplete?: () => void;
   /** Callback per il breakdown AI di una task */
   onTaskBreakdown?: (task: Task) => void;
+  /** Callback per attivare Ultra Focus Mode */
+  onUltraFocus?: (task: Task) => void;
   /** Classe CSS aggiuntiva */
   className?: string;
 }
@@ -46,6 +48,7 @@ export const TaskListContainer = React.memo(forwardRef<
     userId,
     onTaskComplete,
     onTaskBreakdown,
+    onUltraFocus,
     className
   },
   ref
@@ -210,6 +213,10 @@ export const TaskListContainer = React.memo(forwardRef<
     onTaskBreakdown?.(task);
   }, [onTaskBreakdown]);
 
+  const handleUltraFocus = useCallback((task: Task) => {
+    onUltraFocus?.(task);
+  }, [onUltraFocus]);
+
   // Props memoizzate per TaskListView
   const taskListViewProps = useMemo(() => ({
     tasks: filteredTasks,
@@ -224,6 +231,7 @@ export const TaskListContainer = React.memo(forwardRef<
     onTaskClick: handleTaskClick,
     onTaskEdit: handleTaskEdit,
     onTaskBreakdown: handleTaskBreakdown,
+    onUltraFocus: handleUltraFocus,
     filters,
     onFiltersChange: handleFiltersChange,
     onRefresh: handleRefresh,
@@ -242,6 +250,7 @@ export const TaskListContainer = React.memo(forwardRef<
     handleTaskClick,
     handleTaskEdit,
     handleTaskBreakdown,
+    handleUltraFocus,
     filters,
     handleFiltersChange,
     handleRefresh,

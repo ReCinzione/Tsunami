@@ -1,3 +1,10 @@
+---
+status: Golden
+updated: 2025-10-31
+owner: fra
+source_path: PROGRESS_ADHD_OPTIMIZATION.md
+last_detected: 2025-01-21
+---
 # 🧠 TSUNAMI - ADHD Task Manager Optimization Progress
 
 ## 📋 PANORAMICA PROGETTO

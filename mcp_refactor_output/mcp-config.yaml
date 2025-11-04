@@ -1,0 +1,27 @@
+entrypoint: context/00_CORE/DOCS_INDEX.md
+context:
+  include:
+    - context/00_CORE/**
+    - context/01_TECH/**
+    - context/02_FUNCTIONAL/**
+    - context/03_COGNITIVE/**
+    - context/04_GUIDES/**
+    - context/RAG/**
+  exclude:
+    - "**/DAILY_PROGRESS_*"
+    - "**/notes/**"
+    - "**/*.log"
+    - "**/drafts/**"
+    - "**/*obsolete*"
+    - "**/*OBSOLETE*"
+  content_filters:
+    exclude_patterns:
+      - "status: Obsolete"
+      - "Status: Obsolete"
+      - "[Obsolete]"
+optimization:
+  deduplicate_content: true
+  max_file_size: "500KB"
+  priority_files:
+    - "ARCHITECTURE_REFERENCE.md"
+    - "DOCS_INDEX.md"

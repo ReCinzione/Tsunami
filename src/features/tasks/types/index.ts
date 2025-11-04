@@ -66,6 +66,7 @@ export interface TaskListViewProps {
   onCompleteTask: (id: string) => void;
   onTaskClick?: (task: Task) => void;
   onTaskBreakdown?: (task: Task) => void;
+  onUltraFocus?: (task: Task) => void;
   onTaskComplete?: (taskId: string, newStatus: string) => void;
   onTaskEdit?: (task: Task) => void;
   filters?: TaskFilters;

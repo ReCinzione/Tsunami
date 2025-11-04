@@ -36,6 +36,7 @@ class TaskService {
       .from('tasks')
       .select('*')
       .eq('user_id', userId)
+      .is('parent_task_id', null) // Filtra solo le task principali (non subtask)
       .order('created_at', { ascending: false });
 
     // Applica filtri
@@ -82,6 +83,63 @@ class TaskService {
     if (error) {
       console.error('❌ Errore nel caricamento delle task:', error);
       throw new Error(`Errore nel caricamento delle task: ${error.message}`);
+    }
+
+    return data || [];
+  }
+
+  /**
+   * Recupera TUTTE le task dell'utente (incluse le subtask) con filtri opzionali
+   */
+  async getAllTasks(userId: string, filters?: TaskFilters): Promise<Task[]> {
+    console.log('🔍 TaskService.getAllTasks chiamato:', {
+      userId,
+      filters,
+      timestamp: new Date().toISOString()
+    });
+
+    let query = supabase
+      .from('tasks')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    // Applica filtri (stessa logica di getTasks)
+    if (filters?.status?.length) {
+      query = query.in('status', filters.status);
+    }
+
+    if (filters?.task_type?.length) {
+      query = query.in('task_type', filters.task_type);
+    }
+
+    if (filters?.energy_required?.length) {
+      query = query.in('energy_required', filters.energy_required);
+    }
+
+    if (filters?.due_date_from) {
+      query = query.gte('due_date', filters.due_date_from);
+    }
+
+    if (filters?.due_date_to) {
+      query = query.lte('due_date', filters.due_date_to);
+    }
+
+    if (filters?.search) {
+      query = query.or(`title.ilike.%${filters.search}%,description.ilike.%${filters.search}%`);
+    }
+
+    const { data, error } = await query;
+
+    console.log('📊 TaskService.getAllTasks risultato:', {
+      tasksCount: data?.length || 0,
+      error: error?.message,
+      timestamp: new Date().toISOString()
+    });
+
+    if (error) {
+      console.error('❌ Errore nel caricamento di tutte le task:', error);
+      throw new Error(`Errore nel caricamento di tutte le task: ${error.message}`);
     }
 
     return data || [];
@@ -684,6 +742,60 @@ class TaskService {
         currentTime: new Date().toISOString()
       };
     }
+  }
+
+  /**
+   * Crea una subtask con tutti i campi necessari
+   */
+  async createSubtask(userId: string, subtaskData: Omit<Task, 'id' | 'created_at' | 'updated_at'>): Promise<Task> {
+    // Validazione base del titolo
+    if (!subtaskData.title || subtaskData.title.trim().length < 3) {
+      throw new ValidationError("Titolo della subtask deve essere almeno 3 caratteri");
+    }
+
+    const { data, error } = await supabase
+      .from('tasks')
+      .insert({
+        user_id: userId,
+        title: subtaskData.title,
+        description: subtaskData.description || '',
+        status: subtaskData.status || 'pending',
+        priority: subtaskData.priority,
+        task_type: subtaskData.task_type,
+        energy_required: subtaskData.energy_required,
+        xp_reward: subtaskData.xp_reward,
+        due_date: subtaskData.due_date,
+        planned_date: subtaskData.planned_date,
+        is_recurring: subtaskData.is_recurring || false,
+        parent_task_id: subtaskData.parent_task_id,
+        tags: subtaskData.tags || [],
+        can_be_interrupted: subtaskData.can_be_interrupted,
+        context_switching_cost: subtaskData.context_switching_cost,
+        created_at: new Date().toISOString()
+      })
+      .select()
+      .single();
+
+    if (error) {
+      throw new Error(`Errore nella creazione della subtask: ${error.message}`);
+    }
+
+    // Track subtask creation
+    try {
+      const analytics = AnalyticsManager.getInstance();
+      analytics.trackTaskInteraction({
+        taskId: data.id,
+        action: 'created',
+        taskType: data.task_type,
+        energyRequired: data.energy_required,
+        xpReward: data.xp_reward,
+        userId: userId
+      });
+    } catch (analyticsError) {
+      console.warn('Failed to track subtask creation:', analyticsError);
+    }
+
+    return data;
   }
 }
 

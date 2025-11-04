@@ -1,3 +1,11 @@
+---
+status: Draft
+updated: 2025-10-31
+owner: fra
+source_path: WORKFLOW_AUTOMATION.md
+last_detected: 2025-01-21
+cues: "todo"
+---
 # 🤖 WORKFLOW AUTOMATION - Sistema Automatizzato
 
 **Data**: 2025-01-21  

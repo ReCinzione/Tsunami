@@ -1,3 +1,9 @@
+---
+status: Golden
+updated: 2025-10-31
+owner: fra
+source_path: PROGRESS_COGNITIVE_OPTIMIZATION.md
+---
 # 🧠 Ottimizzazione Cognitiva - Chatbot con Risposte Chiuse
 
 ## 📋 Panoramica

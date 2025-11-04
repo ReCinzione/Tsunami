@@ -123,9 +123,9 @@ L'app sarà disponibile su `http://localhost:5173`
 **NUOVO!** Tsunami include ora un tutorial interattivo completo che ti guida passo-passo nell'utilizzo dell'applicazione.
 
 ### 🎯 Come Accedere al Tutorial
-- **Dashboard**: Clicca il pulsante "📚 Tutorial Interattivo" nella dashboard principale
-- **Primo Accesso**: Il tutorial si avvia automaticamente per i nuovi utenti
-- **Documentazione**: Consulta `TUTORIAL_INTERATTIVO.md` per la versione testuale completa
+- **Dashboard**: Clicca il pulsante "📖 Tutorial Interattivo" nella dashboard principale
+- **Avvio Manuale**: Il tutorial si avvia solo su richiesta dell'utente
+- **Documentazione**: Consulta `mcp_refactor_output/context/04_GUIDES/TUTORIAL_INTERATTIVO.md` per la versione testuale completa
 
 ### 🏁 Fasi del Tutorial
 1. **Primi Passi** (5 min): Registrazione, archetipi, dashboard

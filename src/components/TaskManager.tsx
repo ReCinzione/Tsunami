@@ -1,6 +1,8 @@
 import React, { useRef, useState } from 'react';
 import { TaskListContainer } from '../features/tasks/containers/TaskListContainer';
-import { useFocusMode, FocusMode, FocusKeep } from './common/FocusMode';
+
+import { useUltraFocusMode } from '../hooks/useUltraFocusMode';
+import { UltraFocusMode } from './UltraFocusMode';
 import { useUIStore } from '../store/uiStore';
 import { useTaskStats } from '../features/tasks/hooks/useTasks';
 import { usePatternMining } from '../hooks/usePatternMining';
@@ -10,7 +12,6 @@ import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { 
-  Focus, 
   BarChart3, 
   Settings, 
   Target, 
@@ -31,8 +32,6 @@ import type { MicroTask } from '../types/ai';
 interface TaskManagerProps {
   userId: string;
   showCompleted?: boolean;
-  focusMode?: boolean;
-  focusTaskCount?: number;
   onProfileUpdate?: () => void;
   className?: string;
 }
@@ -123,18 +122,20 @@ function QuickStats({ userId, className }: QuickStatsProps) {
 export const TaskManager: React.FC<TaskManagerProps> = ({
   userId,
   showCompleted = false,
-  focusMode: initialFocusMode = false,
-  focusTaskCount = 3,
   onProfileUpdate,
   className
 }) => {
   const taskListRef = useRef<{ handleCreateTask: () => void } | null>(null);
-  const { 
-    isActive: isFocusModeActive, 
-    toggleFocusMode, 
-    startFocusSession,
-    settings: focusSettings
-  } = useFocusMode();
+  
+  // Ultra Focus Mode hook
+  const {
+    isActive: isUltraFocusActive,
+    currentTask: ultraFocusTask,
+    startUltraFocus,
+    exitUltraFocus,
+    completeCurrentTask,
+    refreshCurrentTask
+  } = useUltraFocusMode();
   
   const { 
     distractionMode,
@@ -183,12 +184,7 @@ export const TaskManager: React.FC<TaskManagerProps> = ({
     return () => clearTimeout(timer);
   }, [generateSuggestions]);
 
-  // Inizializza la modalità focus se richiesta
-  React.useEffect(() => {
-    if (initialFocusMode && !isFocusModeActive) {
-      toggleFocusMode();
-    }
-  }, [initialFocusMode, isFocusModeActive, toggleFocusMode]);
+
 
   const onTaskCreated = () => {
     if (taskListRef.current?.handleRefresh) {
@@ -334,18 +330,12 @@ export const TaskManager: React.FC<TaskManagerProps> = ({
       {/* Header con controlli - ottimizzato per mobile */}
       <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between md:gap-4">
         <div className="flex items-center gap-2 md:gap-4">
-          
-          {isFocusModeActive && (
-            <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200 text-xs">
-              <Focus className="w-3 h-3 mr-1" />
-              Focus
+          {isUltraFocusActive && ultraFocusTask && (
+            <Badge variant="secondary" className="bg-purple-50 text-purple-700 border-purple-200 text-xs">
+              <Target className="w-3 h-3 mr-1" />
+              Ultra Focus: {ultraFocusTask.title.substring(0, 20)}...
             </Badge>
           )}
-        </div>
-
-        <div className="flex items-center gap-1 md:gap-2">
-          
-
         </div>
       </div>
 
@@ -356,7 +346,7 @@ export const TaskManager: React.FC<TaskManagerProps> = ({
         setCurrentView(value);
         console.log('Current view after:', value);
       }} className="w-full">
-        <TabsList className={cn(
+        <TabsList data-tutorial="task-subtabs" className={cn(
           "grid w-full gap-0.5 py-2.5 h-auto md:h-auto p-0.5 md:p-1",
           distractionMode ? "grid-cols-3" : "grid-cols-3"
         )}>
@@ -384,50 +374,24 @@ export const TaskManager: React.FC<TaskManagerProps> = ({
         </TabsList>
 
         <TabsContent value="active" className="mt-3 md:mt-6">
-          {/* Modalità Focus - ottimizzata per mobile */}
-          {isFocusModeActive && (
-            <div className="bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg p-3 mb-3 md:p-4 md:mb-4">
-              <div className="flex items-center justify-between mb-2 md:mb-3">
-                <div className="flex items-center gap-2">
-                  <Target className="w-4 h-4 md:w-5 md:h-5 text-purple-600" />
-                  <span className="text-sm md:text-base font-medium text-purple-800">Focus Attiva</span>
-                </div>
-                <Button
-                  onClick={toggleFocusMode}
-                  variant="outline"
-                  size="sm"
-                  className="border-purple-300 text-purple-700 hover:bg-purple-100 h-7 px-2 text-xs md:h-9 md:px-3 md:text-sm"
-                >
-                  Disattiva
-                </Button>
-              </div>
-              <p className="text-xs md:text-sm text-purple-600">
-                Focus su {focusTaskCount} task prioritarie
-              </p>
-            </div>
-          )}
-
-          <FocusKeep highlight={isFocusModeActive}>
-            <TaskListContainer
-              ref={taskListRef}
-              userId={userId}
-              showCompleted={false}
-              focusMode={isFocusModeActive}
-              focusTaskCount={focusTaskCount}
-              onTaskComplete={onProfileUpdate}
-              onTaskBreakdown={handleTaskBreakdown}
-              className="min-h-[400px]"
-            />
-          </FocusKeep>
+          <TaskListContainer
+            ref={taskListRef}
+            userId={userId}
+            showCompleted={false}
+            onTaskComplete={onProfileUpdate}
+            onTaskBreakdown={handleTaskBreakdown}
+            onUltraFocus={startUltraFocus}
+            className="min-h-[400px]"
+          />
         </TabsContent>
 
         <TabsContent value="completed" className="mt-3 md:mt-6">
           <TaskListContainer
             userId={userId}
             showCompleted={true}
-            focusMode={false}
             onTaskComplete={onProfileUpdate}
             onTaskBreakdown={handleTaskBreakdown}
+            onUltraFocus={startUltraFocus}
             className="min-h-[300px] md:min-h-[400px]"
           />
           
@@ -476,17 +440,15 @@ export const TaskManager: React.FC<TaskManagerProps> = ({
   return (
     <ErrorBoundary>
       <div className={cn("w-full max-w-7xl mx-auto p-2 md:p-4", className)}>
-        {isFocusModeActive ? (
-          <FocusMode
-            isActive={isFocusModeActive}
-            onToggle={toggleFocusMode}
-            showTimer={focusSettings.showTimer}
-            timerDuration={focusSettings.timerDuration}
-            onTimerComplete={handleFocusSessionComplete}
-            intensity={focusSettings.intensity}
-          >
-            {renderTaskContent()}
-          </FocusMode>
+        {isUltraFocusActive && ultraFocusTask ? (
+          <UltraFocusMode
+            task={ultraFocusTask}
+            onExit={exitUltraFocus}
+            onTaskComplete={() => {
+              completeCurrentTask();
+              onProfileUpdate?.();
+            }}
+          />
         ) : (
           renderTaskContent()
         )}

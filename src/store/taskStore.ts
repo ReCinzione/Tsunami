@@ -25,6 +25,11 @@ interface TaskState {
   removeTask: (id: string) => void;
   setSelectedTask: (task: Task | null) => void;
   
+  // Subtask actions
+  addSubtask: (parentId: string, subtask: Task) => void;
+  removeSubtask: (subtaskId: string) => void;
+  updateSubtask: (subtaskId: string, updates: Partial<Task>) => void;
+  
   // UI actions
   setFocusMode: (enabled: boolean) => void;
   setFilters: (filters: Partial<TaskFilters>) => void;
@@ -39,6 +44,8 @@ interface TaskState {
   
   // Computed getters
   getTaskById: (id: string) => Task | undefined;
+  getSubtasks: (parentId: string) => Task[];
+  getTaskWithSubtasks: (id: string) => Task & { subtasks: Task[] } | undefined;
   getFilteredTasks: () => Task[];
   getTaskStats: () => {
     total: number;
@@ -109,6 +116,35 @@ export const useTaskStore = create<TaskState>()(
         
         setSelectedTask: (task) => set({ selectedTask: task }, false, 'setSelectedTask'),
 
+        // Subtask actions
+        addSubtask: (parentId, subtask) => set(
+          (state) => ({ tasks: [subtask, ...state.tasks] }),
+          false,
+          'addSubtask'
+        ),
+        
+        removeSubtask: (subtaskId) => set(
+          (state) => ({
+            tasks: state.tasks.filter(task => task.id !== subtaskId),
+            selectedTask: state.selectedTask?.id === subtaskId ? null : state.selectedTask
+          }),
+          false,
+          'removeSubtask'
+        ),
+        
+        updateSubtask: (subtaskId, updates) => set(
+          (state) => ({
+            tasks: state.tasks.map(task => 
+              task.id === subtaskId ? { ...task, ...updates } : task
+            ),
+            selectedTask: state.selectedTask?.id === subtaskId 
+              ? { ...state.selectedTask, ...updates }
+              : state.selectedTask
+          }),
+          false,
+          'updateSubtask'
+        ),
+
         // UI actions
         setFocusMode: (enabled) => set({ focusMode: enabled }, false, 'setFocusMode'),
         
@@ -132,6 +168,20 @@ export const useTaskStore = create<TaskState>()(
         getTaskById: (id) => {
           const { tasks } = get();
           return tasks.find(task => task.id === id);
+        },
+        
+        getSubtasks: (parentId) => {
+          const { tasks } = get();
+          return tasks.filter(task => task.parent_task_id === parentId);
+        },
+        
+        getTaskWithSubtasks: (id) => {
+          const { tasks } = get();
+          const task = tasks.find(t => t.id === id);
+          if (!task) return undefined;
+          
+          const subtasks = tasks.filter(t => t.parent_task_id === id);
+          return { ...task, subtasks };
         },
         
         getFilteredTasks: () => {

@@ -1,3 +1,10 @@
+---
+status: Golden
+updated: 2025-10-31
+owner: fra
+source_path: ADHD_UX_ANALYSIS_AND_IMPROVEMENTS.md
+last_detected: 2025-01-01
+---
 # 🧠 Analisi Critica UX per ADHD e Proposte di Miglioramento - Tsunami
 
 **Versione**: 1.0  

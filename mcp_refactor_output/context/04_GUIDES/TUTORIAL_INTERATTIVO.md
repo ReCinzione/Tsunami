@@ -1,3 +1,10 @@
+---
+status: Golden
+updated: 2025-10-31
+owner: fra
+source_path: TUTORIAL_INTERATTIVO.md
+last_detected: 2025-01-21
+---
 # 🌊 Tutorial Interattivo Tsunami
 
 **Versione**: 1.0  
@@ -12,7 +19,7 @@ Questo tutorial ti guiderà passo-passo nell'utilizzo di Tsunami, l'applicazione
 
 ### 🚀 Come Avviare il Tutorial
 
-1. **Avvio Rapido**: Clicca sul pulsante "📚 Tutorial" nella dashboard
+1. **Avvio Rapido**: Clicca sul pulsante "📖 Tutorial Interattivo" nella dashboard
 2. **Avvio da Menu**: Vai in Impostazioni → Tutorial Interattivo
 3. **Comando Vocale**: Dì "Avvia tutorial" (se abilitato)
 
@@ -429,7 +436,7 @@ Hai completato il Tutorial Interattivo di Tsunami! Ora sei pronto per:
 
 ### 🧠 Risorse ADHD
 - **[ADHD_UX_ANALYSIS_AND_IMPROVEMENTS.md](./ADHD_UX_ANALYSIS_AND_IMPROVEMENTS.md)**: Analisi UX specifica
-- **[ADHD_IMPLEMENTATION_ROADMAP.md](./ADHD_IMPLEMENTATION_ROADMAP.md)**: Roadmap funzionalità
+- **[ADHD_IMPLEMENTATION_ROADMAP.md](../02_FUNCTIONAL/ADHD_IMPLEMENTATION_ROADMAP.md)**: Roadmap funzionalità
 
 ### 🔧 Guide Tecniche
 - **[GOOGLE_CALENDAR_SETUP.md](./GOOGLE_CALENDAR_SETUP.md)**: Integrazione calendario

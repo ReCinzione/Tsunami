@@ -1,3 +1,11 @@
+---
+status: Draft
+updated: 2025-10-31
+owner: fra
+source_path: ADHD_IMPLEMENTATION_ROADMAP.md
+last_detected: 2025-01-01
+cues: "todo"
+---
 # 🧠 ADHD Implementation Roadmap - Piano Consolidato
 
 **Versione**: 1.0  

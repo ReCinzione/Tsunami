@@ -1,3 +1,10 @@
+---
+status: Golden
+updated: 2025-10-31
+owner: fra
+source_path: CHANGELOG.md
+last_detected: 2025-01-21
+---
 # 📝 Changelog - Tsunami Application
 
 **Formato**: Basato su [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)  

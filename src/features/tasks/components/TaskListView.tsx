@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback } from 'react';
+import React, { useMemo, useCallback, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -7,10 +7,11 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Focus, Filter, Search, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { TaskListViewProps } from '../types';
 import { TaskItem } from './TaskItem';
-import { TaskForm } from './TaskForm';
+import { Task } from '../types';
 import { EmptyTaskState } from './EmptyTaskState';
 import { TaskFilters } from './TaskFilters';
 import { cn } from '@/lib/utils';
+import { Switch } from '@/components/ui/switch';
 
 // Componente memoizzato per le statistiche
 const TaskStats = React.memo<{
@@ -54,14 +55,17 @@ TaskStats.displayName = 'TaskStats';
 
 // Componente memoizzato per la lista delle task con virtualizzazione semplice
 const TaskList = React.memo<{
-  tasks: any[];
+  tasks: Task[];
   onTaskComplete: (taskId: string) => void;
   onTaskClick: (task: any) => void;
   onTaskEdit: (task: any) => void;
   onDeleteTask: (taskId: string) => void;
   onTaskBreakdown?: (task: any) => void;
+  onUltraFocus?: (task: any) => void;
   selectedTaskId?: string;
   focusMode: boolean;
+  forceShowSubtaskToggle?: boolean;
+  globalSubtasksOpen?: boolean;
 }>(({ 
   tasks, 
   onTaskComplete, 
@@ -69,54 +73,29 @@ const TaskList = React.memo<{
   onTaskEdit, 
   onDeleteTask, 
   onTaskBreakdown, 
+  onUltraFocus,
   selectedTaskId, 
-  focusMode 
+  focusMode,
+  forceShowSubtaskToggle = false,
+  globalSubtasksOpen = false,
 }) => {
-  // Implementazione semplice di virtualizzazione per liste lunghe
-  const [visibleRange, setVisibleRange] = React.useState({ start: 0, end: 20 });
-  const [containerRef, setContainerRef] = React.useState<HTMLDivElement | null>(null);
-  
-  // Aggiorna il range visibile quando si scrolla
-  React.useEffect(() => {
-    if (!containerRef || tasks.length <= 20) return;
-    
-    const handleScroll = () => {
-      const scrollTop = containerRef.scrollTop;
-      const itemHeight = 120; // Altezza approssimativa di una task
-      const containerHeight = containerRef.clientHeight;
-      
-      const start = Math.floor(scrollTop / itemHeight);
-      const end = Math.min(start + Math.ceil(containerHeight / itemHeight) + 5, tasks.length);
-      
-      setVisibleRange({ start, end });
-    };
-    
-    containerRef.addEventListener('scroll', handleScroll, { passive: true });
-    return () => containerRef.removeEventListener('scroll', handleScroll);
-  }, [containerRef, tasks.length]);
-  
-  const visibleTasks = tasks.length > 20 ? tasks.slice(visibleRange.start, visibleRange.end) : tasks;
-  const paddingTop = tasks.length > 20 ? visibleRange.start * 120 : 0;
-  const paddingBottom = tasks.length > 20 ? (tasks.length - visibleRange.end) * 120 : 0;
-  
   return (
-    <div 
-      ref={setContainerRef}
-      className="space-y-3 max-h-[600px] overflow-y-auto"
-      style={{ paddingTop, paddingBottom }}
-    >
-      {visibleTasks.map((task) => (
+    <div className="space-y-3">
+      {tasks.map((task) => (
         <TaskItem
           key={task.id}
           task={task}
-          onClick={onTaskClick}
           onComplete={onTaskComplete}
           onEdit={onTaskEdit}
           onDelete={onDeleteTask}
           onBreakdown={onTaskBreakdown}
-          showDetails={!focusMode}
-          focusMode={focusMode}
+          onUltraFocus={onUltraFocus}
+          onClick={onTaskClick}
           isSelected={selectedTaskId === task.id}
+          showActions={!focusMode}
+          compact={focusMode}
+          forceShowSubtaskToggle={forceShowSubtaskToggle}
+          globalSubtasksOpen={globalSubtasksOpen}
         />
       ))}
     </div>
@@ -142,6 +121,7 @@ export const TaskListView = React.memo<TaskListViewProps>(({
   onTaskClick,
   onTaskEdit,
   onTaskBreakdown,
+  onUltraFocus,
   filters,
   onFiltersChange,
   onRefresh,
@@ -151,6 +131,9 @@ export const TaskListView = React.memo<TaskListViewProps>(({
 }) => {
   const [showFilters, setShowFilters] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState('');
+  // Toggle globale per mostrare il bottone delle subtask
+  const [showSubtasksToggle, setShowSubtasksToggle] = React.useState(true);
+  const [expandSubtasksGlobally, setExpandSubtasksGlobally] = React.useState(false);
 
   // Memoizza il callback per la ricerca con debouncing
   const [debouncedSearchQuery, setDebouncedSearchQuery] = React.useState('');
@@ -174,8 +157,8 @@ export const TaskListView = React.memo<TaskListViewProps>(({
 
   // Filtra e ordina le task per la visualizzazione (ottimizzato)
   const displayTasks = useMemo(() => {
-    console.log('🎨 TaskListView - Inizio rendering task:', {
-      tasksCount: tasks.length,
+    console.log('TaskListView - Filtraggio task:', {
+      totalTasks: tasks.length,
       searchQuery: debouncedSearchQuery,
       focusMode,
       loading,
@@ -288,11 +271,28 @@ export const TaskListView = React.memo<TaskListViewProps>(({
           {/* Riga 2: Azioni principali */}
           <div className="flex items-center gap-3">
             <Button
+               data-tutorial="new-task"
                onClick={onCreateTask}
                className="w-full bg-purple-600 hover:bg-purple-700 text-white py-2.5 h-auto font-medium"
              >
                Nuova Attività
              </Button>
+            {/* Toggle Mostra subtask */}
+            <div className="flex items-center gap-2 ml-2">
+              <span className="text-xs text-gray-600">Mostra subtask</span>
+              <Switch
+                checked={showSubtasksToggle}
+                onCheckedChange={setShowSubtasksToggle}
+              />
+            </div>
+            {/* Toggle Espandi globalmente (opzionale) */}
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-600">Espandi tutte</span>
+              <Switch
+                checked={expandSubtasksGlobally}
+                onCheckedChange={setExpandSubtasksGlobally}
+              />
+            </div>
           </div>
           
           {/* Spazio per future funzionalità */}
@@ -330,8 +330,11 @@ export const TaskListView = React.memo<TaskListViewProps>(({
             onTaskEdit={onTaskEdit}
             onDeleteTask={onDeleteTask}
             onTaskBreakdown={onTaskBreakdown}
+            onUltraFocus={onUltraFocus}
             selectedTaskId={selectedTaskId}
             focusMode={focusMode}
+            forceShowSubtaskToggle={showSubtasksToggle}
+            globalSubtasksOpen={expandSubtasksGlobally}
           />
         )}
       </div>

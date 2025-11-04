@@ -9,7 +9,7 @@
 ## 🎯 Tutorial e Guide Utente
 
 ### 📚 Tutorial Interattivo
-- **[TUTORIAL_INTERATTIVO.md](./TUTORIAL_INTERATTIVO.md)** - ⭐ **NUOVO!** Tutorial completo passo-passo per utenti
+- **[TUTORIAL_INTERATTIVO.md](./mcp_refactor_output/context/04_GUIDES/TUTORIAL_INTERATTIVO.md)** - ⭐ **NUOVO!** Tutorial completo passo-passo per utenti
 - **[README.md](./README.md)** - Introduzione e setup rapido
 
 ---
@@ -60,13 +60,13 @@
 ### 🎭 Ottimizzazione ADHD
 | File | Descrizione | Focus | Stato |
 |------|-------------|-------|-------|
-| **[ADHD_IMPLEMENTATION_ROADMAP.md](./ADHD_IMPLEMENTATION_ROADMAP.md)** | **Piano consolidato 6 mesi** (MASTER) | Strategia Globale | 🔥 MASTER |
-| **[PROGRESS_ADHD_OPTIMIZATION.md](./PROGRESS_ADHD_OPTIMIZATION.md)** | Progresso ottimizzazioni ADHD | Cognitive Load | 🔄 Attivo |
-| **[PROGRESS_COGNITIVE_OPTIMIZATION.md](./PROGRESS_COGNITIVE_OPTIMIZATION.md)** | Ottimizzazioni cognitive specifiche | UX/UI | 🔄 Attivo |
+| **[ADHD_IMPLEMENTATION_ROADMAP.md](./mcp_refactor_output/context/02_FUNCTIONAL/ADHD_IMPLEMENTATION_ROADMAP.md)** | **Piano consolidato 6 mesi** (MASTER) | Strategia Globale | 🔥 MASTER |
+| **[PROGRESS_ADHD_OPTIMIZATION.md](./mcp_refactor_output/context/03_COGNITIVE/PROGRESS_ADHD_OPTIMIZATION.md)** | Progresso ottimizzazioni ADHD | Cognitive Load | 🔄 Attivo |
+| **[PROGRESS_COGNITIVE_OPTIMIZATION.md](./mcp_refactor_output/context/03_COGNITIVE/PROGRESS_COGNITIVE_OPTIMIZATION.md)** | Ottimizzazioni cognitive specifiche | UX/UI | 🔄 Attivo |
 | **[docs/LOCAL_CHATBOT.md](./docs/LOCAL_CHATBOT.md)** | Architettura chatbot ADHD | Pattern Matching | ✅ Completo |
 
 ### 🔄 Sistema di Riferimento e Automazione
-- **[WORKFLOW_AUTOMATION.md](./WORKFLOW_AUTOMATION.md)** - 🤖 **SISTEMA COMPLETAMENTE AUTOMATIZZATO** - Workflow e TODO management automatico
+- **[WORKFLOW_AUTOMATION.md](./mcp_refactor_output/context/01_TECH/WORKFLOW_AUTOMATION.md)** - 🤖 **SISTEMA COMPLETAMENTE AUTOMATIZZATO** - Workflow e TODO management automatico
 - **Sistema consolidato in CONTEXT_RAG.md e AI_CONTEXT_CONFIG.md** - Accesso automatico ai riferimenti integrato
 
 ### 🎯 Features ADHD
@@ -101,7 +101,7 @@
 ### 📋 TODO MANAGEMENT (Auto-Prioritizzato)
 | File | Descrizione | Priorità | Stato |
 |------|-------------|----------|-------|
-| **[ADHD_IMPLEMENTATION_ROADMAP.md](./ADHD_IMPLEMENTATION_ROADMAP.md)** | **Piano consolidato** - Incrocia analisi ADHD con tutti i TODO | 🔥 MASTER | 🔄 Attivo |
+| **[ADHD_IMPLEMENTATION_ROADMAP.md](./mcp_refactor_output/context/02_FUNCTIONAL/ADHD_IMPLEMENTATION_ROADMAP.md)** | **Piano consolidato** - Incrocia analisi ADHD con tutti i TODO | 🔥 MASTER | 🔄 Attivo |
 | **[DATABASE_MODIFICATIONS_TODO.md](./DATABASE_MODIFICATIONS_TODO.md)** | Modifiche DB critiche | 🔥 CRITICA | 📋 Integrato |
 | **[TECHNICAL_FIXES_TODO.md](./TECHNICAL_FIXES_TODO.md)** | Fix problemi confermati | 🔥 CRITICA | 🔄 Integrato |
 | **[PATTERN_MINING_TODO.md](./PATTERN_MINING_TODO.md)** | Roadmap funzionalità avanzate | ⚡ ALTA | ✅ 85% Completo |

@@ -48,7 +48,7 @@
 
 ## 🔄 WORKFLOW AUTOMATICO
 
-### 🚀 **SISTEMA COMPLETAMENTE AUTOMATIZZATO** - Vedi [WORKFLOW_AUTOMATION.md](./WORKFLOW_AUTOMATION.md)
+### 🚀 **SISTEMA COMPLETAMENTE AUTOMATIZZATO** - Vedi [WORKFLOW_AUTOMATION.md](./mcp_refactor_output/context/01_TECH/WORKFLOW_AUTOMATION.md)
 
 #### ✅ **Auto-Attivazione**: Il sistema è ora completamente automatico e non richiede interventi manuali
 
@@ -65,9 +65,8 @@ const adhdRoadmap = loadADHDImplementationRoadmap(); // MASTER plan
 
 ### Auto-Loading Riferimenti
 - `CONTEXT_RAG.md` - Contesto tecnico completo
-- `DEVELOPMENT_BEST_PRACTICES.md` - Best practices consolidate
-- `WORKFLOW_AUTOMATION.md` - Sistema automazione completo
-- `ADHD_IMPLEMENTATION_ROADMAP.md` - Piano consolidato 6 mesi (MASTER)
+- `mcp_refactor_output/context/01_TECH/WORKFLOW_AUTOMATION.md` - Sistema automazione completo
+- `mcp_refactor_output/context/02_FUNCTIONAL/ADHD_IMPLEMENTATION_ROADMAP.md` - Piano consolidato 6 mesi (MASTER)
 - TODO prioritizzati automaticamente
 
 #### 2. Analisi Impatto
@@ -454,6 +453,54 @@ function debugContext(query: string): ContextDebugInfo {
    - Knowledge base gaps
    - Performance improvements
 ```
+
+---
+
+## 🚫 FILE EXCLUSION RULES
+
+### MANDATORY: Ignore Obsolete Files
+```
+❌ NEVER USE FILES WITH:
+   - status: Obsolete
+   - Status: Obsolete  
+   - [Obsolete] marker
+   - filename containing "obsolete" or "OBSOLETE"
+
+✅ ALWAYS PRIORITIZE:
+   - Files with status: Golden
+   - Files with status: Active
+   - Recently updated files (check timestamps)
+   - ARCHITECTURE_REFERENCE.md (consolidated schema)
+```
+
+### File Priority Order
+```
+1. 🥇 GOLDEN STATUS FILES
+   - Authoritative and up-to-date
+   - Consolidated information
+   - Primary reference source
+
+2. 🥈 ACTIVE STATUS FILES  
+   - Currently maintained
+   - Regular updates
+   - Secondary reference
+
+3. 🥉 NO STATUS FILES
+   - Check timestamp
+   - Verify content relevance
+   - Use with caution
+
+4. ❌ OBSOLETE FILES
+   - NEVER USE
+   - Outdated information
+   - May cause inconsistencies
+```
+
+### MCP Configuration Alignment
+- Configuration files updated to exclude obsolete content
+- Content filters implemented for status markers
+- Deduplication enabled for optimal performance
+- Priority files defined for faster access
 
 ---
 
