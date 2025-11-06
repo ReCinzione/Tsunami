@@ -124,31 +124,31 @@ export function generateSubtaskSuggestions(task: Task): SubtaskSuggestion[] {
 export function generateADHDFriendlySubtasks(task: Task): SubtaskSuggestion[] {
   const suggestions: SubtaskSuggestion[] = [
     {
-      title: '🎯 Focus: Definisci obiettivo specifico',
+      title: 'Focus: Definisci obiettivo specifico',
       description: 'Chiarisci esattamente cosa vuoi ottenere',
       priority: 'alta',
       estimatedMinutes: 5
     },
     {
-      title: '📋 Prepara: Raccogli tutto il necessario',
+      title: 'Prepara: Raccogli tutto il necessario',
       description: 'Evita interruzioni raccogliendo strumenti e materiali',
       priority: 'alta',
       estimatedMinutes: 10
     },
     {
-      title: '⏰ Timer: Imposta sessione di lavoro',
+      title: 'Timer: Imposta sessione di lavoro',
       description: 'Usa la tecnica Pomodoro (25 min focus)',
       priority: 'media',
       estimatedMinutes: 25
     },
     {
-      title: '✅ Checkpoint: Verifica progresso',
+      title: 'Checkpoint: Verifica progresso',
       description: 'Controlla se stai andando nella direzione giusta',
       priority: 'media',
       estimatedMinutes: 5
     },
     {
-      title: '🎉 Celebra: Riconosci il completamento',
+      title: 'Celebra: Riconosci il completamento',
       description: 'Prenditi un momento per apprezzare il lavoro fatto',
       priority: 'bassa',
       estimatedMinutes: 2

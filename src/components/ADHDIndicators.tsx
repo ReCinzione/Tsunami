@@ -2,25 +2,8 @@ import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
-import { 
-  Clock, 
-  Target, 
-  Brain, 
-  Timer, 
-  CheckCircle2,
-  AlertCircle,
-  
-} from 'lucide-react';
-
-interface Task {
-  id: string;
-  priority: 'alta' | 'media' | 'bassa';
-  energy_required: 'alta' | 'media' | 'bassa';
-  estimated_duration?: number;
-  status: string;
-  task_type: string;
-  xp_reward?: number;
-}
+import { Timer } from 'lucide-react';
+import type { Task } from '@/features/tasks/types';
 
 interface ADHDIndicatorsProps {
   task: Task;
@@ -35,35 +18,58 @@ export const ADHDIndicators: React.FC<ADHDIndicatorsProps> = ({
   showProgress = true,
   compact = false
 }) => {
-  const completedSubtasks = subtasks.filter(st => st.status === 'completata').length;
+  const completedSubtasks = subtasks.filter(st => st.status === 'completed').length;
   const totalSubtasks = subtasks.length;
   const progressPercentage = totalSubtasks > 0 ? (completedSubtasks / totalSubtasks) * 100 : 0;
-
-  const getEnergyConfig = (energy: string) => {
+  const getEnergyConfig = (energy: Task['energy_required']) => {
     switch (energy) {
+      case 'molto_alta':
+        return {
+          symbol: '🌋',
+          color: 'text-red-700',
+          bg: 'bg-red-50',
+          border: 'border-red-200',
+          label: 'Energia Molto Alta'
+        };
       case 'alta':
         return {
-          icon: Brain,
-          color: 'text-purple-600',
-          bg: 'bg-purple-50',
-          border: 'border-purple-200',
-          label: 'Focus Alto'
+          symbol: '🔥',
+          color: 'text-orange-700',
+          bg: 'bg-orange-50',
+          border: 'border-orange-200',
+          label: 'Energia Alta'
         };
       case 'media':
         return {
-          icon: Target,
-          color: 'text-blue-600',
+          symbol: '💡',
+          color: 'text-yellow-700',
+          bg: 'bg-yellow-50',
+          border: 'border-yellow-200',
+          label: 'Energia Media'
+        };
+      case 'bassa':
+        return {
+          symbol: '🌊',
+          color: 'text-blue-700',
           bg: 'bg-blue-50',
           border: 'border-blue-200',
-          label: 'Focus Medio'
+          label: 'Energia Bassa'
+        };
+      case 'molto_bassa':
+        return {
+          symbol: '🍃',
+          color: 'text-green-700',
+          bg: 'bg-green-50',
+          border: 'border-green-200',
+          label: 'Energia Molto Bassa'
         };
       default:
         return {
-          icon: Clock,
-          color: 'text-gray-600',
+          symbol: '❓',
+          color: 'text-gray-700',
           bg: 'bg-gray-50',
           border: 'border-gray-200',
-          label: 'Focus Basso'
+          label: 'Energia Non Specificata'
         };
     }
   };
@@ -82,7 +88,7 @@ export const ADHDIndicators: React.FC<ADHDIndicatorsProps> = ({
           energyConfig.border
         )}
       >
-        <energyConfig.icon className="w-3 h-3" aria-label={energyConfig.label} title={energyConfig.label} />
+        <span aria-label={energyConfig.label} title={energyConfig.label} className="leading-none text-[13px]">{energyConfig.symbol}</span>
       </Badge>
 
       {/* Badge Durata Stimata */}

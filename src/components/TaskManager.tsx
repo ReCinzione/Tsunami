@@ -25,9 +25,11 @@ import { cn } from '../lib/utils';
 import { StatsSkeleton } from './common/Skeleton';
 import { ErrorBoundary } from './common/ErrorBoundary';
 import { createAIService, isAISupported } from '../lib/AIService';
+import { AnalyticsManager } from '../utils/analytics';
 import { AIBreakdownModal } from './AIBreakdownModal';
 import { taskService } from '../features/tasks/services/taskService';
 import type { MicroTask } from '../types/ai';
+import { useIsMobile } from '../hooks/use-mobile';
 
 interface TaskManagerProps {
   userId: string;
@@ -125,7 +127,9 @@ export const TaskManager: React.FC<TaskManagerProps> = ({
   onProfileUpdate,
   className
 }) => {
+  const isMobile = useIsMobile();
   const taskListRef = useRef<{ handleCreateTask: () => void } | null>(null);
+  const [expandedPatternId, setExpandedPatternId] = useState<string | null>(null);
   
   // Ultra Focus Mode hook
   const {
@@ -151,7 +155,11 @@ export const TaskManager: React.FC<TaskManagerProps> = ({
     logTaskInteraction,
     generateSuggestions,
     acceptSuggestion,
-    dismissSuggestion
+    dismissSuggestion,
+    analytics,
+    patterns,
+    taskClusters,
+    processPatterns
   } = usePatternMining(userId);
 
   // Debug log per suggestions
@@ -319,6 +327,207 @@ export const TaskManager: React.FC<TaskManagerProps> = ({
     setBreakdownModal({ isOpen: false, task: null, suggestedMicroTasks: [] });
   };
 
+  // KPI utente (accettazione suggerimenti, uso azioni rapide, focus)
+  const [userKpis, setUserKpis] = useState({
+    suggestionAcceptanceRate: 0,
+    quickActionUsageRate: 0,
+    focusCompletionRate: 0,
+    averageSatisfaction: 0
+  });
+
+  React.useEffect(() => {
+    try {
+      const manager = AnalyticsManager.getInstance();
+      // Prova prima con getRecentEvents diretto, altrimenti usa l'EventLogger
+      const events = (manager as any).getRecentEvents
+        ? (manager as any).getRecentEvents(500)
+        : manager.getEventLogger().getRecentEvents(500);
+      const applied = events.filter((e: any) => e.type === 'suggestion_applied').length;
+      const dismissed = events.filter((e: any) => e.type === 'suggestion_dismissed').length;
+      const totalInteracted = applied + dismissed;
+      const acceptanceRate = totalInteracted > 0 ? Math.round((applied / totalInteracted) * 100) : 0;
+
+      const insights = manager.getInsights();
+      const chatbotEff = insights.getChatbotEffectiveness();
+      const prod = insights.getProductivityMetrics();
+
+      setUserKpis({
+        suggestionAcceptanceRate: acceptanceRate,
+        quickActionUsageRate: Math.round((chatbotEff.quickActionUsageRate || 0) * 100),
+        focusCompletionRate: Math.round((prod.focusSessionCompletionRate || 0) * 100),
+        averageSatisfaction: Math.round(chatbotEff.averageSatisfaction || 0)
+      });
+    } catch (err) {
+      console.warn('Impossibile calcolare KPI utente:', err);
+    }
+  }, [suggestions, analytics]);
+
+  // Mappatura etichette per i tipi di pattern
+  const formatPatternTypeLabel = (type: string) => {
+    const key = String(type).toLowerCase();
+    if (key === 'undefined' || key === 'unknown' || key === '') return 'Altro';
+    if (key.includes('sequence') || key.includes('sequential')) return 'Sequenze';
+    if (key.includes('temporal')) return 'Temporali';
+    if (key.includes('context')) return 'Contestuali';
+    if (key.includes('energy') || key.includes('behavior')) return 'Comportamentali';
+    return key.replace('_', ' ');
+  };
+
+  // Traduzioni e formattazioni in italiano per nomi/descrizioni dei pattern
+  const EVENT_LABEL_IT: Record<string, string> = {
+    task_created: 'creazione task',
+    task_completed: 'completamento task',
+    task_postponed: 'rinvio task',
+    task_deleted: 'eliminazione task',
+    routine_activated: 'attivazione routine',
+    routine_completed: 'routine completata',
+    note_processed: 'note elaborate',
+    chatbot_interaction: 'interazione chatbot',
+    quick_action: 'azione rapida',
+    mood_change: 'cambio umore',
+    focus_session: 'sessione focus',
+    suggestion_request: 'richiesta suggerimento'
+  };
+
+  const TIME_LABEL_IT: Record<string, string> = {
+    morning: 'mattina',
+    afternoon: 'pomeriggio',
+    evening: 'sera',
+    night: 'notte'
+  };
+
+  const DEVICE_LABEL_IT: Record<string, string> = {
+    desktop: 'desktop',
+    mobile: 'mobile',
+    tablet: 'tablet'
+  };
+
+  const energyLevelLabel = (value?: string | number) => {
+    const n = typeof value === 'string' ? parseInt(String(value).replace(/[^0-9]/g, '')) : (typeof value === 'number' ? value : undefined);
+    const text = n === 1 ? 'energia molto bassa' : n === 2 ? 'energia bassa' : n === 3 ? 'energia media' : n === 4 ? 'energia alta' : n === 5 ? 'energia molto alta' : 'livello di energia';
+    return text + (n ? ` (${n})` : '');
+  };
+
+  const toItEvent = (token?: string) => {
+    if (!token) return 'azione';
+    const key = token.trim().toLowerCase();
+    return EVENT_LABEL_IT[key] || key.replace(/_/g, ' ');
+  };
+
+  const toItTime = (token?: string) => {
+    if (!token) return 'un orario specifico';
+    const key = token.trim().toLowerCase();
+    return TIME_LABEL_IT[key] || key;
+  };
+
+  const getCondition = (p: any, field: string) => {
+    try {
+      const cond = (p?.conditions || []).find((c: any) => c?.field === field);
+      return cond?.value;
+    } catch { return undefined; }
+  };
+
+  const formatContextLabel = (contextKey?: string, p?: any) => {
+    const parts = (contextKey || '').split('_').filter(Boolean);
+    // Se non disponibile, prova dai conditions
+    const time = parts.find(x => x && ['morning','afternoon','evening','night'].includes(x)) || String(getCondition(p, 'context.timeOfDay') || '');
+    const device = parts.find(x => x && ['desktop','mobile','tablet'].includes(x)) || String(getCondition(p, 'context.deviceType') || '');
+    const energy = parts.find(x => x?.startsWith('energy')) || String(getCondition(p, 'context.energyLevel') || '');
+
+    const list: string[] = [];
+    if (time) list.push(toItTime(time));
+    if (device) list.push(DEVICE_LABEL_IT[String(device)] || String(device));
+    if (energy) list.push(energyLevelLabel(energy));
+    return list.length ? list.join(' • ') : 'contesto specifico';
+  };
+
+  const formatPatternNameIT = (p: any) => {
+    const type = String(p?.type || '').toLowerCase();
+    const name = String(p?.name || '');
+
+    if (type.includes('temporal')) {
+      const m = name.match(/^(.*?)\s*pattern\s*at\s*(.*)$/i);
+      const ev = m?.[1];
+      const tod = m?.[2] || getCondition(p, 'context.timeOfDay');
+      return `Tendenza: ${toItEvent(ev)} in ${toItTime(String(tod || ''))}`;
+    }
+
+    if (type.includes('sequence')) {
+      const part = name.split(':')[1]?.trim() || '';
+      const events = part.split('->').map(e => e.trim()).filter(Boolean);
+      const labels = events.map(toItEvent);
+      return labels.length ? `Sequenza ricorrente: ${labels.join(' → ')}` : 'Sequenza ricorrente';
+    }
+
+    if (type.includes('context')) {
+      const m = name.match(/^(.*?)\s*tasks\s*in\s*(.*)$/i);
+      const taskType = m?.[1];
+      const ctx = m?.[2];
+      const ctxLabel = formatContextLabel(ctx, p);
+      const tt = taskType ? taskType.replace(/_/g, ' ') : 'task preferiti';
+      return `Preferenza: ${tt} nel contesto ${ctxLabel}`;
+    }
+
+    if (type.includes('energy') || type.includes('behavior')) {
+      const m = name.match(/^(.*?)\s*tasks\s*at\s*(.*?)\s*energy/i);
+      const tt = m?.[1] ? m[1].replace(/_/g, ' ') : 'task';
+      const energy = m?.[2] || getCondition(p, 'context.energyLevel');
+      return `Meglio: ${tt} con ${energyLevelLabel(energy)}`;
+    }
+
+    return name || `Pattern ${formatPatternTypeLabel(p?.type)}`;
+  };
+
+  const formatPatternDescriptionIT = (p: any) => {
+    const type = String(p?.type || '').toLowerCase();
+    const desc = String(p?.description || '');
+
+    if (type.includes('temporal')) {
+      const m = desc.match(/User\s+tends\s+to\s+(.*?)\s+during\s+(.*)/i);
+      const ev = m?.[1];
+      const tod = m?.[2];
+      return `Succede spesso: ${toItEvent(ev)} in ${toItTime(String(tod || getCondition(p,'context.timeOfDay') || ''))}. Suggerimento: blocca 25 minuti in quell’orario.`;
+    }
+    if (type.includes('sequence')) {
+      const part = (p?.name || '').split(':')[1]?.trim() || '';
+      const events = part.split('->').map(e => e.trim()).filter(Boolean);
+      if (events.length >= 2) {
+        const first = toItEvent(events[0]);
+        const last = toItEvent(events[events.length - 1]);
+        return `Sequenza ripetuta: dopo “${first}” tende ad avvenire “${last}”. Suggerimento: crea un piccolo rituale guidato.`;
+      }
+      return 'Sequenza ripetuta. Suggerimento: crea un piccolo rituale guidato.';
+    }
+    if (type.includes('context')) {
+      return `Dipende dal contesto (luogo/dispositivo/energia). Suggerimento: prepara l’ambiente giusto in anticipo.`;
+    }
+    if (type.includes('energy') || type.includes('behavior')) {
+      return `Legato al livello di energia/umore. Suggerimento: scegli task compatibili con il tuo stato.`;
+    }
+    return 'Schema utile: trasformiamolo in una abitudine o automazione.';
+  };
+
+  const ctaActionLabel = (p: any) => {
+    const t = String(p?.type || '').toLowerCase();
+    if (t.includes('sequence')) return 'Avvia rituale';
+    if (t.includes('temporal')) return 'Blocca 25 min';
+    if (t.includes('energy')) return 'Scegli task adatte';
+    return 'Applica suggerimento';
+  };
+
+  const isUsefulPattern = (p: any) => {
+    const t = String(p?.type || '').toLowerCase();
+    if (t.includes('sequence')) {
+      const part = String(p?.name || '').split(':')[1]?.trim() || '';
+      const events = part.split('->').map(e => e.trim()).filter(Boolean);
+      const unique = new Set(events);
+      if (events.length < 2 || unique.size < 2) return false;
+    }
+    // Evita pattern con confidenza estremamente bassa
+    if (typeof p?.confidence === 'number' && p.confidence < 0.2) return false;
+    return true;
+  };
+
   // Gestisce il completamento di una sessione focus
   const handleFocusSessionComplete = React.useCallback(() => {
     onProfileUpdate?.();
@@ -367,8 +576,9 @@ export const TaskManager: React.FC<TaskManagerProps> = ({
             <span className="hidden sm:inline">Completati</span>
             <span className="sm:hidden">Fatti</span>
           </TabsTrigger>
-          <TabsTrigger value="analytics" className="flex items-center gap-1 text-xs py-2.5 h-auto px-2 md:hidden">
-            <BarChart3 className="w-3 h-3" />
+          <TabsTrigger value="analytics" className="flex items-center gap-1 text-xs py-2.5 h-auto px-2 md:h-9 md:px-3 md:gap-2 md:text-sm">
+            <BarChart3 className="w-3 h-3 md:w-4 md:h-4" />
+            <span className="hidden sm:inline">Analisi</span>
             <span className="sm:hidden">Analisi</span>
           </TabsTrigger>
         </TabsList>
@@ -413,22 +623,187 @@ export const TaskManager: React.FC<TaskManagerProps> = ({
                 onDismissSuggestion={dismissSuggestion}
               />
             )}
-            
+
             <Card>
-              <CardHeader>
+              <CardHeader className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2">
                   <BarChart3 className="w-5 h-5" />
                   Analisi delle Performance
                 </CardTitle>
+                <Button variant="outline" size="sm" onClick={() => processPatterns()} disabled={isProcessing}>
+                  {isProcessing ? 'Elaborazione…' : 'Aggiorna analisi'}
+                </Button>
               </CardHeader>
               <CardContent>
-                <div className="text-center py-8 text-muted-foreground">
-                  <p>Analisi dettagliate in arrivo...</p>
-                  <p className="text-sm mt-2">
-                    Qui vedrai grafici sui tuoi pattern di produttività,
-                    tempi di completamento e molto altro!
-                  </p>
-                </div>
+                {analytics ? (
+                  <div className="space-y-6">
+                    {/* KPI principali */}
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-4">
+                      <div className="adhd-stat-card adhd-hover-lift adhd-click-bounce w-full">
+                        <div className="relative z-10">
+                          <p className="text-xs font-medium text-muted-foreground">Pattern Totali</p>
+                          <p className="text-sm md:text-2xl font-bold">{(analytics as any).totalPatterns ?? 0}</p>
+                        </div>
+                      </div>
+                      <div className="adhd-stat-card adhd-hover-lift adhd-click-bounce w-full">
+                        <div className="relative z-10">
+                          <p className="text-xs font-medium text-muted-foreground">Pattern Attivi</p>
+                          <p className="text-sm md:text-2xl font-bold">{(analytics as any).activePatterns ?? 0}</p>
+                        </div>
+                      </div>
+                      <div className="adhd-stat-card adhd-hover-lift adhd-click-bounce w-full">
+                        <div className="relative z-10">
+                          <p className="text-xs font-medium text-muted-foreground">Confidenza Media</p>
+                          <p className="text-sm md:text-2xl font-bold">{(((analytics as any).avgPatternConfidence ?? 0) * 100).toFixed(0)}%</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Distribuzione per tipo */}
+                    <div>
+                      <p className="text-sm font-medium mb-2">Distribuzione Pattern</p>
+                      <div className="space-y-2">
+                        {Object.entries(((analytics as any).patternsByType || {})).map(([type, count]: any) => (
+                          <div key={type} className="flex items-center gap-2">
+                            <span className="text-xs w-28">{formatPatternTypeLabel(String(type))}</span>
+                            <div className="flex-1 h-2 bg-muted rounded">
+                              <div
+                                className="h-2 bg-blue-500 rounded"
+                                style={{ width: `${Math.min(100, ((count || 0) / Math.max(1, (analytics as any).totalPatterns || 1)) * 100)}%` }}
+                              />
+                            </div>
+                            <span className="text-xs w-8 text-right">{count as number}</span>
+                          </div>
+                        ))}
+                        {Object.keys(((analytics as any).patternsByType || {})).length === 0 && (
+                          <p className="text-xs text-muted-foreground">Nessun pattern rilevato ancora.</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Esplora pattern - elenco concreto e comprensibile */}
+                    {patterns && patterns.length > 0 && (
+                      <div>
+                        <p className="text-sm font-medium mb-2">Esplora i tuoi pattern</p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3">
+                          {patterns.filter(isUsefulPattern).slice(0, 6).map((p) => (
+                            <div key={p.id} className="border rounded p-3 adhd-hover-lift">
+                              <div className="flex items-start justify-between">
+                                <div>
+                                  <p className="text-sm font-medium">
+                                    {formatPatternNameIT(p)}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {formatPatternTypeLabel(p.type)} • Confidenza {(Math.round((p.confidence || 0) * 100))}% • Frequenza {p.frequency ?? 0}
+                                  </p>
+                                </div>
+                                <span className="text-xs text-muted-foreground">
+                                  {p.lastDetected ? new Date(p.lastDetected).toLocaleDateString('it-IT') : ''}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2 mt-2">
+                                <Button size="sm" variant="ghost" className="text-xs px-2"
+                                  onClick={() => setExpandedPatternId(expandedPatternId === p.id ? null : p.id)}>
+                                  {expandedPatternId === p.id ? 'Nascondi dettagli' : 'Dettagli'}
+                                </Button>
+                              </div>
+                              {expandedPatternId === p.id && (
+                                <div className="bg-primary/5 dark:bg-primary/10 rounded p-2 mt-2">
+                                  <p className="text-xs">
+                                    {formatPatternDescriptionIT(p)}
+                                  </p>
+                                </div>
+                              )}
+                              {/* CTA semplici */}
+                              <div className="flex gap-2 mt-2">
+                                <Button size="sm" variant="outline" onClick={() => setCurrentView('active')}>Apri Task</Button>
+                                <Button size="sm" onClick={() => setCurrentView('active')}>{ctaActionLabel(p)}</Button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        {patterns.filter(isUsefulPattern).length > 6 && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {isMobile
+                              ? 'Analisi dettagliate in arrivo…'
+                              : 'Mostrati i primi 6. Altri disponibili con analisi completa.'}
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* KPI Utente */}
+                    <div>
+                      <p className="text-sm font-medium mb-2">Il tuo andamento</p>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4">
+                        <div className="adhd-stat-card adhd-hover-lift adhd-click-bounce w-full">
+                          <div className="relative z-10">
+                            <p className="text-xs font-medium text-muted-foreground">Accuratezza Suggerimenti</p>
+                            <p className="text-sm md:text-2xl font-bold">{userKpis.suggestionAcceptanceRate}%</p>
+                          </div>
+                        </div>
+                        <div className="adhd-stat-card adhd-hover-lift adhd-click-bounce w-full">
+                          <div className="relative z-10">
+                            <p className="text-xs font-medium text-muted-foreground">Uso Azioni Rapide</p>
+                            <p className="text-sm md:text-2xl font-bold">{userKpis.quickActionUsageRate}%</p>
+                          </div>
+                        </div>
+                        <div className="adhd-stat-card adhd-hover-lift adhd-click-bounce w-full">
+                          <div className="relative z-10">
+                            <p className="text-xs font-medium text-muted-foreground">Completamento Focus</p>
+                            <p className="text-sm md:text-2xl font-bold">{userKpis.focusCompletionRate}%</p>
+                          </div>
+                        </div>
+                        <div className="adhd-stat-card adhd-hover-lift adhd-click-bounce w-full">
+                          <div className="relative z-10">
+                            <p className="text-xs font-medium text-muted-foreground">Soddisfazione Media</p>
+                            <p className="text-sm md:text-2xl font-bold">{userKpis.averageSatisfaction}/5</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Automazioni */}
+                    <div>
+                      <p className="text-sm font-medium mb-2">Automazioni</p>
+                      <div className="flex items-center gap-3">
+                        <Badge variant="outline" className="text-xs">
+                          Attive: {(analytics as any).activeAutomations ?? 0}
+                        </Badge>
+                        <Badge variant="secondary" className="text-xs">
+                          Totali: {(analytics as any).totalAutomations ?? 0}
+                        </Badge>
+                      </div>
+                    </div>
+
+                    {/* Clustering delle task */}
+                    <div>
+                      <p className="text-sm font-medium mb-2">Cluster di Task</p>
+                      {taskClusters && taskClusters.length > 0 ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3">
+                          {taskClusters.slice(0, 4).map((cluster) => (
+                            <div key={cluster.id} className="border rounded p-3">
+                              <p className="text-sm font-medium">{cluster.name}</p>
+                              <p className="text-xs text-muted-foreground">{cluster.tasks.length} task • similarità {(cluster.similarity * 100).toFixed(0)}%</p>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-muted-foreground">Nessun cluster disponibile.</p>
+                      )}
+                    </div>
+
+                    {/* Meta */}
+                    <div className="text-xs text-muted-foreground">
+                      Ultima analisi: {new Date(((analytics as any).lastAnalysisAt || new Date())).toLocaleString()}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <p>Analisi non disponibili al momento.</p>
+                    <p className="text-sm mt-2">Prova a premere "Aggiorna analisi" per elaborare i dati recenti.</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>

@@ -140,18 +140,21 @@ export function SubtaskCreationModal({
         </DialogHeader>
 
         <Tabs defaultValue="suggestions" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="suggestions" className="flex items-center gap-2">
-              <Lightbulb className="h-4 w-4" />
-              Suggerimenti Smart
+          <TabsList className="w-full gap-1 p-1">
+            <TabsTrigger value="suggestions" className="flex items-center justify-center gap-1 text-[11px] sm:text-sm flex-1 min-w-0 px-2 sm:px-3">
+              <Lightbulb className="h-4 w-4 hidden sm:inline" />
+              <span className="truncate sm:inline hidden">Suggerimenti</span>
+              <span className="sm:hidden truncate">Suggerimenti</span>
             </TabsTrigger>
-            <TabsTrigger value="adhd" className="flex items-center gap-2">
-              <Brain className="h-4 w-4" />
-              ADHD-Friendly
+            <TabsTrigger value="adhd" className="flex items-center justify-center gap-1 text-[11px] sm:text-sm flex-1 min-w-0 px-2 sm:px-3">
+              <Brain className="h-4 w-4 hidden sm:inline" />
+              <span className="truncate sm:inline hidden">ADHD-Friendly</span>
+              <span className="sm:hidden truncate">ADHD</span>
             </TabsTrigger>
-            <TabsTrigger value="custom" className="flex items-center gap-2">
-              <Target className="h-4 w-4" />
-              Personalizzata
+            <TabsTrigger value="custom" className="flex items-center justify-center gap-1 text-[11px] sm:text-sm flex-1 min-w-0 px-2 sm:px-3">
+              <Target className="h-4 w-4 hidden sm:inline" />
+              <span className="truncate sm:inline hidden">Personalizzata</span>
+              <span className="sm:hidden truncate">Pers.</span>
             </TabsTrigger>
           </TabsList>
 
@@ -185,8 +188,7 @@ export function SubtaskCreationModal({
                           {suggestion.priority}
                         </Badge>
                         {suggestion.estimatedMinutes && (
-                          <Badge variant="outline" className="flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
+                          <Badge variant="outline">
                             {suggestion.estimatedMinutes}m
                           </Badge>
                         )}

@@ -557,7 +557,7 @@ export const TaskItem = memo<TaskItemProps>(({
                   <ChevronRight className="w-4 h-4 mr-2" />
                 )}
                 <span className="text-sm text-muted-foreground">
-                  {showSubtasks ? 'Nascondi' : 'Mostra'} subtask
+                  {showSubtasks ? 'Nascondi' : 'Mostra'} sottotask
                 </span>
               </Button>
             </CollapsibleTrigger>

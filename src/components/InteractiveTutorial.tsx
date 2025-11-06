@@ -188,24 +188,24 @@ export const tutorialSteps: TutorialStep[] = [
       }
     },
 
-    // STEP 7: Focus Mode
+    // STEP 7: Scheda Personaggio (aggiornato)
     {
       id: 'focus-mode',
       element: '[data-tutorial="focus-mode"]',
       popover: {
-        title: '🎯 Modalità Focus',
+        title: '🎭 Scheda Personaggio',
         description: `
           <div class="space-y-3">
-            <p>La <strong>Modalità Focus</strong> ti aiuta a concentrarti eliminando distrazioni.</p>
-            <p class="text-sm">Quando la attivi:</p>
+            <p>Qui accedi alla tua <strong>Scheda Personaggio</strong>.</p>
+            <p class="text-sm">Da questa vista puoi:</p>
             <ul class="list-disc list-inside space-y-1 text-sm">
-              <li>Mostra solo 3-5 task alla volta</li>
-              <li>Nasconde notifiche non essenziali</li>
-              <li>Suggerisce break regolari (Pomodoro)</li>
-              <li>Blocca distrazioni nell'interfaccia</li>
+              <li>Vedere livello attuale e XP</li>
+              <li>Esplorare gli archetipi dominanti e il breakdown</li>
+              <li>Consultare achievement sbloccati e prossimi obiettivi</li>
+              <li>Gestire inventario immaginale e tratti</li>
             </ul>
-            <div class="bg-red-50 p-3 rounded-lg mt-2 text-sm">
-              🍅 <strong>Tecnica Pomodoro:</strong> 25 minuti di lavoro intenso + 5 minuti di pausa
+            <div class="bg-purple-50 p-3 rounded-lg mt-2 text-sm">
+              🎯 <strong>Tip:</strong> Apri la scheda per monitorare la tua progressione.
             </div>
           </div>
         `,
@@ -283,7 +283,7 @@ export const tutorialSteps: TutorialStep[] = [
               <ul class="list-disc list-inside space-y-1 text-sm">
                 <li>Crea la tua prima task</li>
                 <li>Registra il tuo umore del giorno</li>
-                <li>Prova la modalità Focus</li>
+                <li>Esplora la Scheda Personaggio</li>
                 <li>Esplora progetti e routine</li>
               </ul>
             </div>

@@ -279,41 +279,58 @@ export class PatternMiningEngine {
   public clusterTasks(events: UserEvent[]): TaskCluster[] {
     const taskEvents = events.filter(e => e.type.includes('task'));
     const taskFeatures = taskEvents.map(e => this.extractTaskFeatures(e));
-    
-    // Simple clustering based on similarity
+
+    // Bucketing pre-clustering to reduce pairwise comparisons
+    const buckets = new Map<string, number[]>();
+    taskFeatures.forEach((f, idx) => {
+      const key = `${f.taskType}|${f.timeOfDay}`;
+      const list = buckets.get(key) || [];
+      list.push(idx);
+      buckets.set(key, list);
+    });
+
     const clusters: TaskCluster[] = [];
-    const processed = new Set<number>();
+    const globallyProcessed = new Set<number>();
 
-    taskFeatures.forEach((features, index) => {
-      if (processed.has(index)) return;
+    // Cluster within each bucket
+    buckets.forEach((indices, bucketKey) => {
+      const processed = new Set<number>();
 
-      const cluster: TaskCluster = {
-        id: `cluster_${clusters.length}`,
-        name: `Task cluster ${clusters.length + 1}`,
-        tasks: [features],
-        centroid: features,
-        characteristics: this.analyzeClusterCharacteristics([features]),
-        createdAt: new Date()
-      };
+      indices.forEach((index) => {
+        if (processed.has(index) || globallyProcessed.has(index)) return;
 
-      // Find similar tasks
-      taskFeatures.forEach((otherFeatures, otherIndex) => {
-        if (otherIndex !== index && !processed.has(otherIndex)) {
-          const similarity = this.calculateTaskSimilarity(features, otherFeatures);
-          if (similarity > 0.7) {
-            cluster.tasks.push(otherFeatures);
-            processed.add(otherIndex);
+        const features = taskFeatures[index];
+        const cluster: TaskCluster = {
+          id: `cluster_${clusters.length}`,
+          name: `Task cluster ${clusters.length + 1}`,
+          tasks: [features],
+          centroid: features,
+          characteristics: this.analyzeClusterCharacteristics([features]),
+          createdAt: new Date()
+        };
+
+        // Compare only within the same bucket
+        indices.forEach((otherIndex) => {
+          if (otherIndex !== index && !processed.has(otherIndex) && !globallyProcessed.has(otherIndex)) {
+            const otherFeatures = taskFeatures[otherIndex];
+            const similarity = this.calculateTaskSimilarity(features, otherFeatures);
+            if (similarity > 0.7) {
+              cluster.tasks.push(otherFeatures);
+              processed.add(otherIndex);
+              globallyProcessed.add(otherIndex);
+            }
           }
+        });
+
+        if (cluster.tasks.length >= 2) {
+          cluster.centroid = this.calculateClusterCentroid(cluster.tasks);
+          cluster.characteristics = this.analyzeClusterCharacteristics(cluster.tasks);
+          clusters.push(cluster);
         }
+
+        processed.add(index);
+        globallyProcessed.add(index);
       });
-
-      if (cluster.tasks.length >= 2) {
-        cluster.centroid = this.calculateClusterCentroid(cluster.tasks);
-        cluster.characteristics = this.analyzeClusterCharacteristics(cluster.tasks);
-        clusters.push(cluster);
-      }
-
-      processed.add(index);
     });
 
     this.taskClusters = clusters;

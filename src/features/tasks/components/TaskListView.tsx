@@ -186,6 +186,11 @@ export const TaskListView = React.memo<TaskListViewProps>(({
     return filteredTasks;
   }, [tasks, debouncedSearchQuery, focusMode, focusTaskCount]);
 
+  // Verifica se tra le task visualizzate esistono sottotask
+  const hasAnySubtasks = React.useMemo(() => {
+    return displayTasks.some(t => Boolean(t.has_subtasks));
+  }, [displayTasks]);
+
   // Statistiche rapide (memoizzate)
   const stats = useMemo(() => {
     const total = tasks.length;
@@ -277,14 +282,16 @@ export const TaskListView = React.memo<TaskListViewProps>(({
              >
                Nuova Attività
              </Button>
-            {/* Toggle Mostra subtask */}
-            <div className="flex items-center gap-2 ml-2">
-              <span className="text-xs text-gray-600">Mostra subtask</span>
-              <Switch
-                checked={showSubtasksToggle}
-                onCheckedChange={setShowSubtasksToggle}
-              />
-            </div>
+            {/* Toggle Mostra sottotask (visibile solo se esistono sottotask) */}
+            {hasAnySubtasks && (
+              <div className="flex items-center gap-2 ml-2">
+                <span className="text-xs text-gray-600">Mostra sottotask</span>
+                <Switch
+                  checked={showSubtasksToggle}
+                  onCheckedChange={setShowSubtasksToggle}
+                />
+              </div>
+            )}
             {/* Toggle Espandi globalmente (opzionale) */}
             <div className="flex items-center gap-2">
               <span className="text-xs text-gray-600">Espandi tutte</span>

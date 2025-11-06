@@ -28,6 +28,7 @@ import { LogOut, User, ChevronRight, Focus, Plus, Settings, BookOpen } from 'luc
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useUIStore } from '@/store/uiStore';
 import { useTaskStore } from '@/store/taskStore';
+import { usePatternMining } from '@/hooks/usePatternMining';
 
 const AppContent = () => {
   const { user, loading, signOut } = useAuth();
@@ -56,6 +57,40 @@ const AppContent = () => {
   const [tasks, setTasks] = useState([]);
   const [energyLevel, setEnergyLevel] = useState(7);
   const [showVoiceInput, setShowVoiceInput] = useState(false);
+
+  // Suggerimenti dinamici dal motore di pattern mining
+  const { suggestions, generateSuggestions } = usePatternMining(user?.id || 'anonymous');
+
+  useEffect(() => {
+    // Genera suggerimenti al montaggio o quando cambia utente
+    generateSuggestions();
+  }, [user, generateSuggestions]);
+
+  // Converte il miglior suggerimento attivo in una card "Cosa fare adesso"
+  const homeOverride = (() => {
+    try {
+      const now = new Date();
+      const active = (suggestions || [])
+        .filter(s => s.isActive && (!s.expiresAt || s.expiresAt > now))
+        .sort((a, b) => (b.confidence || 0) - (a.confidence || 0));
+      const top = active[0];
+      if (!top) return undefined;
+
+      const target = top.action?.target;
+      const action: 'tasks' | 'mental-inbox' | 'focus' =
+        target === 'routine' ? 'focus' : target === 'note' ? 'mental-inbox' : 'tasks';
+
+      return {
+        title: top.title,
+        description: top.description,
+        action,
+        actionLabel: 'Inizia adesso',
+        urgency: top.priority === 'high' ? 'high' : top.priority === 'medium' ? 'medium' : 'low'
+      } as const;
+    } catch {
+      return undefined;
+    }
+  })();
 
   // Setup Tutorial: avvio su richiesta
   const { startTutorial } = useTutorial(tutorialSteps);
@@ -298,57 +333,36 @@ const AppContent = () => {
           <div className="flex items-center justify-between gap-2 p-3 sm:p-4 bg-card rounded-xl">
             <Button
               data-tutorial="focus-mode"
-              className={`flex items-center gap-2 flex-1 h-auto py-2.5 px-4 rounded-xl font-semibold text-[#2E2E2E] bg-gradient-to-br from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 border-0 shadow-[0_2px_6px_rgba(0,0,0,0.1)] transition-all duration-200 ${
-                focusMode ? 'ring-2 ring-blue-300' : ''
-              }`}
-              onClick={() => {
-                setFocusMode(!focusMode);
-                if (!focusMode) {
-                  setActiveTab('tasks');
-                }
-              }}
+              variant="secondary"
+              className="flex items-center gap-2 flex-1 h-auto py-2.5 px-4 rounded-xl font-semibold"
+              onClick={() => navigate('/personaggio')}
+              aria-label="Scheda Personaggio"
             >
-              <Focus className="w-4 h-4" />
-              <span className="hidden sm:inline">{focusMode ? '🎯 Focus Mode ON' : 'Attiva Focus'}</span>
-              <span className="sm:hidden">{focusMode ? '🎯 Focus' : 'Focus'}</span>
+              <User className="w-4 h-4" />
+              <span className="hidden sm:inline">Scheda Personaggio</span>
+              <span className="sm:hidden">Personaggio</span>
             </Button>
-            
-            <Button 
-               onClick={() => navigate('/impostazioni')} 
-               aria-label="Impostazioni"
-               className="flex items-center justify-center flex-1 h-auto py-2.5 px-4 rounded-xl font-semibold text-[#2E2E2E] bg-[#F9D57A] hover:bg-[#F7D066] border-0 shadow-[0_2px_6px_rgba(0,0,0,0.1)] transition-all duration-200"
-             >
-               <Settings className="w-5 h-5" />
-             </Button>
-             
-             <Button 
-               onClick={handleLogout} 
-               className="flex items-center justify-center flex-1 h-auto py-2.5 px-4 rounded-xl font-semibold text-[#2E2E2E] bg-[#F5A5A5] hover:bg-[#F39191] border-0 shadow-[0_2px_6px_rgba(0,0,0,0.1)] transition-all duration-200"
-             >
-               <LogOut className="w-5 h-5" />
-             </Button>
+
+            <Button
+              onClick={() => navigate('/impostazioni')}
+              aria-label="Impostazioni"
+              variant="outline"
+              className="flex items-center justify-center flex-1 h-auto py-2.5 px-4 rounded-xl font-semibold"
+            >
+              <Settings className="w-5 h-5" />
+            </Button>
+
+            <Button
+              onClick={handleLogout}
+              aria-label="Esci"
+              variant="outline"
+              className="flex items-center justify-center flex-1 h-auto py-2.5 px-4 rounded-xl font-semibold text-destructive hover:bg-destructive/10"
+            >
+              <LogOut className="w-5 h-5" />
+            </Button>
           </div>
           
-          {/* Controlli modalità focus */}
-          {focusMode && (
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4 p-3 bg-muted/50 border rounded-xl">
-              <Badge variant="secondary" className="text-xs whitespace-nowrap">
-                {focusTaskCount} task prioritari
-              </Badge>
-              <div className="flex items-center gap-2 text-xs">
-                <span>1</span>
-                <input
-                  type="range"
-                  min="1"
-                  max="5"
-                  value={focusTaskCount}
-                  onChange={(e) => setFocusTaskCount(Number(e.target.value))}
-                  className="w-16 sm:w-20 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                />
-                <span>5</span>
-              </div>
-            </div>
-          )}
+          {/* Controlli modalità focus rimossi */}
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -392,6 +406,7 @@ const AppContent = () => {
             <SmartActionSuggestion 
               mood={todayMood?.mood}
               suggestedRitual={todayMood?.suggested_ritual}
+              override={homeOverride}
               onActionClick={(action) => {
                 if (action === 'tasks') setActiveTab('tasks');
                 else if (action === 'mental-inbox') setActiveTab('mental-inbox');
@@ -419,14 +434,6 @@ const AppContent = () => {
               </Button>
               <Button
                 variant="outline"
-                onClick={() => navigate('/personaggio')}
-                className="h-20 flex flex-col gap-2"
-              >
-                <span className="text-2xl">🎭</span>
-                <span>Scheda Personaggio</span>
-              </Button>
-              <Button
-                variant="outline"
                 onClick={() => setShowVoiceInput(!showVoiceInput)}
                 className="h-20 flex flex-col gap-2"
               >
@@ -435,11 +442,12 @@ const AppContent = () => {
               </Button>
               {/* Trigger Tutorial Interattivo integrato */}
               <Button
+                variant="outline"
                 onClick={startTutorial}
-                className="h-20 w-full justify-start gap-2 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white shadow-lg"
+                className="h-20 flex flex-col gap-2"
               >
-                <span className="text-xl">📖</span>
-                <span className="font-medium">Tutorial Interattivo</span>
+                <span className="text-2xl">📖</span>
+                <span>Tutorial Interattivo</span>
               </Button>
             </div>
             

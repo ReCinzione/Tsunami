@@ -22,3 +22,13 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+ 
+ # Claude Code & MCP local artifacts (do not push)
+ .claude*
+ *.claude*.txt
+ *.claude*.md
+ claude*.log
+ claude_output/
+ 
+ # Local MCP client config not needed for Vercel
+ mcp_refactor_output/tools/mcp_client_config.json

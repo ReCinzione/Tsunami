@@ -205,51 +205,24 @@ export function UnifiedSubtaskCreator({
           </DialogTitle>
         </DialogHeader>
 
-        <Tabs defaultValue="quick" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="quick" className="flex items-center gap-2">
-              <Zap className="h-4 w-4" />
-              Rapida
+        <Tabs defaultValue="suggestions" className="w-full">
+          <TabsList className="w-full gap-1 p-1">
+            <TabsTrigger value="suggestions" className="flex items-center justify-center gap-1 text-[11px] sm:text-sm flex-1 min-w-0 px-2 sm:px-3">
+              <Lightbulb className="h-4 w-4 hidden sm:inline" />
+              <span className="truncate sm:inline hidden">Suggerimenti</span>
+              <span className="sm:hidden truncate">Suggerimenti</span>
             </TabsTrigger>
-            <TabsTrigger value="suggestions" className="flex items-center gap-2">
-              <Lightbulb className="h-4 w-4" />
-              Suggerimenti
+            <TabsTrigger value="adhd" className="flex items-center justify-center gap-1 text-[11px] sm:text-sm flex-1 min-w-0 px-2 sm:px-3">
+              <Brain className="h-4 w-4 hidden sm:inline" />
+              <span className="truncate sm:inline hidden">ADHD-Friendly</span>
+              <span className="sm:hidden truncate">ADHD</span>
             </TabsTrigger>
-            <TabsTrigger value="adhd" className="flex items-center gap-2">
-              <Brain className="h-4 w-4" />
-              ADHD-Friendly
-            </TabsTrigger>
-            <TabsTrigger value="custom" className="flex items-center gap-2">
-              <Target className="h-4 w-4" />
-              Personalizzata
+            <TabsTrigger value="custom" className="flex items-center justify-center gap-1 text-[11px] sm:text-sm flex-1 min-w-0 px-2 sm:px-3">
+              <Target className="h-4 w-4 hidden sm:inline" />
+              <span className="truncate sm:inline hidden">Personalizzata</span>
+              <span className="sm:hidden truncate">Pers.</span>
             </TabsTrigger>
           </TabsList>
-
-          <TabsContent value="quick" className="space-y-4">
-            <div className="text-sm text-muted-foreground mb-4">
-              Creazione rapida - inserisci solo il titolo:
-            </div>
-            <div className="flex items-center gap-2">
-              <Input
-                value={quickTitle}
-                onChange={(e) => setQuickTitle(e.target.value)}
-                placeholder="Titolo della subtask..."
-                className="flex-1"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleQuickCreate();
-                }}
-                disabled={isLoading}
-              />
-              <Button 
-                onClick={handleQuickCreate} 
-                disabled={!quickTitle.trim() || isLoading}
-                className="bg-blue-600 hover:bg-blue-700"
-              >
-                {isLoading ? <Clock className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                Crea
-              </Button>
-            </div>
-          </TabsContent>
 
           <TabsContent value="suggestions" className="space-y-4">
             <div className="text-sm text-muted-foreground mb-4">
@@ -321,8 +294,7 @@ export function UnifiedSubtaskCreator({
                           </p>
                         )}
                       </div>
-                      <Badge variant="outline" className="flex items-center gap-1 border-purple-300">
-                        <Clock className="h-3 w-3" />
+                      <Badge variant="outline" className="border-purple-300">
                         {suggestion.estimatedMinutes}m
                       </Badge>
                     </div>

@@ -12,6 +12,16 @@ interface SmartActionSuggestionProps {
   mood?: string;
   suggestedRitual?: string;
   onActionClick: (action: 'tasks' | 'mental-inbox' | 'focus') => void;
+  // Permette di mostrare un suggerimento proveniente dal motore di pattern mining
+  override?: {
+    title: string;
+    description: string;
+    action: 'tasks' | 'mental-inbox' | 'focus';
+    actionLabel: string;
+    icon?: string;
+    urgency: 'low' | 'medium' | 'high';
+    task?: Task;
+  };
 }
 
 interface SmartSuggestion {
@@ -28,7 +38,8 @@ interface SmartSuggestion {
 export const SmartActionSuggestion: React.FC<SmartActionSuggestionProps> = ({
   mood,
   suggestedRitual,
-  onActionClick
+  onActionClick,
+  override
 }) => {
   const { user } = useAuth();
   const { tasks } = useTasks();
@@ -72,6 +83,20 @@ export const SmartActionSuggestion: React.FC<SmartActionSuggestionProps> = ({
 
   // Genera suggerimento intelligente
   const smartSuggestion = useMemo((): SmartSuggestion => {
+    // Se è stato passato un suggerimento esterno (override), usalo direttamente
+    if (override) {
+      return {
+        type: 'energy_match',
+        title: override.title,
+        description: override.description,
+        action: override.action,
+        actionLabel: override.actionLabel,
+        icon: override.icon || '🎯',
+        urgency: override.urgency,
+        task: override.task
+      };
+    }
+
     const energyLevel = getEnergyFromMood(mood);
     const now = new Date();
     const activeTasks = tasks?.filter(t => t.status !== 'completed') || [];
@@ -184,7 +209,7 @@ export const SmartActionSuggestion: React.FC<SmartActionSuggestionProps> = ({
       icon: '🎯',
       urgency: 'low'
     };
-  }, [mood, suggestedRitual, tasks, upcomingTasks]);
+  }, [mood, suggestedRitual, tasks, upcomingTasks, override]);
 
   const getUrgencyColor = (urgency: string) => {
     switch (urgency) {
